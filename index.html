@@ -303,14 +303,17 @@ tr.us { background: var(--sunk); }
 .railrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
 
 /* dialogs */
-dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(640px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overscroll-behavior: contain; -webkit-overflow-scrolling: touch; }
+/* keep the page behind a window from scrolling (iPhone scrolls it otherwise) */
+body:has(dialog[open]) { overflow: hidden; }
 dialog::backdrop { background: rgb(10 4 24 / .62); }
 .dlg { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
 .dlg h2 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 24px; text-transform: uppercase; letter-spacing: .02em; line-height: 1.05; }
 .dlg h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
-.dlghead { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.dlghead { display: flex; justify-content: space-between; gap: 12px; align-items: start; position: sticky; top: -18px; z-index: 3; background: var(--surface); margin-top: -18px; padding-top: 18px; padding-bottom: 6px; }
 .dlghead small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
-.x { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 2px 6px; }
+.x { border: 0; background: var(--sunk); font-size: 24px; line-height: 1; cursor: pointer; color: var(--ink); min-width: 44px; min-height: 44px; border-radius: 10px; flex: none; display: grid; place-items: center; touch-action: manipulation; }
 .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
 .statbox { background: var(--sunk); border-radius: 8px; padding: 10px 12px; min-width: 0; }
 .statbox dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 14px; }
@@ -382,6 +385,12 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 
 @media (max-width: 900px) { .grid, .next { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 560px) {
+  dialog { width: 100%; max-width: 100%; height: 100%; max-height: 100%; height: 100dvh; max-height: 100dvh; margin: 0; border: 0; border-radius: 0; }
+  .dlg { padding: 0 max(16px, env(safe-area-inset-left, 0px)) 0 max(16px, env(safe-area-inset-right, 0px)); }
+  .dlghead { top: 0; margin-top: 0; padding-top: max(12px, env(safe-area-inset-top, 0px)); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+  .dlghead h2 { font-size: 21px; padding-top: 8px; }
+  .dlgfoot.sticky { bottom: 0; margin-block: 0; padding-bottom: max(10px, env(safe-area-inset-bottom, 0px)); }
+  input, select, textarea, .fld input, .fld select, .fld textarea, .hfield input, .hfield select { font-size: 16px; }
   .bigteam { font-size: 54px; }
   .statgrid, .row2 { grid-template-columns: minmax(0, 1fr); }
   .raterow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l a" "d d"; }
@@ -1717,6 +1726,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("availSeg").hidden = tab !== "pick";
     render();
   }
+  // tapping the dark area outside a window closes it (handy on phones)
+  document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
   $("pickToggle").onclick = () => {
     pickOpen = !pickOpen;
     try { localStorage.setItem("ss51-pickopen", pickOpen ? "1" : "0"); } catch {}
