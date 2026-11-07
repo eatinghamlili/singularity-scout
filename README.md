@@ -8,13 +8,15 @@ Team 51 (NerdHerd Singularity) scouting and alliance-selection board, as a norma
 
 Hosting is free: GitHub Pages serves the page, Supabase stores the shared data.
 
+**Live site:** <https://eatinghamlili.github.io/singularity-scout/>
+
 ## Already done
 
 - **Supabase project `singularity-scout`** (organization "FTC SCOUT", free plan, US West) is created and set up: the `docs` table, security rules, the note-merging function and live updates. The SQL is in `supabase/schema.sql`.
 - **`supabase-config.js`** already has the project's address and publishable key. These are meant to be public; the database's security rules decide what visitors can do.
 - **The claude.ai board's data is imported:** 12 competitions, 171 teams, every note, rating and pick, the roster (ethan, bob, rohan meowl) and settings. **Everyone's existing 4-digit codes work.**
 
-## Put it online with GitHub Pages (about 5 minutes)
+## Putting it online again from scratch (only if the repository is ever lost)
 
 1. Sign in to GitHub (create an account if the team doesn't have one) and click **New repository**. Name it `singularity-scout`, set it to **Public**, and create it.
 2. Click **uploading an existing file**, drag in **everything in this folder** (`index.html`, `platform.js`, `supabase-config.js`, `README.md`, and the `supabase` and `tools` folders), and press **Commit changes**.
