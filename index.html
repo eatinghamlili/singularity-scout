@@ -112,6 +112,8 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.againbox { font-size: 14px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); }
+.againbox b { font-weight: 600; }
 .movebox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .movebox .mlabel { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
 .movebox small { flex-basis: 100%; }
@@ -1597,7 +1599,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
-    draft = { ...nums, hasNums, upd: !hasNums, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
+    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
     renderTeamDlg(); $("teamDlg").showModal();
   }
   function statBox(title, s, extra) {
@@ -1619,11 +1621,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
-      <label class="fld">Add a note<textarea id="dNote" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
+          return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
+      <label class="fld">${draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note for this match" : "Add a note"}<textarea id="dNote" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
       <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
         <div class="numshead"><h3>Your numbers (1–10)${sc.count ? ` · team avg from ${sc.count} scout${sc.count === 1 ? "" : "s"}` : ""}</h3>
-          ${draft.hasNums ? `<label class="check"><input type="checkbox" id="dUpd" ${draft.upd ? "checked" : ""} ${canRate ? "" : "disabled"}> Update my numbers with this note</label>` : ""}</div>
-        ${draft.hasNums && !draft.upd ? `<p class="hint">Keeping your current numbers. Tick the box if what you saw changes them.</p>` : ""}
+</div>
+        ${draft.hasNums ? `<p class="hint">Filled in from your last review. Change any that were different this match and leave the rest.</p>` : ""}
         <div class="rate">${CATS.map(([k, l]) => `<div class="raterow"><span class="rlabel">${l}</span><div class="dots" role="group" aria-label="${l}">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v =>
           `<button type="button" data-rate="${k}" data-v="${v}" aria-pressed="${draft[k] === v}" ${numsOn ? "" : "disabled"}>${v}</button>`).join("")}</div>
           <span class="avg" title="Team average">${sc.avg[k] != null ? "avg " + sc.avg[k].toFixed(1) : ""}</span></div>`).join("")}</div>
