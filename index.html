@@ -1,0 +1,1739 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Team 51 NerdHerd Singularity's FTC scouting and alliance selection board.">
+<meta name="theme-color" content="#1b0f33">
+<style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"></script>
+<script src="supabase-config.js"></script>
+<script src="platform.js"></script>
+</head>
+<body>
+<title>Singularity Scout</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Saira+Condensed:wght@500;600;700;800&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: violet header band with the team mark, an "event horizon" next-pick card, then the ranked pick table beside a strategy rail. */
+:root {
+  --bg: #f3f0fa;
+  --surface: #ffffff;
+  --sunk: #f4f1fb;
+  --ink: #1a1030;
+  --muted: #625a78;
+  --line: #ddd5ee;
+  --accent: #6d28d9;      /* singularity violet */
+  --accent-ink: #5b21b6;
+  --on-accent: #ffffff;
+  --glow: #c026d3;        /* accretion-disk magenta */
+  --band: #1b0f33;        /* header band, both themes */
+  --band-ink: #efe8ff;
+  --band-muted: #b5a7d6;
+  --good: #15803d;
+  --bad: #c2410c;
+  --c-auto: #0891b2;
+  --c-tele: #7c3aed;
+  --c-end: #c026d3;
+  --f-display: "Saira Condensed", "Arial Narrow", system-ui, sans-serif;
+  --f-body: "Barlow", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0c0816; --surface: #150f24; --sunk: #1d1630; --ink: #ece6fb; --muted: #a197bd; --line: #2e2547;
+    --accent: #a78bfa; --accent-ink: #c4b5fd; --on-accent: #140b26; --glow: #e879f9; --band: #0a0614; --band-ink: #efe8ff; --band-muted: #a798c9;
+    --good: #4ade80; --bad: #fb923c; --c-auto: #22d3ee; --c-tele: #a78bfa; --c-end: #f0abfc; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0c0816; --surface: #150f24; --sunk: #1d1630; --ink: #ece6fb; --muted: #a197bd; --line: #2e2547;
+  --accent: #a78bfa; --accent-ink: #c4b5fd; --on-accent: #140b26; --glow: #e879f9; --band: #0a0614; --band-ink: #efe8ff; --band-muted: #a798c9;
+  --good: #4ade80; --bad: #fb923c; --c-auto: #22d3ee; --c-tele: #a78bfa; --c-end: #f0abfc; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--band); }
+button, input, select, textarea { font: inherit; color: inherit; }
+a { color: var(--accent-ink); }
+.num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+.wrap { max-width: 1260px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+
+/* header band */
+.top { background: var(--band); color: var(--band-ink); }
+.top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; padding-block: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.hole { width: 40px; height: 40px; border-radius: 50%; flex: none;
+  background: radial-gradient(circle at 50% 50%, #000 0 34%, #3b0764 40%, #a855f7 47%, #f0abfc 50%, #7c3aed 56%, transparent 68%);
+  box-shadow: 0 0 18px rgb(192 38 211 / .45); }
+.brand h1 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 28px; letter-spacing: .04em; text-transform: uppercase; line-height: 1; }
+.brand small { display: block; font-size: 13px; color: var(--band-muted); letter-spacing: .02em; margin-top: 3px; }
+.brand small b { color: var(--band-ink); font-weight: 600; }
+.hfield { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.hfield > span { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--band-muted); font-weight: 600; }
+.hfield input, .hfield select { background: rgb(255 255 255 / .07); border: 1px solid rgb(255 255 255 / .16); color: var(--band-ink); border-radius: 6px; padding: 6px 9px; min-width: 0; color-scheme: dark; }
+.hfield select option { background: #1b0f33; color: #efe8ff; }
+.evname { font-family: var(--f-display); font-weight: 700; font-size: 19px; line-height: 1.15; max-width: 300px; overflow-wrap: anywhere; }
+.btn-band.ghost { background: transparent; border-color: rgb(255 255 255 / .28); }
+.btn-band.ghost:hover { background: rgb(255 255 255 / .08); }
+.boardview { display: flex; flex-direction: column; gap: 18px; }
+/* start page */
+.home { display: flex; flex-direction: column; gap: 22px; }
+.homehead { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between; }
+.hometitle { margin: 2px 0 4px; font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance; }
+.evgroup { display: flex; flex-direction: column; gap: 10px; }
+.evgroup h3 { margin: 0; font-family: var(--f-display); font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.evcards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 12px; }
+.evcard { all: unset; box-sizing: border-box; cursor: pointer; position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.evcard:hover { border-color: var(--accent); }
+.evcard:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.evcard .when { font-family: var(--f-mono); font-size: 12.5px; color: var(--accent-ink); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.evcard .nm { font-family: var(--f-display); font-weight: 800; font-size: 23px; line-height: 1.05; text-transform: uppercase; overflow-wrap: anywhere; }
+.evcard .meta { color: var(--muted); font-size: 13.5px; }
+.evcard .go { margin-top: 6px; font-weight: 600; font-size: 14px; color: var(--accent-ink); }
+.evcard .badge { font-family: var(--f-body); font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.evcard .soon { font-family: var(--f-body); font-size: 11px; padding: 0 6px; border-radius: 4px; border: 1px solid var(--glow); color: var(--glow); font-weight: 600; }
+.evcard.past { background: var(--sunk); }
+.homeempty { background: var(--surface); border: 1px dashed var(--accent); border-radius: 12px; padding: 28px 20px; text-align: center; color: var(--muted); }
+.reqhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.reqlist { display: flex; flex-direction: column; background: var(--surface); border: 1px dashed var(--accent); border-radius: 12px; }
+.reqitem { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 14px; padding: 12px 16px; border-bottom: 1px solid var(--line); }
+.reqitem:last-child { border-bottom: 0; }
+.reqitem b { font-family: var(--f-display); font-weight: 800; font-size: 19px; }
+.reqitem small { display: block; font-size: 13px; margin-top: 2px; }
+.reqbtns { display: flex; gap: 6px; flex-wrap: wrap; }
+.reqbtns a.btn { text-decoration: none; color: var(--ink); }
+.sharetip { margin: 0; font-size: 14px; color: var(--muted); max-width: 70ch; }
+.sharetip b { color: var(--ink); font-weight: 600; }
+.crew { display: flex; flex-direction: column; gap: 6px; }
+.crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
+.crew span.num { color: var(--muted); font-size: 12.5px; }
+.morebtn { align-self: flex-start; }
+.who { display: inline-block; background: var(--c); color: var(--t); font-weight: 600; font-size: 12.5px; line-height: 1.5; padding: 0 8px; border-radius: 999px; white-space: nowrap; }
+.medot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
+.swatches { display: flex; gap: 4px; flex-wrap: wrap; }
+.sw { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.sw[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
+.tabs { display: inline-flex; gap: 4px; margin-right: auto; }
+.tabs button { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 20px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 10px 4px; border-bottom: 3px solid transparent; color: var(--muted); }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs button:focus-visible { outline: 2px solid var(--glow); }
+.ranknote { margin: 0; padding: 10px 14px 0; }
+.move { font-family: var(--f-mono); font-size: 11px; font-weight: 500; margin-left: 4px; vertical-align: 2px; }
+.move.up { color: var(--good); } .move.down { color: var(--bad); }
+.livebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.livebar:empty { display: none; }
+.livestate { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
+.livedot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
+.livestate.on .livedot { background: var(--good); box-shadow: 0 0 0 4px color-mix(in srgb, var(--good) 22%, transparent); }
+.livestate.busy .livedot { background: var(--accent); }
+.livestate.stale .livedot { background: var(--bad); }
+.livestate.on { font-weight: 500; }
+.livectl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.livesel { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
+.livesel select { background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; color: var(--ink); }
+.liveerr { flex-basis: 100%; }
+@media (prefers-reduced-motion: no-preference) { .livestate.on .livedot, .livestate.busy .livedot { animation: livepulse 2s ease-in-out infinite; } }
+@keyframes livepulse { 50% { opacity: .45; } }
+.tabs { flex-wrap: wrap; }
+.notesview { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.noteshead { display: flex; flex-wrap: wrap; gap: 8px 16px; justify-content: space-between; align-items: center; }
+.noteshead .hint { margin: 0; }
+.notecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
+.notecard { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); }
+.notecard.isus { background: var(--sunk); }
+.notecard header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.nnum { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
+.nnum:hover { color: var(--accent-ink); text-decoration: underline; }
+.nnum:focus-visible { outline: 2px solid var(--glow); }
+.nmeta { min-width: 0; }
+.nmeta b { display: block; font-weight: 600; overflow-wrap: anywhere; }
+.nmeta small, .overall small { color: var(--muted); font-size: 12px; display: block; }
+.overall { text-align: right; }
+.overall b { font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; color: var(--accent-ink); }
+.cats { display: grid; grid-template-columns: 1fr; gap: 4px; }
+.cat { display: grid; grid-template-columns: 104px minmax(0, 1fr) 30px; gap: 8px; align-items: center; font-size: 13px; color: var(--muted); }
+.cat b { text-align: right; color: var(--ink); font-weight: 500; font-size: 12.5px; }
+.dots5 { position: relative; height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.dots5 i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--accent), var(--glow)); border-radius: 3px; }
+.ranktable { min-width: 640px; }
+td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); font-weight: 600; background: var(--sunk); padding: 6px 8px; }
+.rankshare { margin: 6px 0 0; font-size: 13px; }
+.rankshare b { color: var(--ink); font-weight: 600; }
+/* scout sign-in */
+.mebox { display: flex; gap: 6px; flex-wrap: wrap; }
+.gate { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-block: 28px 12px; }
+.gate .hole.big { width: 84px; height: 84px; margin-bottom: 8px; }
+.gate .hint { max-width: 46ch; }
+.codebox { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px; }
+.codein { font-family: var(--f-mono); font-size: 40px; letter-spacing: .45em; text-indent: .45em; width: 230px; max-width: 100%; text-align: center; padding: 10px 8px;
+  background: var(--surface); border: 2px solid var(--line); border-radius: 12px; color: var(--ink); }
+.codein:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+.setup { display: flex; flex-direction: column; gap: 10px; width: min(420px, 100%); margin-top: 14px; text-align: left; }
+.roster { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; }
+.rrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.rrow:last-child { border-bottom: 0; }
+.rrow b { font-weight: 600; }
+.rrow .lead { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; margin-left: 6px; }
+.rrow .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.rrow .btns .btn { padding: 3px 9px; font-size: 13px; }
+.reveal { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
+.reveal .num { font-size: 30px; letter-spacing: .25em; display: block; margin: 4px 0; color: var(--ink); }
+.homeempty b { display: block; color: var(--ink); font-size: 17px; margin-bottom: 4px; }
+#ourTeam { width: 84px; }
+.evrow { display: flex; gap: 6px; align-items: end; }
+.btn-band { border: 1px solid #a78bfa; background: #7c3aed; color: #fff; border-radius: 6px; padding: 6px 12px; cursor: pointer; font-weight: 600; white-space: nowrap; }
+.btn-band:hover { background: #8b5cf6; }
+.btn-band:disabled { opacity: .5; cursor: not-allowed; }
+.pill { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid rgb(255 255 255 / .2); color: var(--band-muted); white-space: nowrap; }
+.pill.live { color: #86efac; border-color: rgb(134 239 172 / .45); }
+
+main.wrap { padding-block: 20px 48px; display: flex; flex-direction: column; gap: 18px; }
+.banner { border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+.banner b { font-weight: 600; }
+
+/* next pick card */
+.next { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px 32px; }
+.next::before { content: ""; position: absolute; width: 420px; height: 420px; left: -170px; top: -190px; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(circle, transparent 0 30%, color-mix(in srgb, var(--accent) 22%, transparent) 38%, color-mix(in srgb, var(--glow) 12%, transparent) 46%, transparent 66%); }
+.next > * { position: relative; min-width: 0; }
+.eyebrow { font-family: var(--f-display); font-weight: 700; text-transform: uppercase; letter-spacing: .12em; font-size: 14px; color: var(--accent-ink); }
+.bigteam { font-family: var(--f-display); font-weight: 800; font-size: 68px; line-height: .95; }
+.bigname { font-size: 18px; font-weight: 500; margin-top: 2px; }
+.why { color: var(--muted); font-size: 14px; margin-top: 8px; max-width: 48ch; }
+.backups { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; font-size: 13px; color: var(--muted); }
+.chipbtn { border: 1px solid var(--line); background: var(--sunk); border-radius: 999px; padding: 2px 10px; font-size: 13px; cursor: pointer; }
+.chipbtn:hover { border-color: var(--accent); }
+.nextActions { display: flex; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+.proj h3 { margin: 0 0 10px; font-family: var(--f-display); font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.proj h3 .num { color: var(--ink); font-size: 24px; font-family: var(--f-display); font-weight: 800; }
+.barrow { display: grid; grid-template-columns: 70px minmax(0, 1fr) 52px; align-items: center; gap: 10px; margin-bottom: 8px; }
+.barrow .lbl { font-family: var(--f-display); font-weight: 700; font-size: 17px; line-height: 1; }
+.barrow .lbl small { display: block; font-family: var(--f-body); font-weight: 400; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.stack { display: flex; height: 22px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.stack span { display: block; height: 100%; }
+.stack .a { background: var(--c-auto); } .stack .t { background: var(--c-tele); } .stack .e { background: var(--c-end); }
+.barrow .num { text-align: right; font-size: 14px; }
+.legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-top: 6px; flex-wrap: wrap; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+
+/* grid */
+.grid { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 18px; align-items: start; }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; min-width: 0; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 12px 14px; border-bottom: 1px solid var(--line); }
+.toolbar h2 { margin: 0 auto 0 0; font-family: var(--f-display); font-weight: 800; font-size: 21px; text-transform: uppercase; letter-spacing: .04em; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 7px; overflow: hidden; }
+.seg button { border: 0; background: transparent; padding: 5px 10px; cursor: pointer; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.btn { border: 1px solid var(--line); background: var(--sunk); border-radius: 7px; padding: 6px 12px; cursor: pointer; font-size: 14px; font-weight: 500; white-space: nowrap; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+#search { background: var(--sunk); border: 1px solid var(--line); border-radius: 7px; padding: 6px 10px; width: 150px; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 14px; }
+th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th.r, td.r { text-align: right; }
+th button.sort { all: unset; cursor: pointer; }
+th button.sort[aria-sort="active"] { color: var(--accent-ink); }
+th button.sort:focus-visible { outline: 2px solid var(--glow); }
+td { padding: 9px 8px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+tr:last-child td { border-bottom: 0; }
+td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color: var(--muted); width: 34px; }
+.teamcell { display: flex; flex-direction: column; min-width: 160px; }
+.teamcell button { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 20px; line-height: 1.05; }
+.teamcell button:hover { color: var(--accent-ink); text-decoration: underline; }
+.teamcell button:focus-visible { outline: 2px solid var(--glow); }
+.teamcell small { color: var(--muted); font-size: 13px; }
+.tags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+.tag { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--sunk); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
+.tag.dnp { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
+.tag.src { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.qual { white-space: nowrap; }
+.qual small { display: block; color: var(--muted); font-size: 12px; }
+.fit { display: flex; align-items: center; gap: 8px; min-width: 110px; }
+.fit .track { flex: 1; height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
+.fit .track span { display: block; height: 100%; background: linear-gradient(90deg, var(--accent), var(--glow)); }
+.fit .num { width: 26px; text-align: right; font-weight: 500; }
+.scout { white-space: nowrap; }
+.scout b { font-family: var(--f-mono); font-weight: 500; }
+.scout small { color: var(--muted); font-size: 12px; margin-left: 4px; }
+.scout .none { color: var(--muted); font-size: 13px; }
+.pen { color: var(--bad); }
+.status { display: flex; gap: 6px; justify-content: flex-end; }
+.status button { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 3px 9px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.status button:hover { border-color: var(--accent); }
+.status button.on-taken { background: var(--muted); border-color: var(--muted); color: var(--surface); }
+.status button.on-pick { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+.status .us { font-family: var(--f-display); font-weight: 800; font-size: 14px; letter-spacing: .08em; padding: 3px 10px; border-radius: 6px; background: var(--band); color: var(--band-ink); }
+tr.taken td:not(:last-child) { opacity: .42; }
+tr.taken .teamcell button { text-decoration: line-through; }
+tr.partner { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+tr.us { background: var(--sunk); }
+.empty { padding: 32px 16px; text-align: center; color: var(--muted); }
+
+/* rail */
+.rail { display: flex; flex-direction: column; gap: 18px; }
+.rail .panel { padding: 14px 16px; }
+.rail h2 { margin: 0 0 4px; font-family: var(--f-display); font-weight: 800; font-size: 19px; text-transform: uppercase; letter-spacing: .04em; }
+.rail p.sub { margin: 0 0 12px; font-size: 13px; color: var(--muted); }
+.need { margin-bottom: 12px; }
+.need .row1 { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 4px; gap: 8px; }
+.need .row1 b { font-weight: 600; }
+.need .mult { font-family: var(--f-mono); font-size: 12px; padding: 0 6px; border-radius: 4px; background: var(--sunk); }
+.need .mult.hot { background: var(--accent); color: var(--on-accent); }
+.meter { position: relative; height: 8px; background: var(--sunk); border-radius: 4px; }
+.meter span { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; }
+.meter i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+.need small { font-size: 12px; color: var(--muted); }
+.slider { display: grid; grid-template-columns: 82px minmax(0, 1fr) 36px; gap: 8px; align-items: center; margin-bottom: 8px; font-size: 13px; }
+.slider input { width: 100%; accent-color: var(--accent); }
+.slider .num { text-align: right; font-size: 12px; }
+.howto { font-size: 13px; color: var(--muted); }
+.howto ol { margin: 6px 0 0; padding-left: 18px; display: flex; flex-direction: column; gap: 4px; }
+.railrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+
+/* dialogs */
+dialog { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); color: var(--ink); padding: 0; width: min(640px, calc(100vw - 32px)); max-height: calc(100vh - 32px); }
+dialog::backdrop { background: rgb(10 4 24 / .62); }
+.dlg { padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; }
+.dlg h2 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 24px; text-transform: uppercase; letter-spacing: .02em; line-height: 1.05; }
+.dlg h3 { margin: 0 0 6px; font-family: var(--f-display); font-weight: 700; font-size: 15px; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); }
+.dlghead { display: flex; justify-content: space-between; gap: 12px; align-items: start; }
+.dlghead small { display: block; color: var(--muted); font-size: 14px; margin-top: 2px; }
+.x { border: 0; background: transparent; font-size: 22px; line-height: 1; cursor: pointer; color: var(--muted); padding: 2px 6px; }
+.statgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.statbox { background: var(--sunk); border-radius: 8px; padding: 10px 12px; min-width: 0; }
+.statbox dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 3px 10px; font-size: 14px; }
+.statbox dt { color: var(--muted); }
+.statbox dd { margin: 0; font-family: var(--f-mono); text-align: right; }
+.statbox p { margin: 0; color: var(--muted); font-size: 13px; }
+.rate { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.raterow { display: grid; grid-template-columns: 110px minmax(0, 1fr) 60px; grid-template-areas: "l d a"; gap: 4px 10px; align-items: center; }
+.raterow .rlabel { grid-area: l; } .raterow .dots { grid-area: d; } .raterow .avg { grid-area: a; }
+.dlgfoot.sticky { position: sticky; bottom: -18px; background: var(--surface); padding-block: 10px; margin-block: -4px -18px; border-top: 1px solid var(--line); z-index: 2; }
+.rate .avg { font-family: var(--f-mono); font-size: 12px; color: var(--muted); text-align: right; }
+.dots { display: flex; gap: 4px; }
+.dots { flex-wrap: wrap; }
+.dots button { width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); background: var(--sunk); border-radius: 6px; cursor: pointer; font-family: var(--f-mono); font-size: 13px; }
+.dots button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.dots button:disabled { cursor: not-allowed; opacity: .6; }
+.fld { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.fld input, .fld select, .fld textarea { background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 7px 9px; font-size: 15px; color: var(--ink); text-transform: none; letter-spacing: 0; font-weight: 400; width: 100%; min-width: 0; }
+.fld textarea { min-height: 64px; resize: vertical; }
+.row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
+.check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.ord { font-family: var(--f-display); font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; min-width: 34px; text-align: center; padding: 0 6px; border-radius: 5px; background: var(--band); color: var(--band-ink); line-height: 1.5; }
+.note.latest .ord { background: var(--accent); color: var(--on-accent); }
+.numsline { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 12px; color: var(--muted); }
+.numsline b { color: var(--ink); font-family: var(--f-mono); font-weight: 500; }
+.pboxes { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0 10px; }
+.pbox { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 96px; padding: 6px 10px; border-radius: 8px;
+  border: 1px solid var(--line); border-left: 4px solid var(--c); background: var(--sunk); }
+.pbox:hover { border-color: var(--c); }
+.pbox:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.pbox[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 18%, var(--surface)); border-color: var(--c); }
+.pbox .pname { font-weight: 600; font-size: 14px; }
+.pbox .pcount { font-size: 11.5px; color: var(--muted); }
+.airecap { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 12px; padding: 12px 14px;
+  background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), color-mix(in srgb, var(--glow) 6%, var(--surface))); display: flex; flex-direction: column; gap: 8px; }
+.aihead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.aihead h3 { margin: 0; }
+.aitext { white-space: pre-wrap; font-size: 14.5px; line-height: 1.5; }
+.aimeta { margin: 0; font-size: 12.5px; }
+.notetop { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-bottom: 2px; }
+.note.latest { background: color-mix(in srgb, var(--c) 8%, transparent); border-radius: 0 6px 6px 0; padding-block: 6px; }
+.linkbtn { all: unset; cursor: pointer; font-size: 12.5px; color: var(--accent-ink); text-decoration: underline; }
+.linkbtn:focus-visible { outline: 2px solid var(--glow); }
+.notetop .linkbtn { margin-left: auto; color: var(--muted); }
+.morenotes { margin-top: 6px; display: inline-block; }
+.numsbox { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.numsbox.off .rate { opacity: .55; }
+.numshead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
+.numshead h3 { margin: 0; }
+.numsbox p.hint { margin: 0; }
+.note { font-size: 14px; border-left: 4px solid var(--c, var(--accent)); padding: 2px 0 2px 10px; }
+.note b { font-weight: 600; }
+.note small { color: var(--muted); }
+.dlgfoot { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.dlgfoot .left { margin-right: auto; }
+.hint { font-size: 13px; color: var(--muted); margin: 0; }
+.hint code { font-family: var(--f-mono); font-size: 12px; background: var(--sunk); padding: 1px 4px; border-radius: 3px; }
+.err { color: var(--bad); font-size: 14px; }
+.evlist { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 8px; max-height: 340px; overflow: auto; }
+.evitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; align-items: center; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+.evitem:last-child { border-bottom: 0; }
+.evitem b { font-weight: 600; }
+.evitem small { color: var(--muted); font-size: 12.5px; display: block; }
+.evitem .badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); margin-left: 6px; font-weight: 600; }
+.progress { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
+.progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--glow)); }
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--band); color: var(--band-ink); padding: 9px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
+
+@media (max-width: 900px) { .grid, .next { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 560px) {
+  .bigteam { font-size: 54px; }
+  .statgrid, .row2 { grid-template-columns: minmax(0, 1fr); }
+  .raterow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l a" "d d"; }
+  .dots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
+  .dots button { width: auto; height: 34px; }
+  /* on a phone, writing comes first: stats move below the note, numbers and tags */
+  #teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap { order: 1; }
+  #teamForm .dlgfoot { order: 2; }
+  #search { width: 100%; order: 5; }
+  .evname { max-width: none; }
+  .evrow { flex: 1 1 100%; }
+  .evrow .hfield { flex: 1; }
+}
+@media (prefers-reduced-motion: no-preference) { .fit .track span, .stack span, .progress span { transition: width .25s ease; } }
+</style>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand"><span class="hole" aria-hidden="true"></span>
+      <div><h1>Singularity Scout</h1><small><b>Team 51</b> · NerdHerd Singularity · alliance selection</small></div></div>
+    <div class="evrow" id="evNav" hidden>
+      <div class="hfield"><span>Scouting</span><b class="evname" id="evName"></b></div>
+      <button class="btn-band ghost" id="homeBtn">All competitions</button>
+    </div>
+    <label class="hfield"><span>Our team</span><input id="ourTeam" type="number" inputmode="numeric" min="1" value="51"></label>
+    <label class="hfield"><span>Alliance</span><select id="allianceSize"><option value="2">2 teams</option><option value="3">3 teams</option></select></label>
+    <span class="pill" id="storePill">Connecting…</span>
+    <div class="mebox" id="meBox" hidden>
+      <button class="btn-band ghost" id="rosterBtn" hidden>Team roster</button>
+      <button class="btn-band ghost" id="meBtn" title="Switch scout"></button>
+    </div>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="banner" id="banner" hidden></div>
+
+  <section class="gate" id="gateView" hidden>
+    <span class="hole big" aria-hidden="true"></span>
+    <div class="eyebrow">Team 51 scouts</div>
+    <h2 class="hometitle">Who's scouting?</h2>
+    <div id="gateBody"></div>
+  </section>
+
+  <section class="home" id="homeView">
+    <div class="homehead">
+      <div><div class="eyebrow">Choose a competition</div><h2 class="hometitle">Which tournament are you scouting?</h2>
+        <p class="hint">Every competition loaded here keeps its own ratings, notes and draft board.</p></div>
+      <button class="btn primary" id="loadBtn">Load from FTCScout</button>
+    </div>
+    <div class="evgroup" id="evRequests"></div>
+    <div class="evgroup" id="evUpcoming"></div>
+    <div class="evgroup" id="evPast"></div>
+    <p class="sharetip" id="shareTip" hidden><b>Bring in more scouts.</b> Add each teammate in <b>Team roster</b> to give them a 4-digit code, and send them this website's link. Scouts can rate teams, leave notes, mark picks and request competitions; leads can also load competitions.</p>
+  </section>
+
+  <div class="boardview" id="boardView" hidden>
+  <div class="livebar" id="liveBar"></div>
+  <section class="next" id="next" aria-live="polite"></section>
+
+  <div class="grid">
+    <section class="panel">
+      <div class="toolbar">
+        <div class="tabs" role="tablist" aria-label="List">
+          <button role="tab" id="tabPick" aria-selected="true">Pick list</button>
+          <button role="tab" id="tabRank" aria-selected="false">Rankings</button>
+          <button role="tab" id="tabNotes" aria-selected="false">Scouting notes</button>
+        </div>
+        <input id="search" type="search" placeholder="Find team…" aria-label="Find team">
+        <div class="seg" role="group" aria-label="Show" id="availSeg">
+          <button id="showAvail" aria-pressed="true">Available</button>
+          <button id="showAll" aria-pressed="false">All</button>
+        </div>
+        <button class="btn" id="exportBtn">Copy CSV</button>
+      </div>
+      <div class="tablewrap" id="rankWrap" hidden>
+        <p class="hint ranknote" id="rankNote"></p>
+        <table class="ranktable">
+          <thead><tr><th>Rank</th><th>Team</th><th class="r">W-L-T</th><th class="r">Played</th><th class="r">RP</th><th class="r">OPR</th><th class="r">On pick list</th><th></th></tr></thead>
+          <tbody id="rankRows"></tbody>
+        </table>
+      </div>
+      <div class="notesview" id="notesWrap" hidden>
+        <div class="noteshead"><p class="hint" id="notesNote"></p>
+          <label class="check"><input type="checkbox" id="notesOnly" checked> Only teams with scouting</label></div>
+        <div class="notecards" id="noteCards"></div>
+      </div>
+      <div class="tablewrap" id="pickWrap">
+        <table>
+          <thead><tr>
+            <th>#</th><th>Team</th>
+            <th><button class="sort" data-sort="rank">Qual</button></th>
+            <th class="r"><button class="sort" data-sort="auto">Auto</button></th>
+            <th class="r"><button class="sort" data-sort="teleop">TeleOp</button></th>
+            <th class="r"><button class="sort" data-sort="endgame">End</button></th>
+            <th class="r"><button class="sort" data-sort="pen">Pen</button></th>
+            <th><button class="sort" data-sort="scout">Scouts</button></th>
+            <th class="r"><button class="sort" data-sort="exp">Exp pts</button></th>
+            <th><button class="sort" data-sort="fit" title="Fit for your robot, blended with scout ratings and 25% qualification rank">Pick score</button></th>
+            <th class="r">Draft</th>
+          </tr></thead>
+          <tbody id="rows"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <aside class="rail">
+      <section class="panel" id="crew"></section>
+      <section class="panel" id="needs"></section>
+      <section class="panel">
+        <h2>Weights</h2>
+        <p class="sub">How much each phase counts toward Fit. Penalties subtract. Scout ratings blend your team's ratings in with the OPR numbers.</p>
+        <div id="sliders"></div>
+        <p class="hint rankshare"><b>Qualification rank: 25%</b> of each team's pick score, once matches have been played. The other 75% is the Fit and scout blend above.</p>
+      </section>
+      <section class="panel howto">
+        <h2>How to use it</h2>
+        <ol>
+          <li><b>Load from FTCScout</b> to pull a competition's teams and OPR.</li>
+          <li>Scouts tap a team number to add a note each time they watch it, and rate it 1–10. Ratings from everyone are averaged.</li>
+          <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
+        </ol>
+        <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button></div>
+      </section>
+    </aside>
+  </div>
+  </div>
+</main>
+
+<dialog id="teamDlg"><form class="dlg" id="teamForm" method="dialog"></form></dialog>
+
+<dialog id="loadDlg">
+  <form class="dlg" id="loadForm" method="dialog">
+    <div class="dlghead"><h2 id="loadTitle">Load a competition</h2><button type="button" class="x" id="loadClose" aria-label="Close">×</button></div>
+    <p class="hint" id="loadHint"></p>
+    <div class="row2">
+      <label class="fld">Season<select id="lSeason"><option value="2026">2026–27</option><option value="2025">2025–26</option></select></label>
+      <label class="fld">Event code or link<input id="lCode" placeholder="USCALACAS2 or ftcscout.org/events/…" autocomplete="off"></label>
+    </div>
+    <div id="ownerTools" class="dlgfoot" style="justify-content:flex-start">
+      <button type="button" class="btn primary" id="codeBtn">Load this code</button>
+      <span class="hint" style="align-self:center">or browse a region</span>
+      <input id="lRegion" class="btn" style="cursor:text;width:110px" value="USCALA" aria-label="Region code" autocomplete="off">
+      <button type="button" class="btn" id="findBtn">Find competitions</button>
+    </div>
+    <div id="scoutTools" class="dlgfoot" style="justify-content:flex-start" hidden>
+      <button type="button" class="btn primary" id="reqBtn">Request this competition</button>
+    </div>
+    <div class="progress" id="lProg" hidden><span></span></div>
+    <div class="hint" id="lStatus" aria-live="polite"></div>
+    <div class="err" id="lErr" hidden></div>
+    <div class="evlist" id="evList" hidden></div>
+  </form>
+</dialog>
+
+<dialog id="rosterDlg">
+  <form class="dlg" id="rosterForm" method="dialog">
+    <div class="dlghead"><h2>Team 51 roster</h2><button type="button" class="x" data-rclose aria-label="Close">×</button></div>
+    <p class="hint">Each scout gets their own 4-digit code. Ratings and notes are saved under the scout who entered them. Leads can add scouts and reset codes.</p>
+    <div class="reveal" id="reveal" hidden></div>
+    <div class="roster" id="rosterList"></div>
+    <div>
+      <h3>Add a scout</h3>
+      <div class="row2">
+        <label class="fld">Name<input id="rName" autocomplete="off" placeholder="First name"></label>
+        <label class="fld">Code (optional)<input id="rCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="Leave blank to pick one"></label>
+      </div>
+    </div>
+    <div class="err" id="rErr" hidden></div>
+    <div class="dlgfoot"><button type="button" class="btn" data-rclose>Done</button><button type="submit" class="btn primary">Add scout</button></div>
+  </form>
+</dialog>
+
+<dialog id="confirmDlg">
+  <form class="dlg" method="dialog">
+    <h2 id="confirmTitle">Are you sure?</h2>
+    <p class="hint" id="confirmText"></p>
+    <div class="dlgfoot"><button type="button" class="btn" id="confirmNo">Cancel</button><button type="button" class="btn primary" id="confirmYes">Confirm</button></div>
+  </form>
+</dialog>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  const n = (v) => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
+  const r2 = (v) => Math.round(n(v) * 100) / 100;
+  const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1);
+  const PHASES = [["auto", "Auto", "a"], ["teleop", "TeleOp", "t"], ["endgame", "Endgame", "e"]];
+  const CATS = [["auto", "Auto"], ["teleop", "TeleOp scoring"], ["endgame", "Endgame"], ["driving", "Driving"], ["reliability", "Reliability"], ["defense", "Defense"]];
+  const DEFAULTS = { us: 51, event: null, size: 2, weights: { auto: 1, teleop: 1, endgame: 1, fouls: 1, scout: 0.3 } };
+  const HOST = "host:claude_browser";
+
+  let db = null, user = null, mcp = null, accountId = null, isOwner = false;
+  let uid = null;              // the signed-in scout's key ("s_" + roster id); ratings are stored under it
+  let me = null, scouts = new Map();
+  let events = new Map(), teams = new Map(), requests = new Map(), settings = structuredClone(DEFAULTS);
+  let names = {};
+  let loaded = false, readOnly = false, offline = false;
+  let unsubTeams = null, subscribedKey = null;
+  let current = null;          // the competition this viewer is scouting (from the link's #season-code)
+  let view = { filter: "available", q: "", sort: "fit", tab: "pick" };
+  const HOME_LIMIT = 4;        // cards per group before "Show more"
+  const RANK_SHARE = 0.25;     // share of the pick score that comes from qualification rank
+  const expanded = { up: false, past: false };
+
+  /* ---------- small UI helpers ---------- */
+  let toastTimer;
+  function toast(msg) { const el = $("toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2600); }
+  function confirmBox(title, text, yes) {
+    return new Promise(res => {
+      $("confirmTitle").textContent = title; $("confirmText").textContent = text; $("confirmYes").textContent = yes;
+      const d = $("confirmDlg");
+      const done = (v) => { d.close(); res(v); };
+      $("confirmYes").onclick = () => done(true); $("confirmNo").onclick = () => done(false); d.oncancel = () => done(false);
+      d.showModal();
+    });
+  }
+
+  /* ---------- store ---------- */
+  const chains = {};
+  function queue(key, fn) { const p = (chains[key] || Promise.resolve()).catch(() => {}).then(fn); chains[key] = p.catch(() => {}); return p; }
+  function onWriteError(e) {
+    if (e && e.code === "invalid_argument") { readOnly = true; toast("You can view this board but not change it."); render(); }
+    else if (e && e.code === "quota_exceeded") toast("The board is full. Remove an old competition first.");
+    else toast("Couldn't save. Check your connection and try again.");
+  }
+  const teamRef = (num) => db.doc(`events/${current}/teams/${num}`);
+  function patchTeam(num, patch) {
+    const t = teams.get(num); if (!t) return;
+    const merged = { ...t, ...patch };
+    // mirror the store's nested merge locally so the screen updates before the save lands
+    for (const f of ["ratings", "notes"]) if (patch[f]) {
+      merged[f] = { ...(t[f] || {}) };
+      for (const [k, v] of Object.entries(patch[f])) merged[f][k] = v === null ? null : { ...((t[f] || {})[k] || {}), ...v };
+    }
+    teams.set(num, merged); render();
+    if (!db || !current) return;
+    return queue("t" + num, () => teamRef(num).update(patch)).catch(onWriteError);
+  }
+  let settingsTimer;
+  function saveSettings(now) {
+    if (!db) return;
+    clearTimeout(settingsTimer);
+    const go = () => queue("settings", () => db.doc("settings/main").set(structuredClone(settings))).catch(onWriteError);
+    if (now) go(); else settingsTimer = setTimeout(go, 600);
+  }
+
+  function subscribeEvent(key) {
+    if (key === subscribedKey) return;
+    if (unsubTeams) unsubTeams();
+    subscribedKey = key; teams = new Map(); unsubTeams = null;
+    if (!db || !key) { render(); return; }
+    unsubTeams = db.collection(`events/${key}/teams`).onSnapshot(snap => {
+      teams = new Map(snap.docs.map(d => { const x = { ...d.data() }; x.number = Number(x.number); return [x.number, x]; }));
+      render(); refreshNames();
+    }, () => toast("Lost connection to this competition's data. Reload to reconnect."));
+    render();
+  }
+
+  async function connect() {
+    const timer = setTimeout(() => { if (!loaded) $("storePill").textContent = "Can't reach saved data yet"; }, 10000);
+    try { db = await window.claude?.use?.("db"); } catch { db = null; }
+    if (!db) { clearTimeout(timer); offline = true; loaded = true; $("storePill").textContent = "Not saving"; render(); }
+    else {
+      let gotE = false, gotS = false, gotR = false;
+      const ready = () => { if (gotE && gotS && gotR && !loaded) { loaded = true; clearTimeout(timer); } render(); };
+      db.collection("scouts").onSnapshot(snap => {
+        scouts = new Map(snap.docs.map(d => [d.id, d.data()]));
+        if (!snap.metadata.fromCache) { gotR = true; if (me && !scouts.has(me)) { me = null; uid = null; try { localStorage.removeItem(ME_KEY); } catch {} } }
+        ready();
+      }, () => {});
+      db.collection("events").onSnapshot(snap => {
+        events = new Map(snap.docs.map(d => [d.id, d.data()]));
+        if (!snap.metadata.fromCache) gotE = true;
+        $("storePill").textContent = "Shared with your team"; $("storePill").classList.add("live");
+        ready();
+      }, () => { $("storePill").textContent = "Connection lost. Reload"; $("storePill").classList.remove("live"); });
+      db.doc("settings/main").onSnapshot(snap => {
+        if (snap.exists) { const s = snap.data(); settings = { ...structuredClone(DEFAULTS), ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } }; }
+        if (!snap.metadata.fromCache) gotS = true;
+        ready();
+      }, () => {});
+      db.collection("requests").onSnapshot(snap => {
+        requests = new Map(snap.docs.map(d => [d.id, d.data()]));
+        render(); refreshNames();
+      }, () => {});
+    }
+    try { user = await window.claude?.use?.("user"); } catch { user = null; }
+    if (user) {
+      try { accountId = await user.id(); } catch { accountId = null; }
+      try { isOwner = !!(await user.isOwner()); } catch { isOwner = false; }
+      try { if ((await user.can("data.write")) === false) readOnly = true; } catch {}
+      render(); refreshNames();
+    }
+    try { mcp = await window.claude?.use?.("mcp"); } catch { mcp = null; }
+  }
+
+  async function refreshNames() {
+    if (!user) return;
+    const ids = new Set(); for (const t of teams.values()) for (const id of Object.keys(t.ratings || {})) ids.add(id);
+    for (const r of requests.values()) if (r.by) ids.add(r.by);
+    const missing = [...ids].filter(id => !String(id).startsWith("s_") && !(id in names)); if (!missing.length) return;
+    try { const ps = await user.profiles(missing); for (const id of missing) names[id] = (ps[id] && (ps[id].isMe ? "You" : ps[id].name)) || "A scout"; } catch {}
+    render();
+  }
+
+  /* ---------- data source ----------
+     Everything that talks to the stats provider lives in SOURCE, so moving from FTCScout
+     to FIRST's own FTC Events API later only means replacing this one object.
+     Each method returns data already in the board's shape. */
+  function pageJSON(res) {
+    const p = res && res.payload;
+    if (p != null && typeof p === "object") return p;
+    let s = typeof p === "string" ? p : (res?.content || []).filter(b => b.type === "text").map(b => b.text).join("\n");
+    const i = s.indexOf("\n---\n"); if (i >= 0) s = s.slice(i + 5);
+    const j = s.lastIndexOf("\nTab Context:"); if (j >= 0) s = s.slice(0, j);
+    s = s.trim();
+    try { return JSON.parse(s); } catch { throw { code: "not_json", message: s.slice(0, 160) }; }
+  }
+  async function browserJSON(url) {
+    await mcp.callTool(HOST, "navigate", { url }, { cache: false });
+    return pageJSON(await mcp.callTool(HOST, "get_page_text", { max_chars: 3000000 }, { cache: false }));
+  }
+  const place = (o) => [o.city, o.state].filter(Boolean).join(", ");
+  const SOURCE = {
+    name: "FTCScout",
+    browseUrl: (season) => `https://ftcscout.org/events/${season}`,
+    eventUrl: (season, code) => `https://ftcscout.org/events/${season}/${code}`,
+    teamUrl: (num) => `https://ftcscout.org/teams/${num}`,
+    api: "https://api.ftcscout.org/rest/v1",
+    async get(path) { let r; try { r = await fetch(this.api + path); } catch (e) { throw { code: "x", message: "Couldn't reach " + this.name + ". Check the internet connection." }; } const txt = await r.text(); try { return JSON.parse(txt); } catch { throw { code: "not_json", message: txt.slice(0, 160) }; } },
+    async searchEvents(season, region) {
+      const list = await this.get(`/events/search/${season}` + (region ? `?region=${encodeURIComponent(region)}` : "?limit=200"));
+      return (Array.isArray(list) ? list : []).map(e => ({ code: e.code, name: e.name, start: e.start, end: e.end, city: place(e), hasMatches: !!e.hasMatches }));
+    },
+    async teamEventCodes(season, num) { const l = await this.get(`/teams/${num}/events/${season}`); return (l || []).map(x => x.eventCode); },
+    async event(season, code) {
+      const e = await this.get(`/events/${season}/${code}`);
+      if (!e || !e.code) throw { code: "not_json" };
+      return { code: e.code, name: e.name, start: e.start, end: e.end, city: place(e), regionCode: e.regionCode || "", type: e.type || "" };
+    },
+    async eventTeams(season, code) {
+      const parts = await this.get(`/events/${season}/${code}/teams`);
+      return (parts || []).map(p => ({ number: p.teamNumber, ev: evPart(p.stats) }));
+    },
+    async regionTeams(region) { const out = {}; for (const t of (await this.get(`/teams/search?region=${encodeURIComponent(region)}`)) || []) out[t.number] = { name: t.name || "", city: place(t) }; return out; },
+    async team(num) { const t = await this.get(`/teams/${num}`); return t ? { name: t.name || "", city: place(t) } : null; },
+    async seasonStats(season, num) { return seasonPart(await this.get(`/teams/${num}/quick-stats?season=${season}`)); },
+  };
+  function evPart(st) {
+    if (!st || !st.opr) return null;
+    const o = st.opr;
+    const eg = n(o.dcParkPoints ?? o.dcBasePoints ?? o.egPoints ?? o.endgamePoints ?? 0);
+    return { auto: r2(o.autoPoints), teleop: r2(Math.max(0, n(o.dcPoints) - eg)), endgame: r2(eg), pen: r2(Math.max(0, n(o.penaltyPointsCommitted))),
+      total: r2(o.totalPointsNp), rank: st.rank ?? null, rp: st.rp ?? null, w: st.wins ?? 0, l: st.losses ?? 0, t: st.ties ?? 0, played: st.qualMatchesPlayed ?? 0 };
+  }
+  function seasonPart(q) {
+    if (!q || !q.tot) return null;
+    const eg = n(q.eg?.value);
+    return { auto: r2(q.auto?.value), teleop: r2(Math.max(0, n(q.dc?.value) - eg)), endgame: r2(eg), total: r2(q.tot.value), worldRank: q.tot.rank ?? null, count: q.count ?? null };
+  }
+  function explain(e) {
+    switch (e && e.code) {
+      case "server_not_connected": return `Loading from ${SOURCE.name} runs through the Claude desktop app's browser, and it isn't reachable from here. Open this board in the desktop app, or add it to the request list below so it loads later.`;
+      case "not_in_manifest": case "approval_required": case "consent_required": return "Browser access for this page wasn't allowed. Try again and choose Allow when the app asks.";
+      case "cancelled": return "Loading was cancelled.";
+      case "blocked_by_policy": return "Your organization blocks this page from using the browser.";
+      case "not_json": return `${SOURCE.name} didn't return data for that. Check the event code and season.`;
+      default: return `Couldn't load from ${SOURCE.name}` + (e && e.message ? ": " + e.message : ".");
+    }
+  }
+
+  /* Accepts an event code or a pasted FTCScout event link. */
+  function parseCode(text, fallbackSeason) {
+    const s = String(text || "").trim();
+    const m = s.match(/events\/(\d{4})\/([A-Za-z0-9]+)/);
+    if (m) return { season: Number(m[1]), code: m[2].toUpperCase() };
+    const c = s.replace(/[^A-Za-z0-9]/g, "").toUpperCase();
+    return c ? { season: Number(fallbackSeason), code: c } : null;
+  }
+
+  /* ---------- loading UI ---------- */
+  function setProg(done, total, text) {
+    $("lProg").hidden = false; $("lProg").firstElementChild.style.width = (total ? done / total * 100 : 0) + "%";
+    $("lStatus").textContent = text;
+  }
+  function showErr(msg, offerRequest) {
+    $("lErr").innerHTML = esc(msg) + (offerRequest ? ` <button type="button" class="btn" id="asRequest">Add to requests</button>` : "");
+    $("lErr").hidden = false; $("lProg").hidden = true; $("lStatus").textContent = "";
+  }
+  let busy = false, pendingTarget = null;
+  function setBusy(b) { busy = b; ["findBtn", "codeBtn", "reqBtn"].forEach(id => { if ($(id)) $(id).disabled = b; }); $("evList").querySelectorAll("button").forEach(x => x.disabled = b); }
+
+  function openLoad() {
+    $("lErr").hidden = true; $("evList").hidden = !$("evList").innerHTML;
+    if (!busy) { $("lStatus").textContent = ""; $("lProg").hidden = true; }
+    $("ownerTools").hidden = !isOwner; $("scoutTools").hidden = isOwner;
+    $("loadTitle").textContent = isOwner ? "Load a competition" : "Request a competition";
+    $("loadHint").innerHTML = isOwner
+      ? `Pulls teams, rankings and OPR from ${SOURCE.name}. Everyone on the board sees the result.`
+      : `Team leads load competitions. Request one here and it appears for everyone once a lead loads it. Find codes on <a href="${SOURCE.browseUrl($("lSeason").value)}" target="_blank" rel="noopener">${SOURCE.name}'s event list</a>; the code is the last part of the event's link.`;
+    $("loadDlg").showModal();
+  }
+
+  async function findEvents() {
+    if (busy) return;
+    if (!mcp) return showErr(explain({ code: "server_not_connected" }), false);
+    const season = $("lSeason").value, region = $("lRegion").value.trim().toUpperCase();
+    $("lErr").hidden = true; setBusy(true); setProg(0, 2, "Looking up competitions…");
+    try {
+      const evs = await SOURCE.searchEvents(season, region);
+      setProg(1, 2, `Checking which ones Team ${settings.us} is in…`);
+      let ours = new Set(); try { ours = new Set(await SOURCE.teamEventCodes(season, settings.us)); } catch {}
+      evs.sort((a, b) => (ours.has(b.code) - ours.has(a.code)) || String(a.start).localeCompare(String(b.start)));
+      $("lProg").hidden = true; $("lStatus").textContent = `${evs.length} competition${evs.length === 1 ? "" : "s"} found.`;
+      const box = $("evList"); box.hidden = !evs.length;
+      box.innerHTML = evs.map(e => {
+        const key = `${season}-${e.code}`, have = events.has(key);
+        return `<div class="evitem"><div><b>${esc(e.name)}</b>${ours.has(e.code) ? `<span class="badge">Team ${esc(settings.us)}</span>` : ""}
+          <small>${esc(e.code)} · ${esc(e.start)} · ${esc(e.city)}${e.hasMatches ? " · has match results" : ""}</small></div>
+          <button type="button" class="btn" data-load="${esc(key)}">${have ? "Refresh" : "Load"}</button></div>`;
+      }).join("");
+    } catch (e) { showErr(explain(e), false); }
+    setBusy(false);
+  }
+
+  async function requestEvent(target) {
+    if (!target) return showErr("Enter an event code or paste the event's link.", false);
+    if (!db || readOnly) return showErr("This device can't save right now, so the request wasn't sent.", false);
+    const key = `${target.season}-${target.code}`;
+    if (events.has(key)) { $("loadDlg").close(); goTo(key); toast("That competition is already loaded"); return; }
+    try {
+      await db.doc(`requests/${key}`).set({ season: target.season, code: target.code, by: uid || null, at: Date.now(), status: "waiting" });
+      $("loadDlg").close(); toast(`Requested ${target.code}. It shows on the competitions page.`);
+    } catch (e) { onWriteError(e); }
+  }
+
+  /* Loads one competition and saves it. Throws on failure; callers show the message. */
+  async function loadEvent(season, code, opts = {}) {
+    if (!mcp) throw { code: "server_not_connected" };
+    if (!db) throw { code: "x", message: "The team database isn't connected, so a loaded competition would be lost." };
+    const key = `${season}-${code}`;
+    setProg(0, 1, `${code}: getting competition details…`);
+    const ev = await SOURCE.event(season, code);
+    setProg(0, 1, `${code}: getting the team list…`);
+    const parts = await SOURCE.eventTeams(season, code);
+    if (!parts.length) throw { code: "x", message: `${SOURCE.name} has no teams listed for ${ev.name} yet. Try again closer to the event.` };
+    let info = {};
+    if (ev.regionCode) { setProg(0, 1, `${code}: getting team names…`); try { info = await SOURCE.regionTeams(ev.regionCode); } catch {} }
+    const seasonStats = {};
+    for (let i = 0; i < parts.length; i++) {
+      const num = parts[i].number;
+      setProg(i, parts.length, `${code}: season stats for ${num} (${i + 1} of ${parts.length})…`);
+      try { seasonStats[num] = await SOURCE.seasonStats(season, num); } catch { seasonStats[num] = null; }
+      if (!info[num]) { try { info[num] = await SOURCE.team(num); } catch {} }
+    }
+    setProg(parts.length, parts.length, `${code}: saving…`);
+    const existing = await db.collection(`events/${key}/teams`).get();
+    const have = new Set(existing.docs.map(d => Number(d.id)));
+    await Promise.all(parts.map(p => {
+      const t = info[p.number] || {};
+      const fresh = { number: p.number, name: t.name || "", city: t.city || "", ev: p.ev, season: seasonStats[p.number], loadedAt: Date.now() };
+      const ref = db.doc(`events/${key}/teams/${p.number}`);
+      return queue("t" + key + p.number, () => have.has(p.number) ? ref.update(fresh) : ref.set({ ...fresh, status: "available", dnp: false, tags: [], ratings: {} }));
+    }));
+    await db.doc(`events/${key}`).set({ season, code, name: ev.name, start: ev.start, end: ev.end, city: ev.city, regionCode: ev.regionCode, type: ev.type,
+      teamCount: parts.length, hasUs: parts.some(p => p.number === settings.us), source: SOURCE.name, loadedAt: Date.now(), loadedBy: uid || null });
+    if (requests.has(key)) { try { await db.doc(`requests/${key}`).delete(); } catch {} }
+    return { key, name: ev.name, count: parts.length };
+  }
+
+  async function loadOne(season, code) {
+    if (busy || readOnly) return;
+    $("lErr").hidden = true; setBusy(true);
+    try {
+      const r = await loadEvent(season, code);
+      $("loadDlg").close(); $("lProg").hidden = true; toast(`Loaded ${r.name}: ${r.count} teams`); goTo(r.key);
+    } catch (e) {
+      pendingTarget = { season, code };
+      if (e && e.code === "x") showErr(e.message, false); else showErr(explain(e), e && e.code === "server_not_connected" && !requests.has(`${season}-${code}`));
+      if (requests.has(`${season}-${code}`)) markRequest(`${season}-${code}`, e);
+    }
+    setBusy(false);
+  }
+
+  async function loadRequests(keys) {
+    if (busy || !keys.length) return;
+    openLoad(); $("lErr").hidden = true; setBusy(true);
+    let ok = 0;
+    for (const key of keys) {
+      const r = requests.get(key); if (!r) continue;
+      try { await loadEvent(Number(r.season), r.code); ok++; }
+      catch (e) { markRequest(key, e); if (e && e.code === "server_not_connected") { showErr(explain(e), false); break; } }
+    }
+    setBusy(false);
+    if (ok) { $("lProg").hidden = true; $("lStatus").textContent = `Loaded ${ok} of ${keys.length} requested competition${keys.length === 1 ? "" : "s"}.`; toast(`Loaded ${ok} competition${ok === 1 ? "" : "s"}`); }
+  }
+  function markRequest(key, e) {
+    if (!db) return;
+    const msg = e && e.code === "x" ? e.message : explain(e);
+    queue("r" + key, () => db.doc(`requests/${key}`).update({ status: "failed", error: msg.slice(0, 300) })).catch(() => {});
+  }
+
+  /* ---------- scout codes ----------
+     Each scout has a 4-digit code. Only a hash of it is stored. Four digits tell scouts apart;
+     they are not a password, since anyone with access to the board could work a code out. */
+  const ME_KEY = "ss51-scout";
+  let gateMsg = "", reveal = null, gateMode = "";
+  async function hashCode(code) {
+    const text = "singularity51:" + code;
+    try {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return [...new Uint8Array(buf)].map(b => b.toString(16).padStart(2, "0")).join("");
+    } catch { let h = 2166136261; for (const ch of text) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return "f" + (h >>> 0).toString(16); }
+  }
+  // scout colors: distinct hues that read on both light and dark backgrounds
+  const PALETTE = ["#e11d48", "#f97316", "#eab308", "#16a34a", "#0d9488", "#0ea5e9", "#2563eb", "#7c3aed", "#c026d3", "#db2777", "#65a30d", "#92400e"];
+  const hashIdx = (str) => { let h = 0; for (const ch of String(str)) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return h % PALETTE.length; };
+  function colorOf(id) {
+    if (!String(id).startsWith("s_")) return "#8a80a3";
+    const sid = String(id).slice(2), s = scouts.get(sid);
+    return (s && s.color) || PALETTE[hashIdx(sid)];
+  }
+  function inkOn(hex) {
+    const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
+    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#140b26" : "#ffffff";
+  }
+  const who = (id, label) => { const c = colorOf(id); return `<span class="who" style="--c:${c};--t:${inkOn(c)}">${esc(label || nameOf(id))}</span>`; };
+  function nameOf(id) {
+    if (String(id).startsWith("s_")) { const s = scouts.get(String(id).slice(2)); return s ? s.name : "Former scout"; }
+    return names[id] || "A scout";
+  }
+  const meScout = () => (me && scouts.get(me)) || null;
+  const canManage = () => !readOnly && db && (isOwner || !!meScout()?.lead);
+  function setMe(id) {
+    me = id; uid = id ? "s_" + id : null;
+    try { id ? localStorage.setItem(ME_KEY, id) : localStorage.removeItem(ME_KEY); } catch {}
+    render();
+  }
+  try { const saved = localStorage.getItem(ME_KEY); if (saved) { me = saved; uid = "s_" + saved; } } catch {}
+
+  async function trySignIn(code) {
+    if (!/^\d{4}$/.test(code)) return;
+    const h = await hashCode(code);
+    const hit = [...scouts.entries()].find(([, s]) => s.hash === h);
+    if (hit) { gateMsg = ""; setMe(hit[0]); toast(`Welcome, ${hit[1].name}`); }
+    else { gateMsg = "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours."; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } }
+  }
+  async function freeCode(wanted) {
+    const taken = new Set([...scouts.values()].map(s => s.hash));
+    if (wanted) { if (!/^\d{4}$/.test(wanted)) throw "Codes are exactly 4 digits."; if (taken.has(await hashCode(wanted))) throw "Someone already has that code. Pick another."; return wanted; }
+    for (let i = 0; i < 200; i++) { const c = String(1000 + Math.floor(Math.random() * 9000)); if (!taken.has(await hashCode(c))) return c; }
+    throw "Couldn't find a free code. Try typing one.";
+  }
+  async function addScout(name, wanted, lead) {
+    name = name.trim(); if (!name) throw "Enter the scout's name.";
+    if ([...scouts.values()].some(s => s.name.toLowerCase() === name.toLowerCase())) throw `${name} is already on the roster.`;
+    const code = await freeCode(wanted);
+    const id = Math.random().toString(36).slice(2, 10);
+    const used = new Set([...scouts.values()].map(s => s.color).filter(Boolean));
+    const color = PALETTE.find(c => !used.has(c)) || PALETTE[scouts.size % PALETTE.length];
+    const doc = { name, hash: await hashCode(code), lead: !!lead, color, createdAt: Date.now() };
+    scouts.set(id, doc);
+    await db.doc(`scouts/${id}`).set(doc);
+    return { id, code, name };
+  }
+
+  function renderGate() {
+    const body = $("gateBody"); if (!body || $("gateView").hidden) return;
+    if (!loaded) { body.innerHTML = `<p class="hint">Connecting to the team board…</p>`; return; }
+    if (!scouts.size) {
+      body.innerHTML = !readOnly
+        ? `<p class="hint">No one has set up this board yet. You're the first one here, so you'll be the lead: you add the rest of the team and hand out their codes.</p>
+           <form class="setup" id="setupForm"><label class="fld">Your name<input id="sName" autocomplete="off" placeholder="First name"></label>
+           <label class="fld">Your 4-digit code<input id="sCode" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="e.g. 5151"></label>
+           <div class="err" id="sErr" hidden></div><button type="submit" class="btn primary">Create roster</button></form>`
+        : `<p class="hint">Your team lead hasn't set up scout codes yet. Check back once they have.</p>`;
+      return;
+    }
+    body.innerHTML = `<p class="hint">Enter your 4-digit scout code. Everything you rate or note is saved under your name.</p>
+      <div class="codebox"><input id="codeIn" class="codein" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Scout code" placeholder="••••">
+      ${gateMsg ? `<div class="err">${esc(gateMsg)}</div>` : ""}</div>`;
+    const el = $("codeIn"); setTimeout(() => el && el.focus(), 0);
+  }
+
+  function renderRoster() {
+    const list = [...scouts.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
+    $("rosterList").innerHTML = list.length ? list.map(([id, s]) => `<div class="rrow"><div>${who("s_" + id)}${s.lead ? `<span class="lead">Lead</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}</div>
+      <div class="swatches" role="group" aria-label="Color for ${esc(s.name)}">${PALETTE.map(c => `<button type="button" class="sw" data-rcolor="${id}" data-c="${c}" style="background:${c}" aria-label="Use this color" aria-pressed="${colorOf("s_" + id) === c}"></button>`).join("")}</div>
+      <div class="btns"><button type="button" class="btn" data-rlead="${id}">${s.lead ? "Remove lead" : "Make lead"}</button>
+      <button type="button" class="btn" data-rreset="${id}">New code</button>
+      ${id === me ? "" : `<button type="button" class="btn danger" data-rdel="${id}">Remove</button>`}</div></div>`).join("") : `<div class="rrow"><span class="hint">No scouts yet.</span></div>`;
+    $("reveal").hidden = !reveal;
+    if (reveal) $("reveal").innerHTML = `Code for <b>${esc(reveal.name)}</b><span class="num">${esc(reveal.code)}</span>Give it to them now. It won't be shown again; use New code if it's lost.`;
+  }
+  function openRoster() { reveal = null; $("rErr").hidden = true; renderRoster(); $("rosterDlg").showModal(); }
+  $("rosterForm").addEventListener("submit", async (e) => {
+    e.preventDefault(); if (!canManage()) return;
+    $("rErr").hidden = true;
+    try { reveal = await addScout($("rName").value, $("rCode").value.trim(), false); $("rName").value = ""; $("rCode").value = ""; renderRoster(); }
+    catch (err) { $("rErr").textContent = typeof err === "string" ? err : "Couldn't save. Check your connection."; $("rErr").hidden = false; }
+  });
+  $("rosterForm").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.hasAttribute("data-rclose")) { reveal = null; $("rosterDlg").close(); return; }
+    if (!canManage()) return;
+    const id = b.dataset.rlead || b.dataset.rreset || b.dataset.rdel || b.dataset.rcolor; const s = id && scouts.get(id); if (!s) return;
+    try {
+      if (b.dataset.rcolor) { s.color = b.dataset.c; renderRoster(); render(); await db.doc(`scouts/${id}`).update({ color: b.dataset.c }); }
+      else if (b.dataset.rlead) { await db.doc(`scouts/${id}`).update({ lead: !s.lead }); }
+      else if (b.dataset.rreset) { const code = await freeCode(""); await db.doc(`scouts/${id}`).update({ hash: await hashCode(code) }); reveal = { name: s.name, code }; renderRoster(); }
+      else if (b.dataset.rdel) {
+        $("rosterDlg").close();
+        if (await confirmBox(`Remove ${s.name}?`, "Their code stops working. Ratings they already saved stay on the board, marked as a former scout.", "Remove")) { await db.doc(`scouts/${id}`).delete(); toast(`${s.name} removed`); }
+        openRoster();
+      }
+    } catch { $("rErr").textContent = "Couldn't save. Check your connection."; $("rErr").hidden = false; }
+  });
+  document.addEventListener("input", (e) => {
+    if (e.target.id === "codeIn") { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4); if (e.target.value.length === 4) trySignIn(e.target.value); }
+    if (e.target.id === "sCode" || e.target.id === "rCode") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
+  });
+  document.addEventListener("submit", async (e) => {
+    if (e.target.id !== "setupForm") return;
+    e.preventDefault();
+    try { if (!/^\d{4}$/.test($("sCode").value.trim())) throw "Pick a 4-digit code for yourself."; const r = await addScout($("sName").value, $("sCode").value.trim(), true); setMe(r.id); toast(`Roster created. Your code is ${r.code}.`); }
+    catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : "Couldn't save. Check your connection."; el.hidden = false; } }
+  });
+  $("meBtn").onclick = () => { gateMsg = ""; setMe(null); };
+  $("rosterBtn").onclick = openRoster;
+
+  /* ---------- live updates during a competition ----------
+     The board owner's page (in the Claude desktop app) re-reads the competition's standings
+     from the stats source every few minutes and saves only what changed. Every other open
+     board gets those changes instantly through the shared data, so scouts always see the
+     current rankings. */
+  const LIVE_CHOICES = [2, 3, 5, 10];
+  let liveAutoFor = null;
+  let liveOn = false, liveEvery = 3, liveTimer = null, liveBusy = false, liveErr = "", liveKey = null;
+  const EV_FIELDS = ["auto", "teleop", "endgame", "pen", "total", "rank", "rp", "w", "l", "t", "played"];
+  const sameEv = (a, b) => (!a && !b) || (!!a && !!b && EV_FIELDS.every(k => (a[k] ?? null) === (b[k] ?? null)));
+  const ago = (at) => { const m = Math.round((Date.now() - at) / 60000); return m <= 0 ? "just now" : m === 1 ? "1 min ago" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
+
+  async function liveTick() {
+    if (liveBusy || !current || !uid || !db || readOnly) return;
+    const key = current, ev = events.get(key); if (!ev) return;
+    if (!mcp) { liveErr = explain({ code: "server_not_connected" }); stopLive(); return; }
+    liveBusy = true; liveErr = ""; renderLive();
+    try {
+      const parts = await SOURCE.eventTeams(ev.season, ev.code);
+      if (key !== current) return;
+      let changed = 0, added = 0;
+      for (const p of parts) {
+        const t = teams.get(p.number);
+        const ref = db.doc(`events/${key}/teams/${p.number}`);
+        if (!t) {   // a team joined the competition late
+          let info = null, seasonStats = null; try { info = await SOURCE.team(p.number); } catch {} try { seasonStats = await SOURCE.seasonStats(ev.season, p.number); } catch {}
+          await queue("t" + key + p.number, () => ref.set({ number: p.number, name: info?.name || "", city: info?.city || "", ev: p.ev, season: seasonStats, loadedAt: Date.now(), status: "available", dnp: false, tags: [], ratings: {} }));
+          added++; continue;
+        }
+        if (sameEv(t.ev, p.ev)) continue;
+        const old = t.ev || {};
+        const next = p.ev ? { ...p.ev, prevRank: old.rank && p.ev.rank && old.rank !== p.ev.rank ? old.rank : (old.prevRank ?? null) } : null;
+        queue("t" + key + p.number, () => ref.update({ ev: next })).catch(() => {});
+        changed++;
+      }
+      await db.doc(`events/${key}`).update({ live: { on: liveOn, every: liveEvery, at: Date.now(), by: uid || null, changed, added }, teamCount: Math.max(ev.teamCount || 0, parts.length) });
+    } catch (e) {
+      liveErr = e && e.code === "x" ? e.message : explain(e);
+      if (e && ["server_not_connected", "not_in_manifest", "approval_required", "consent_required", "blocked_by_policy"].includes(e.code)) stopLive();
+    } finally { liveBusy = false; renderLive(); }
+  }
+  function startLive() {
+    if (!current || !uid) return;
+    liveOn = true; liveKey = current; liveErr = "";
+    clearInterval(liveTimer); liveTimer = setInterval(liveTick, liveEvery * 60000);
+    liveTick();
+  }
+  function stopLive(silent) {
+    const key = liveKey;
+    liveOn = false; liveKey = null; clearInterval(liveTimer); liveTimer = null;
+    if (!silent && false && db && key && events.get(key)?.live?.on) queue("live" + key, () => db.doc(`events/${key}`).update({ live: { on: false } })).catch(() => {});
+    renderLive();
+  }
+  // a competition switch stops the loop; coming back to a hidden tab catches up right away
+  window.addEventListener("hashchange", () => setTimeout(() => { if (liveOn && liveKey !== current) stopLive(); }, 0));
+  document.addEventListener("visibilitychange", () => {
+    const live = events.get(current)?.live;
+    if (liveOn && !document.hidden && live && Date.now() - (live.at || 0) > liveEvery * 60000) liveTick();
+  });
+  setInterval(() => { if (current) renderLive(); }, 30000);
+
+  function renderLive() {
+    const bar = $("liveBar"); if (!bar) return;
+    const ev = current && events.get(current); if (!ev) { bar.innerHTML = ""; return; }
+    // website: start keeping standings current as soon as a scout opens a competition that is on now
+    const today = new Date().toISOString().slice(0, 10), dayMs = 864e5;
+    const shift = (d, n) => new Date(Date.parse(d + "T12:00:00") + n * dayMs).toISOString().slice(0, 10);
+    if (!liveOn && uid && !readOnly && liveAutoFor !== current && ev.start && today >= shift(ev.start, -1) && today <= shift(ev.end || ev.start, 1)) { liveAutoFor = current; setTimeout(startLive, 0); }
+    const live = ev.live || null;
+    const fresh = live && live.on && Date.now() - (live.at || 0) < (live.every || 3) * 60000 * 2.5;
+    let state, text;
+    if (liveOn && liveBusy) { state = "busy"; text = `Checking ${SOURCE.name} for new results…`; }
+    else if (fresh) { state = "on"; text = `Live · standings updated ${ago(live.at)}, checking every ${live.every} min${live.changed ? ` · ${live.changed} team${live.changed === 1 ? "" : "s"} changed` : ""}`; }
+    else if (live && live.on) { state = "stale"; text = `Live updates paused · last update ${ago(live.at)}. They resume as soon as any scout has this competition open.`; }
+    else { state = "off"; text = ev.loadedAt ? `Standings from ${ago(live?.at || ev.loadedAt)}. Open during the event to keep them current.` : ""; }
+    const ownerCtl = uid && !readOnly ? `<div class="livectl">
+      <label class="livesel">Every <select id="liveEvery" aria-label="Update interval">${LIVE_CHOICES.map(m => `<option value="${m}" ${m === liveEvery ? "selected" : ""}>${m} min</option>`).join("")}</select></label>
+      <button type="button" class="btn" id="liveNow" ${liveBusy ? "disabled" : ""}>Refresh now</button>
+      <button type="button" class="btn ${liveOn ? "" : "primary"}" id="liveToggle">${liveOn ? "Stop live updates" : "Start live updates"}</button></div>` : "";
+    bar.innerHTML = `<div class="livestate ${state}"><span class="livedot" aria-hidden="true"></span><span>${esc(text)}</span></div>${ownerCtl}
+      ${liveErr ? `<div class="err liveerr">${esc(liveErr)}</div>` : ""}`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("#liveToggle,#liveNow"); if (!b) return;
+    if (b.id === "liveToggle") liveOn ? stopLive() : startLive();
+    else liveTick();
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.id !== "liveEvery") return;
+    liveEvery = Number(e.target.value) || 3;
+    if (liveOn) { clearInterval(liveTimer); liveTimer = setInterval(liveTick, liveEvery * 60000); }
+  });
+
+  /* ---------- scoring ---------- */
+  const relFactor = (r) => 0.5 + 0.05 * r;   // reliability on 1–10: 10 → full points, 1 → 55%
+  const MAX = 10;
+  // ratings saved before the 1–10 switch have no scale and were out of 5
+  const score = (r, k) => { const x = r && r[k]; return x >= 1 ? (r.scale === 10 ? x : x * 2) : null; };
+  function stats(t) {
+    const ev = t.ev, se = t.season;
+    if (ev && ev.played >= 3) return { ...ev, src: "event" };
+    if (se) return { ...se, pen: ev ? ev.pen : 0, src: "season" };
+    if (ev) return { ...ev, src: "event" };
+    return { auto: 0, teleop: 0, endgame: 0, pen: 0, total: 0, src: "none" };
+  }
+  function scoutAgg(t) {
+    const rs = Object.values(t.ratings || {}).filter(Boolean);
+    // a scout counts once they've given at least one rating; a note on its own isn't a rating
+    const avg = {}; let all = [], count = rs.filter(r => CATS.some(([k]) => score(r, k) != null)).length;
+    for (const [k] of CATS) { const v = rs.map(r => score(r, k)).filter(x => x != null); avg[k] = v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; all = all.concat(v); }
+    return { count, avg, overall: all.length ? all.reduce((a, b) => a + b, 0) / all.length : null };
+  }
+  const reliability = (t) => scoutAgg(t).avg.reliability ?? 7;
+  const expected = (t) => { const s = stats(t); return (s.auto + s.teleop + s.endgame) * relFactor(reliability(t)) - s.pen; };
+
+  function compute() {
+    const all = [...teams.values()];
+    const us = all.find(t => t.number === settings.us) || null;
+    const field = all.filter(t => t !== us);
+    const avg = {};
+    for (const [k] of PHASES) avg[k] = field.length ? field.reduce((a, t) => a + stats(t)[k], 0) / field.length : 0;
+    const need = {};
+    for (const [k] of PHASES) need[k] = us && avg[k] > 0 ? 1 + Math.min(1, Math.max(0, (avg[k] - stats(us)[k]) / avg[k])) : 1;
+    const w = settings.weights;
+    const raw = new Map();
+    for (const t of field) {
+      const s = stats(t); let v = 0;
+      for (const [k] of PHASES) v += w[k] * need[k] * s[k];
+      raw.set(t.number, v * relFactor(reliability(t)) - w.fouls * s.pen);
+    }
+    const max = Math.max(1, ...raw.values());
+    // rank 1 = 100, last ranked team = 0
+    const rankedNow = all.filter(t => t.ev && t.ev.rank);
+    const lastRank = Math.max(0, ...rankedNow.map(t => t.ev.rank));
+    const rankPct = new Map(rankedNow.map(t => [t.number, lastRank > 1 ? (lastRank - t.ev.rank) / (lastRank - 1) * 100 : 100]));
+    const fit = new Map();
+    for (const t of field) {
+      const opr = Math.max(0, raw.get(t.number) / max * 100);
+      const sc = scoutAgg(t).overall;
+      const blended = sc == null ? opr : (1 - w.scout) * opr + w.scout * ((sc - 1) / (MAX - 1) * 100);
+      // qualification rank counts for RANK_SHARE of the pick score once the team has one
+      const rp = rankPct.get(t.number);
+      fit.set(t.number, Math.round(rp == null ? blended : (1 - RANK_SHARE) * blended + RANK_SHARE * rp));
+    }
+    const ranked = field.slice().sort((a, b) => (!!a.dnp - !!b.dnp) || (fit.get(b.number) - fit.get(a.number)));
+    return { all, us, field, avg, need, fit, ranked, rankPct };
+  }
+
+  function renderNotes(c) {
+    if ($("notesWrap").hidden) return;
+    const q = view.q.trim().toLowerCase();
+    const only = $("notesOnly").checked;
+    const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    let list = c.all.slice();
+    list = list.filter(t => !q || String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q)
+      || allNotes(t).some(x => x.text.toLowerCase().includes(q)) || (t.tags || []).join(" ").toLowerCase().includes(q));
+    const scouted = (t) => scoutAgg(t).count > 0 || allNotes(t).length > 0 || (t.tags || []).length || t.dnp;
+    if (only) list = list.filter(scouted);
+    // order by pick list, then us, then everyone else
+    const pos = (t) => t === c.us ? 0 : (pickPos.get(t.number) ?? 999);
+    list.sort((a, b) => pos(a) - pos(b) || a.number - b.number);
+    const total = c.all.filter(scouted).length;
+    const noteCount = c.all.reduce((a, t) => a + allNotes(t).length, 0);
+    $("notesNote").textContent = `${total} of ${c.all.length} teams scouted · ${noteCount} note${noteCount === 1 ? "" : "s"}. Tap a team to add your own.`;
+    if (!list.length) { $("noteCards").innerHTML = `<div class="empty">${only && !q ? "No scouting yet. Tap any team number on the pick list to rate it and leave a note." : "No teams match."}</div>`; return; }
+    $("noteCards").innerHTML = list.map(t => {
+      const sc = scoutAgg(t);
+      const bars = CATS.map(([k, l]) => sc.avg[k] == null ? "" : `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k].toFixed(1)} of 10"><i style="width:${(sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k].toFixed(1)}</b></div>`).join("");
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
+      return `<article class="notecard ${t === c.us ? "isus" : ""}">
+        <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button>
+          <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
+          <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
+        ${tags ? `<div class="tags">${tags}</div>` : ""}
+        ${bars ? `<div class="cats">${bars}</div>` : ""}
+        ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
+      </article>`;
+    }).join("");
+  }
+
+  function renderRankings(c) {
+    const box = $("rankWrap"); if (box.hidden) return;
+    const q = view.q.trim().toLowerCase();
+    const has = c.all.filter(t => t.ev && t.ev.rank).sort((a, b) => a.ev.rank - b.ev.rank);
+    const not = c.all.filter(t => !(t.ev && t.ev.rank)).sort((a, b) => a.number - b.number);
+    const match = (t) => !q || String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q);
+    const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    const row = (t) => {
+      const isUs = t === c.us, ev = t.ev || {};
+      const status = isUs ? `<span class="tag src">us</span>` : t.status === "taken" ? `<span class="tag">taken</span>` : t.status === "partner" ? `<span class="tag src">our pick</span>` : t.dnp ? `<span class="tag dnp">do not pick</span>` : "";
+      return `<tr class="${isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : ""}">
+        <td class="rk">${ev.rank ? esc(ev.rank) : "–"}${ev.rank && ev.prevRank && ev.prevRank !== ev.rank ? `<span class="move ${ev.prevRank > ev.rank ? "up" : "down"}" title="Was #${ev.prevRank}">${ev.prevRank > ev.rank ? "▲" : "▼"}${Math.abs(ev.prevRank - ev.rank)}</span>` : ""}</td>
+        <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small></div></td>
+        <td class="r num">${ev.played ? `${ev.w}-${ev.l}-${ev.t}` : "–"}</td>
+        <td class="r num">${ev.played || 0}</td>
+        <td class="r num">${ev.rp != null ? fmt(ev.rp) : "–"}</td>
+        <td class="r num">${ev.played ? fmt(ev.total) : "–"}</td>
+        <td class="r num">${isUs ? "" : (pickPos.get(t.number) ? "#" + pickPos.get(t.number) : "–")}</td>
+        <td>${status}</td></tr>`;
+    };
+    const rows = [...has.filter(match).map(row), ...(not.filter(match).length ? [`<tr><td colspan="8" class="subhead">Not ranked yet</td></tr>`, ...not.filter(match).map(row)] : [])];
+    $("rankNote").textContent = has.length
+      ? `Qualification standings from ${SOURCE.name}. Rank counts for ${Math.round(RANK_SHARE * 100)}% of each team's pick score.`
+      : `No one is ranked yet. Standings appear here after qualification matches. They update automatically while any scout has this competition open. Until then the pick list ignores rank.`;
+    $("rankRows").innerHTML = rows.length ? rows.join("") : `<tr><td colspan="8" class="empty">No teams match.</td></tr>`;
+  }
+
+  /* ---------- render ---------- */
+  function stackRow(t, sub, scale) {
+    const s = stats(t), f = relFactor(reliability(t));
+    const seg = PHASES.map(([k, , c]) => `<span class="${c}" style="width:${Math.max(0, s[k] * f / scale * 100).toFixed(1)}%"></span>`).join("");
+    return `<div class="barrow"><div class="lbl">${esc(t.number)}<small>${esc(sub)}</small></div><div class="stack" aria-hidden="true">${seg}</div><div class="num">${fmt(expected(t))}</div></div>`;
+  }
+  const chipList = (list, c) => list.map(t => `<button type="button" class="chipbtn" data-team="${t.number}">${t.number} · ${c.fit.get(t.number)}</button>`).join("");
+
+  function renderNext(c) {
+    const el = $("next");
+    if (!current || !c.all.length) {
+      const ev = current && events.get(current);
+      el.innerHTML = `<div><div class="eyebrow">${ev ? "Loading teams" : "Start here"}</div>
+        <div class="bigname">${ev ? `Getting teams for ${esc(ev.name)}…` : "Load a competition from FTCScout to rank its teams for Team " + esc(settings.us) + "."}</div>
+        ${ev ? "" : `<div class="why">Pick your region and the event. Teams, qualification rankings and OPR come in automatically; your scouts add ratings on top.</div>
+        <div class="nextActions"><button type="button" class="btn primary" data-act="load" ${readOnly || offline ? "disabled" : ""}>Load a competition</button></div>`}</div><div></div>`;
+      return;
+    }
+    const partners = c.field.filter(t => t.status === "partner");
+    const slots = Math.max(0, settings.size - 1 - partners.length);
+    const avail = c.ranked.filter(t => t.status !== "taken" && t.status !== "partner" && !t.dnp);
+    const cand = slots > 0 ? avail[0] : null;
+    let left;
+    if (cand) {
+      const label = partners.length ? (settings.size === 3 ? "Best second pick" : "Best pick") : "Best first pick";
+      const s = stats(cand);
+      const strong = PHASES.filter(([k]) => s[k] > c.avg[k] * 1.1).map(([, l]) => l);
+      const gaps = c.us ? PHASES.filter(([k]) => c.need[k] > 1.15).map(([, l]) => l) : [];
+      let why = strong.length ? `Above the field in ${strong.join(", ")}.` : "Solid all-round numbers.";
+      if (gaps.length) why += ` Covers your weaker ${gaps.join(" and ")}.`;
+      if (!c.us) why = `Team ${settings.us} isn't in this competition's list, so Fit uses raw points only.`;
+      if (s.pen > 8) why += ` Watch penalties: ${fmt(s.pen)} pts a match.`;
+      const sc = scoutAgg(cand); if (sc.overall != null) why += ` Scouts rate them ${sc.overall.toFixed(1)}/10.`;
+      left = `<div><div class="eyebrow">${label}</div><div class="bigteam">${esc(cand.number)}</div><div class="bigname">${esc(cand.name || "")}</div>
+        <div class="why">${esc(why)}</div>
+        <div class="nextActions"><button type="button" class="btn primary" data-pick="${cand.number}" ${readOnly ? "disabled" : ""}>Pick ${esc(cand.number)}</button>
+        <button type="button" class="btn" data-taken="${cand.number}" ${readOnly ? "disabled" : ""}>Already taken</button>
+        <button type="button" class="btn" data-team="${cand.number}">Scouting notes</button></div>
+        ${avail.length > 1 ? `<div class="backups">Next up ${chipList(avail.slice(1, 4), c)}</div>` : ""}</div>`;
+    } else if (slots === 0 && partners.length) {
+      left = `<div><div class="eyebrow">Alliance locked in</div><div class="bigteam">${[c.us?.number, ...partners.map(p => p.number)].filter(Boolean).join(" + ")}</div>
+        <div class="why">If a team declines, these are the best left.</div>${avail.length ? `<div class="backups">Backups ${chipList(avail.slice(0, 3), c)}</div>` : ""}</div>`;
+    } else {
+      left = `<div><div class="eyebrow">No one left to pick</div><div class="why">Every remaining team is taken or flagged do-not-pick. Switch the list to All to review them.</div></div>`;
+    }
+    const robots = [];
+    if (c.us) robots.push([c.us, "us"]);
+    partners.forEach(p => robots.push([p, "our pick"]));
+    if (cand) robots.push([cand, "candidate"]);
+    const scale = Math.max(1, ...c.all.map(t => { const s = stats(t); return (s.auto + s.teleop + s.endgame) * relFactor(reliability(t)); }));
+    const total = robots.reduce((a, [t]) => a + expected(t), 0);
+    el.innerHTML = left + (robots.length ? `<div class="proj"><h3>Projected alliance <span class="num">${fmt(total)}</span></h3>
+      ${robots.map(([t, sub]) => stackRow(t, sub, scale)).join("")}
+      <div class="legend"><span><i style="background:var(--c-auto)"></i>Auto</span><span><i style="background:var(--c-tele)"></i>TeleOp</span><span><i style="background:var(--c-end)"></i>Endgame</span><span>OPR, scaled by scout-rated reliability; total subtracts penalties.</span></div></div>` : "<div></div>");
+  }
+
+  function renderNeeds(c) {
+    const el = $("needs");
+    if (!c.us) { el.innerHTML = `<h2>What we need</h2><p class="sub">${c.all.length ? `Team ${esc(settings.us)} isn't in this competition, so every phase counts the same.` : "Load a competition to compare your robot with the field."} Phases where you're below the field average get extra weight in Fit.</p>`; return; }
+    const s = stats(c.us);
+    const max = Math.max(1, ...PHASES.map(([k]) => Math.max(s[k], c.avg[k]))) * 1.15;
+    const col = { auto: "auto", teleop: "tele", endgame: "end" };
+    el.innerHTML = `<h2>What we need</h2><p class="sub">${esc(c.us.number)} vs. field average (black tick). Weaker phases count more.</p>` +
+      PHASES.map(([k, l]) => `<div class="need"><div class="row1"><b>${l}</b><span class="mult ${c.need[k] > 1.15 ? "hot" : ""}">×${c.need[k].toFixed(2)}</span></div>
+        <div class="meter"><span style="width:${Math.max(0, s[k] / max * 100).toFixed(1)}%;background:var(--c-${col[k]})"></span><i style="left:${(c.avg[k] / max * 100).toFixed(1)}%"></i></div>
+        <small class="num">${fmt(s[k])} vs ${fmt(c.avg[k])}</small></div>`).join("");
+  }
+
+  function renderRows(c) {
+    const q = view.q.trim().toLowerCase();
+    let list = view.filter === "available" ? c.ranked.filter(t => t.status !== "taken") : c.ranked.slice();
+    if (c.us) list = [c.us, ...list];
+    if (q) list = list.filter(t => String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q) || (t.tags || []).join(" ").toLowerCase().includes(q));
+    if (view.sort !== "fit") {
+      const k = view.sort;
+      const val = (t) => k === "exp" ? expected(t) : k === "rank" ? (t.ev?.rank || 999) : k === "scout" ? (scoutAgg(t).overall ?? 0) : stats(t)[k];
+      const dir = (k === "rank" || k === "pen") ? 1 : -1;
+      list.sort((a, b) => (a === c.us ? -1 : b === c.us ? 1 : 0) || (val(a) - val(b)) * dir);
+    }
+    const fitRank = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    if (!list.length) { $("rows").innerHTML = `<tr><td colspan="11" class="empty">${c.all.length ? "No teams match." : current ? "Waiting for teams…" : "No competition loaded yet."}</td></tr>`; return; }
+    const dis = readOnly ? "disabled" : "";
+    $("rows").innerHTML = list.map(t => {
+      const isUs = t === c.us, s = stats(t), sc = scoutAgg(t);
+      const cls = isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : "";
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
+        s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
+      const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small>${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
+      const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small></span>` : `<span class="scout"><span class="none">not rated</span></span>`;
+      const fit = isUs ? "" : `<div class="fit"><div class="track"><span style="width:${c.fit.get(t.number)}%"></span></div><span class="num">${c.fit.get(t.number)}</span></div>`;
+      const status = isUs ? `<span class="us">US</span>` :
+        `<button type="button" data-taken="${t.number}" class="${t.status === "taken" ? "on-taken" : ""}" aria-pressed="${t.status === "taken"}" ${dis}>Taken</button>
+         <button type="button" data-pick="${t.number}" class="${t.status === "partner" ? "on-pick" : ""}" aria-pressed="${t.status === "partner"}" ${dis}>${t.status === "partner" ? "Picked" : "Pick"}</button>`;
+      return `<tr class="${cls}">
+        <td class="rk">${isUs || t.status === "taken" ? "" : (fitRank.get(t.number) ?? "")}</td>
+        <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}</div></td>
+        <td>${qual}</td>
+        <td class="r num">${fmt(s.auto)}</td><td class="r num">${fmt(s.teleop)}</td><td class="r num">${fmt(s.endgame)}</td>
+        <td class="r num ${s.pen > 8 ? "pen" : ""}">${fmt(s.pen)}</td>
+        <td>${scout}</td>
+        <td class="r num">${fmt(expected(t))}</td>
+        <td>${fit}</td>
+        <td><div class="status">${status}</div></td></tr>`;
+    }).join("");
+  }
+
+  function renderHeader() {
+    const ev = current && events.get(current);
+    $("evNav").hidden = !current;
+    $("evName").textContent = ev ? ev.name : current ? "Loading…" : "";
+    const gate = !offline && (!loaded || !meScout());
+    const wasGate = !$("gateView").hidden;
+    $("gateView").hidden = !gate;
+    $("homeView").hidden = gate || !!current; $("boardView").hidden = gate || !current;
+    $("evNav").hidden = gate || !current;
+    $("meBox").hidden = gate || offline;
+    const ms = meScout();
+    if (ms) $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(ms.name)} · Switch`;
+    $("rosterBtn").hidden = !canManage();
+    const mode = !loaded ? "loading" : !scouts.size ? (!readOnly ? "setup" : "wait") : "code";
+    if (gate && (!wasGate || mode !== gateMode)) { gateMode = mode; renderGate(); }
+    if (document.activeElement !== $("ourTeam")) $("ourTeam").value = settings.us || "";
+    $("allianceSize").value = String(settings.size || 2);
+    $("loadBtn").disabled = readOnly || offline;
+    $("loadBtn").textContent = isOwner ? `Load from ${SOURCE.name}` : "Request a competition";
+    $("resetDraft").disabled = readOnly || !teams.size;
+    const b = $("banner");
+    if (offline) { b.hidden = false; b.innerHTML = `<b>Not connected.</b> ${esc(window.SITE?.problem || "Couldn't reach the team database.")}`; }
+    else if (readOnly) { b.hidden = false; b.innerHTML = `<b>Can't save.</b> The team database refused a change. Ask a lead to check the database setup (README.md).`; }
+    else b.hidden = true;
+  }
+
+  function renderCrew() {
+    if (!current) return;
+    const by = new Map();
+    for (const t of teams.values()) for (const [id, r] of Object.entries(t.ratings || {})) if (r) by.set(id, (by.get(id) || 0) + 1);
+    const rated = [...teams.values()].filter(t => Object.values(t.ratings || {}).some(Boolean)).length;
+    const rows = [...by.entries()].sort((a, b) => b[1] - a[1]);
+    $("crew").innerHTML = `<h2>Scouting crew</h2>
+      <p class="sub">${rated} of ${teams.size} teams rated${rows.length ? ` by ${rows.length} scout${rows.length === 1 ? "" : "s"}` : ""}. Every scout with a code can rate.</p>
+      ${rows.length ? `<div class="crew">${rows.map(([id, k]) => `<div>${who(id, id === uid ? "You" : null)}<span class="num">${k} team${k === 1 ? "" : "s"}</span></div>`).join("")}</div>`
+        : `<p class="hint">No ratings yet. Tap any team number to rate it.</p>`}
+      ${canManage() ? `<p class="hint" style="margin-top:10px">Give new scouts a code in Team roster.</p>` : ""}`;
+  }
+
+  function renderHome() {
+    if (current) return;
+    const today = new Date().toISOString().slice(0, 10);
+    const all = [...events.entries()];
+    // Team 51's competitions first, then soonest
+    const up = all.filter(([, e]) => String(e.end || e.start) >= today).sort((a, b) => (!!b[1].hasUs - !!a[1].hasUs) || String(a[1].start).localeCompare(String(b[1].start)));
+    const past = all.filter(([, e]) => String(e.end || e.start) < today).sort((a, b) => String(b[1].start).localeCompare(String(a[1].start)));
+    const fmtDate = (s) => { if (!s) return ""; const d = new Date(s + "T12:00:00"); return isNaN(d) ? s : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" }); };
+    const card = ([k, e], isPast) => {
+      const days = Math.round((new Date(e.start + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5);
+      const soon = !isPast ? (days <= 0 ? "Happening now" : days <= 7 ? `In ${days} day${days === 1 ? "" : "s"}` : "") : "";
+      return `<button type="button" class="evcard ${isPast ? "past" : ""}" data-open="${esc(k)}">
+        <span class="when">${esc(fmtDate(e.start))}${soon ? `<span class="soon">${soon}</span>` : ""}${e.hasUs ? `<span class="badge">Team ${esc(settings.us)}</span>` : ""}</span>
+        <span class="nm">${esc(e.name)}</span>
+        <span class="meta">${esc([e.city, e.teamCount ? e.teamCount + " teams" : "", e.code].filter(Boolean).join(" · "))}</span>
+        <span class="go">Scout this competition →</span></button>`;
+    };
+    // competitions scouts asked for that aren't loaded yet
+    const reqs = [...requests.entries()].filter(([k]) => !events.has(k)).sort((a, b) => (a[1].at || 0) - (b[1].at || 0));
+    $("evRequests").innerHTML = reqs.length ? `<div class="reqhead"><h3>Requested by your scouts</h3>${isOwner ? `<button type="button" class="btn primary" data-act="loadall" ${busy ? "disabled" : ""}>Load ${reqs.length === 1 ? "it" : `all ${reqs.length}`} from ${SOURCE.name}</button>` : ""}</div>
+      <div class="reqlist">${reqs.map(([k, r]) => `<div class="reqitem"><div><b>${esc(r.code)}</b> <span class="hint">${esc(r.season)}–${String(Number(r.season) + 1).slice(2)} season · asked by ${r.by ? who(r.by) : "a scout"}</span>
+        <small class="${r.status === "failed" ? "err" : "hint"}">${r.status === "failed" ? esc(r.error || "Couldn't load.") : isOwner ? "Waiting for you to load it." : "Waiting for a lead to load it."}</small></div>
+        <div class="reqbtns">${isOwner ? `<button type="button" class="btn" data-loadreq="${esc(k)}" ${busy ? "disabled" : ""}>Load</button>` : ""}
+        ${isOwner || (uid && r.by === uid) ? `<button type="button" class="btn" data-cancelreq="${esc(k)}" ${readOnly ? "disabled" : ""}>Remove</button>` : ""}
+        <a class="btn" href="${SOURCE.eventUrl(esc(r.season), esc(r.code))}" target="_blank" rel="noopener">View on ${SOURCE.name}</a></div></div>`).join("")}</div>` : "";
+    $("shareTip").hidden = !isOwner;
+    if (!all.length) {
+      $("evUpcoming").innerHTML = `<div class="homeempty"><b>${loaded ? "No competitions loaded yet" : "Getting your competitions…"}</b>${loaded ? (offline ? "The team database isn't connected yet. See README.md." : isOwner ? `Use Load from ${SOURCE.name} to add the tournament you're heading to. It shows up here for your whole team.` : "Use Request a competition to ask for the tournament you're heading to.") : ""}</div>`;
+      $("evPast").innerHTML = ""; return;
+    }
+    const group = (title, list, isPast, key) => {
+      if (!list.length) return "";
+      const open = expanded[key], shown = open ? list : list.slice(0, HOME_LIMIT), extra = list.length - HOME_LIMIT;
+      return `<h3>${title}</h3><div class="evcards">${shown.map(x => card(x, isPast)).join("")}</div>
+        ${extra > 0 ? `<button type="button" class="btn morebtn" data-more="${key}" aria-expanded="${!!open}">${open ? "Show fewer" : `Show ${extra} more scrimmage${extra === 1 ? "" : "s"}`}</button>` : ""}`;
+    };
+    $("evUpcoming").innerHTML = group("Upcoming", up, false, "up");
+    $("evPast").innerHTML = group("Past", past, true, "past");
+  }
+
+  /* routing: no hash = competitions page, #<season>-<code> = that competition's board */
+  function route() {
+    const h = decodeURIComponent(location.hash.slice(1));
+    current = /^\d{4}-[A-Za-z0-9]+$/.test(h) ? h : null;
+    if ($("teamDlg").open) $("teamDlg").close();
+    subscribeEvent(current);
+    window.scrollTo(0, 0);
+    render();
+  }
+  function goTo(key) { if (location.hash.slice(1) === (key || "")) route(); else location.hash = key || ""; }
+
+  function renderSliders() {
+    const w = settings.weights;
+    $("sliders").innerHTML = [["auto", "Auto", 2], ["teleop", "TeleOp", 2], ["endgame", "Endgame", 2], ["fouls", "Penalties", 2], ["scout", "Scout ratings", 1]].map(([k, l, max]) =>
+      `<label class="slider"><span>${l}</span><input type="range" id="w-${k}" min="0" max="${max}" step="0.1" value="${w[k]}" data-w="${k}" ${readOnly ? "disabled" : ""}><span class="num" id="wv-${k}">${k === "scout" ? Math.round(w[k] * 100) + "%" : n(w[k]).toFixed(1)}</span></label>`).join("");
+  }
+
+  function render() {
+    isOwner = !!meScout()?.lead;   // website: leads load competitions and manage the board
+    const c = compute();
+    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderLive();
+    if (document.activeElement?.dataset?.w === undefined) renderSliders();
+    document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
+    if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
+  }
+
+  /* ---------- team dialog: stats, numbers, note history ----------
+     Notes live in team.notes as {id: {by, text, at, changed}} so several scouts can add
+     notes at once without overwriting each other. Each scout's current numbers stay in
+     team.ratings[scout]; a note only changes them when the scout ticks "Update my numbers". */
+  let dlgTeam = null, draft = null, dlgDirty = false;
+  const expandedNotes = new Set();
+  const NOTES_SHOWN = { dlg: 3, card: 2 };
+  const when = (at) => at ? new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
+  function allNotes(t) {
+    const out = [];
+    for (const [nid, x] of Object.entries(t.notes || {})) if (x && x.text) out.push({ id: nid, by: x.by, text: x.text, at: x.at || 0, changed: !!x.changed, nums: x.nums || null });
+    for (const [id, r] of Object.entries(t.ratings || {})) if (r && r.note) out.push({ id: "legacy:" + id, by: id, text: r.note, at: r.at || 0 });   // notes saved before history existed
+    // number them oldest-first: n = order on this team, mine = order among this scout's notes
+    out.sort((a, b) => a.at - b.at);
+    const per = {};
+    out.forEach((x, i) => { x.n = i + 1; x.mine = per[x.by] = (per[x.by] || 0) + 1; });
+    return out.reverse();
+  }
+  const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
+  function noteList(t, key, shown, by) {
+    const list = allNotes(t).filter(x => !by || x.by === by);
+    if (!list.length) return `<p class="hint">No notes yet.</p>`;
+    // one person's notes are always shown in full
+    const open = !!by || expandedNotes.has(key), vis = open ? list : list.slice(0, shown), more = by ? 0 : list.length - shown;
+    const canDel = (x) => !readOnly && db && uid && x.by === uid;   // only the person who wrote a note can delete it
+    return `<div class="notes">${vis.map((x, i) => `<div class="note ${i === 0 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
+        <div class="notetop"><span class="ord" title="${ordinal(x.n)} note on this team">${ordinal(x.n)}</span>${who(x.by, x.by === uid ? "You" : null)}
+        <small>${x.mine > 1 ? `${x.by === uid ? "your" : "their"} ${ordinal(x.mine)} note · ` : ""}${when(x.at)}${i === 0 ? " · latest" : ""}${x.changed ? " · updated numbers" : ""}</small>
+        ${canDel(x) ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${t.number}">Delete</button>` : ""}</div>
+        <div>${esc(x.text)}</div>${x.changed ? numsLine(x.nums) : ""}</div>`).join("")}</div>
+      ${more > 0 ? `<button type="button" class="linkbtn morenotes" data-notesmore="${esc(key)}">${open ? "Show fewer notes" : `Show ${more} earlier note${more === 1 ? "" : "s"}`}</button>` : ""}`;
+  }
+
+  /* ---------- AI recap of everyone's scouting ----------
+     Asks Claude (the sample capability) to sum up the notes and numbers on one team.
+     The result is saved on the team so every scout sees the same recap. */
+  let sampleFn, aiBusy = false, aiCtl = null;
+  const getSample = () => sampleFn !== undefined ? Promise.resolve(sampleFn) : (window.claude?.use?.("sample") || Promise.resolve(null)).then(f => (sampleFn = f || null), () => (sampleFn = null));
+  function scoutInputs(t) { return allNotes(t).length + Object.values(t.ratings || {}).filter(r => r && CATS.some(([k]) => score(r, k) != null)).length; }
+  function recapBox(t) {
+    if (window.SITE) return "";   // no AI recap on the public website
+    const r = t.aiRecap, inputs = scoutInputs(t);
+    const stale = r && r.inputs !== inputs;
+    const can = db && !readOnly && uid && inputs > 0;
+    return `<section class="airecap" id="aiBox"><div class="aihead"><h3>AI recap of everyone's thoughts</h3>
+      <button type="button" class="btn ${r ? "" : "primary"}" id="aiBtn" ${can && sampleFn !== null ? "" : "disabled"}>${r ? (stale ? "Update recap" : "Redo recap") : "Recap everyone's thoughts"}</button></div>
+      <div class="aitext" id="aiText">${r ? esc(r.text) : `<span class="hint">${inputs ? "Have Claude read every scout's notes and numbers on this team and sum them up." : "Add notes or numbers first. The recap is built from what scouts have written."}</span>`}</div>
+      <p class="hint aimeta" id="aiMeta">${r ? `Written ${when(r.at)}${r.by ? " · asked by " + esc(r.by === uid ? "you" : nameOf(r.by)) : ""}${stale ? " · new notes since, update it to include them" : ""} · AI can get things wrong, so check the notes above.` : (sampleFn === null ? "AI recaps aren't available in this view." : "")}</p></section>`;
+  }
+  function recapPrompt(t) {
+    const ev = events.get(current);
+    const s = stats(t);
+    const notes = allNotes(t).slice().reverse();
+    const raters = Object.entries(t.ratings || {}).filter(([, r]) => r && CATS.some(([k]) => score(r, k) != null));
+    return `You help FTC robotics Team 51 (NerdHerd Singularity) choose alliance partners. Recap what Team 51's scouts think of team ${t.number}${t.name ? " (" + t.name + ")" : ""}${ev ? " at " + ev.name : ""}.
+Use only the information below. Do not invent facts. If scouts disagree, say so. Scout ratings are out of 10.
+
+Write plain text in exactly this shape, under 130 words:
+Overall: one sentence.
+Strengths:
+- up to 3 short bullets
+Concerns:
+- up to 3 short bullets (write "- None noted" if there are none)
+Scouts disagree on: one line, or "Nothing major".
+Pick take for Team 51: one sentence.
+
+DATA
+Stats (OPR points per match): auto ${fmt(s.auto)}, teleop ${fmt(s.teleop)}, endgame ${fmt(s.endgame)}, penalties given ${fmt(s.pen)}${t.ev && t.ev.rank ? `, qualification rank ${t.ev.rank} (${t.ev.w}-${t.ev.l}-${t.ev.t})` : ""}.
+Tags: ${(t.tags || []).join(", ") || "none"}${t.dnp ? ". Marked DO NOT PICK by the team." : "."}
+Scout numbers:
+${raters.length ? raters.map(([id, r]) => `- ${nameOf(id)}: ` + CATS.map(([k, l]) => score(r, k) != null ? `${l} ${score(r, k)}` : "").filter(Boolean).join(", ")).join("\n") : "- none"}
+Notes, oldest first:
+${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.at)}${x.changed && x.nums ? " (updated numbers)" : ""}: ${x.text}`).join("\n") : "- none"}`;
+  }
+  const aiErr = (c) => ({ not_granted: "Claude wasn't allowed for this page. Allow it from the artifact's permissions to use recaps.", not_declared: "AI recaps aren't turned on for this board.",
+    sampling_disabled: "AI recaps are turned off for your account or organization.", rate_limited: "You've hit a usage limit. Try again in a little while.",
+    prompt_too_large: "There's too much scouting on this team to recap at once.", refused: "Claude couldn't write a recap for this team.", empty_completion: "Claude returned an empty recap. Try again.",
+    session_expired: "Your session expired. Reload the board and try again.", cancelled: "Recap stopped." }[c] || "Couldn't write the recap. Try again in a moment.");
+  async function runRecap() {
+    const num = dlgTeam, t = teams.get(num); if (!t || aiBusy) return;
+    const sample = await getSample();
+    if (!sample) { $("aiMeta").textContent = "AI recaps aren't available in this view."; return; }
+    aiBusy = true; aiCtl = new AbortController();
+    const btn = $("aiBtn"); btn.disabled = true; btn.textContent = "Writing…";
+    $("aiText").textContent = "Reading every scout's notes…"; $("aiMeta").textContent = "";
+    const inputs = scoutInputs(t);
+    try {
+      const res = await sample(recapPrompt(t), { cache: false, signal: aiCtl.signal, onText: ({ text }) => { const el = $("aiText"); if (el && text) el.textContent = text; } });
+      const text = (res.text || "").trim();
+      if (!text) throw { code: "empty_completion" };
+      aiBusy = false;
+      patchTeam(num, { aiRecap: { text: text.slice(0, 4000), at: Date.now(), by: uid, inputs } });
+      toast("Recap saved for everyone");
+    } catch (e) {
+      aiBusy = false;
+      const el = $("aiMeta"); if (el) el.textContent = aiErr(e && e.code);
+      const tx = $("aiText"); if (tx) tx.innerHTML = t.aiRecap ? esc(t.aiRecap.text) : `<span class="hint">No recap yet.</span>`;
+      const b = $("aiBtn"); if (b) { b.disabled = false; b.textContent = t.aiRecap ? "Update recap" : "Recap everyone's thoughts"; }
+      if (e && e.code === "not_granted") sampleFn = null;
+    }
+  }
+  document.addEventListener("click", (e) => { if (e.target.closest("#aiBtn")) runRecap(); });
+  $("teamDlg").addEventListener("close", () => { if (aiBusy && aiCtl) aiCtl.abort(); });
+  if (!window.SITE) getSample();
+
+  let dlgBy = null;   // scout whose notes the team window is showing, or null for everyone
+  function peopleBoxes(t) {
+    const groups = new Map();
+    for (const x of allNotes(t)) { const g = groups.get(x.by) || { count: 0, last: 0 }; g.count++; g.last = Math.max(g.last, x.at); groups.set(x.by, g); }
+    if (groups.size < 1) return "";
+    const total = [...groups.values()].reduce((a, g) => a + g.count, 0);
+    const box = (id, label, g, pressed) => `<button type="button" class="pbox" data-notesby="${esc(id)}" aria-pressed="${pressed}" style="--c:${id ? colorOf(id) : "var(--accent)"}">
+      <span class="pname">${esc(label)}</span><span class="pcount">${g.count} note${g.count === 1 ? "" : "s"}${g.last ? " · " + when(g.last) : ""}</span></button>`;
+    return `<div class="pboxes" role="group" aria-label="Show notes by person">${box("", "Everyone", { count: total, last: 0 }, !dlgBy)}${[...groups.entries()].sort((a, b) => b[1].last - a[1].last)
+      .map(([id, g]) => box(id, id === uid ? "You" : nameOf(id), g, dlgBy === id)).join("")}</div>`;
+  }
+
+  function openTeam(num) {
+    dlgTeam = num; dlgDirty = false; dlgBy = null;
+    const t = teams.get(num); if (!t) return;
+    const mine = (uid && t.ratings && t.ratings[uid]) || {};
+    const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
+    const hasNums = CATS.some(([k]) => nums[k]);
+    draft = { ...nums, hasNums, upd: !hasNums, tags: (t.tags || []).join(", "), dnp: !!t.dnp };
+    renderTeamDlg(); $("teamDlg").showModal();
+  }
+  function statBox(title, s, extra) {
+    if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
+    return `<div class="statbox"><h3>${title}</h3><dl>
+      <dt>Auto</dt><dd>${fmt(s.auto)}</dd><dt>TeleOp</dt><dd>${fmt(s.teleop)}</dd><dt>Endgame</dt><dd>${fmt(s.endgame)}</dd>
+      <dt>Total (no pen.)</dt><dd>${fmt(s.total)}</dd>${extra}</dl></div>`;
+  }
+  function renderTeamDlg() {
+    const t = teams.get(dlgTeam); if (!t) { $("teamDlg").close(); return; }
+    const sc = scoutAgg(t);
+    const canRate = !!(db && uid && !readOnly);
+    const numsOn = canRate && draft.upd;
+    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd>${t.ev.w}-${t.ev.l}-${t.ev.t}</dd>` : "";
+    const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
+    const count = allNotes(t).length;
+    $("teamForm").innerHTML = `
+      <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
+        <button type="button" class="x" data-close aria-label="Close">×</button></div>
+      <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
+      ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
+      <label class="fld">Add a note<textarea id="dNote" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
+        <div class="numshead"><h3>Your numbers (1–10)${sc.count ? ` · team avg from ${sc.count} scout${sc.count === 1 ? "" : "s"}` : ""}</h3>
+          ${draft.hasNums ? `<label class="check"><input type="checkbox" id="dUpd" ${draft.upd ? "checked" : ""} ${canRate ? "" : "disabled"}> Update my numbers with this note</label>` : ""}</div>
+        ${draft.hasNums && !draft.upd ? `<p class="hint">Keeping your current numbers. Tick the box if what you saw changes them.</p>` : ""}
+        <div class="rate">${CATS.map(([k, l]) => `<div class="raterow"><span class="rlabel">${l}</span><div class="dots" role="group" aria-label="${l}">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v =>
+          `<button type="button" data-rate="${k}" data-v="${v}" aria-pressed="${draft[k] === v}" ${numsOn ? "" : "disabled"}>${v}</button>`).join("")}</div>
+          <span class="avg" title="Team average">${sc.avg[k] != null ? "avg " + sc.avg[k].toFixed(1) : ""}</span></div>`).join("")}</div>
+      </div>
+      <div class="row2"><label class="fld">Tags (shared)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
+        <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}> Do not pick</label></div>
+      <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes on ${esc(t.number)}` : `Notes on ${esc(t.number)}`}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
+        ${peopleBoxes(t)}${noteList(t, "dlg" + t.number, NOTES_SHOWN.dlg, dlgBy)}</div>
+      ${recapBox(t)}
+      <div class="dlgfoot sticky">${draft.hasNums && canRate ? `<button type="button" class="btn danger left" id="dClear">Clear my numbers</button>` : ""}
+        <button type="button" class="btn" data-close>Close</button><button type="submit" class="btn primary" ${canRate ? "" : "disabled"}>Save</button></div>`;
+  }
+  function deleteNote(num, nid) {
+    const t = teams.get(num); if (!t) return;
+    const x = allNotes(t).find(n => n.id === nid);
+    if (!x || !uid || x.by !== uid) { toast("You can only delete your own notes."); return; }
+    if (nid.startsWith("legacy:")) patchTeam(num, { ratings: { [nid.slice(7)]: { note: "" } } });
+    else patchTeam(num, { notes: { [nid]: null } });
+    toast("Note deleted");
+  }
+  $("teamForm").addEventListener("click", async (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
+    if (b.dataset.rate) { const k = b.dataset.rate, v = Number(b.dataset.v); draft[k] = draft[k] === v ? 0 : v; dlgDirty = true;
+      b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(draft[k] === Number(x.dataset.v)))); }
+    if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
+  });
+  $("teamForm").addEventListener("change", (e) => {
+    if (e.target.id !== "dUpd") return;
+    draft.upd = e.target.checked;
+    // keep what's typed; just switch the number buttons on or off
+    $("numsBox").classList.toggle("off", !draft.upd);
+    $("numsBox").querySelectorAll(".dots button").forEach(x => x.disabled = !draft.upd);
+    const hint = $("numsBox").querySelector("p.hint"); if (hint) hint.hidden = draft.upd;
+  });
+  $("teamForm").addEventListener("input", () => { dlgDirty = true; });
+  $("teamForm").addEventListener("submit", (e) => {
+    e.preventDefault(); if (!uid) return;
+    const t = teams.get(dlgTeam); if (!t) return;
+    const text = $("dNote").value.trim();
+    const tags = $("dTags").value.split(",").map(x => x.trim()).filter(Boolean);
+    const dnp = $("dDnp").checked;
+    const mine = (t.ratings && t.ratings[uid]) || {};
+    const numsChanged = draft.upd && CATS.some(([k]) => (draft[k] || 0) !== (score(mine, k) || 0));
+    const tagsChanged = tags.join("|") !== (t.tags || []).join("|") || dnp !== !!t.dnp;
+    if (!text && !numsChanged && !tagsChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    const now = Date.now(), patch = { tags, dnp };
+    if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
+    if (text) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text, at: now, changed: numsChanged, ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}) } };
+    patchTeam(dlgTeam, patch);
+    dlgDirty = false; $("teamDlg").close();
+    toast(text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
+  });
+  $("teamDlg").addEventListener("close", () => { dlgDirty = false; });
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-notesmore],[data-delnote],[data-notesby]"); if (!b) return;
+    if (b.dataset.notesby !== undefined) {
+      const id = b.dataset.notesby || null; dlgBy = dlgBy === id ? null : id;
+      if (!teams.get(dlgTeam) || !$("dlgNotes")) return;
+      // redraw the window but keep anything half-typed
+      const keep = { note: $("dNote")?.value ?? "", tags: $("dTags")?.value, dnp: $("dDnp")?.checked };
+      if (keep.tags != null) draft.tags = keep.tags; if (keep.dnp != null) draft.dnp = keep.dnp;
+      renderTeamDlg(); if ($("dNote")) $("dNote").value = keep.note;
+      const nb = $("dlgNotes"); if (nb) nb.scrollIntoView({ block: "nearest" });
+    }
+    else if (b.dataset.notesmore) { const k = b.dataset.notesmore; expandedNotes.has(k) ? expandedNotes.delete(k) : expandedNotes.add(k); if (k.startsWith("dlg")) renderTeamDlg(); else render(); }
+    else if (b.dataset.delnote) { deleteNote(Number(b.dataset.teamOf), b.dataset.delnote); if ($("teamDlg").open && !dlgDirty) renderTeamDlg(); }
+  });
+
+  /* ---------- draft actions ---------- */
+  function setStatus(num, status) {
+    if (readOnly) return;
+    const t = teams.get(num); if (!t) return;
+    const next = t.status === status ? "available" : status;
+    if (next === "partner") {
+      const partners = [...teams.values()].filter(x => x.status === "partner" && x.number !== num);
+      if (settings.size === 2 && partners.length) partners.forEach(p => patchTeam(p.number, { status: "available" }));
+      else if (partners.length >= settings.size - 1) { toast("Your alliance is full. Unpick a team first."); return; }
+    }
+    patchTeam(num, { status: next });
+    if (next === "taken") toast(`${num} marked taken`);
+    if (next === "partner") toast(`${num} is your pick`);
+  }
+
+  /* ---------- wiring ---------- */
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
+    if (b.dataset.more) { expanded[b.dataset.more] = !expanded[b.dataset.more]; render(); }
+    else if (b.dataset.open) goTo(b.dataset.open);
+    else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
+    else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
+    else if (b.dataset.team) openTeam(Number(b.dataset.team));
+    else if (b.dataset.act === "load") openLoad();
+    else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
+    else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
+    else if (b.dataset.cancelreq) { const k = b.dataset.cancelreq; queue("r" + k, () => db.doc(`requests/${k}`).delete()).then(() => toast("Request removed"), onWriteError); }
+    else if (b.dataset.load) { const [s, c] = b.dataset.load.split("-"); loadOne(Number(s), c); }
+    else if (b.id === "asRequest" && pendingTarget) requestEvent(pendingTarget);
+  });
+  const codeTarget = () => parseCode($("lCode").value, $("lSeason").value);
+  const submitCode = () => { const t = codeTarget(); if (!t) return showErr("Enter an event code or paste the event's link.", false); if (isOwner) loadOne(t.season, t.code); else requestEvent(t); };
+  $("loadBtn").onclick = openLoad;
+  $("loadClose").onclick = () => $("loadDlg").close();
+  $("findBtn").onclick = findEvents;
+  $("codeBtn").onclick = submitCode;
+  $("reqBtn").onclick = submitCode;
+  $("lSeason").addEventListener("change", () => { if (!isOwner) openLoad(); });
+  $("lCode").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitCode(); } });
+  $("loadForm").addEventListener("submit", (e) => e.preventDefault());
+  function setTab(tab) {
+    view.tab = tab;
+    $("tabPick").setAttribute("aria-selected", String(tab === "pick")); $("tabRank").setAttribute("aria-selected", String(tab === "rank")); $("tabNotes").setAttribute("aria-selected", String(tab === "notes"));
+    $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("availSeg").hidden = tab !== "pick";
+    render();
+  }
+  $("tabPick").onclick = () => setTab("pick");
+  $("tabRank").onclick = () => setTab("rank");
+  $("tabNotes").onclick = () => setTab("notes");
+  $("notesOnly").addEventListener("change", () => render());
+  $("homeBtn").onclick = () => goTo(null);
+  window.addEventListener("hashchange", route);
+  $("ourTeam").addEventListener("change", (e) => { settings.us = parseInt(e.target.value, 10) || 51; saveSettings(true); render(); });
+  $("allianceSize").addEventListener("change", (e) => { settings.size = parseInt(e.target.value, 10); saveSettings(true); render(); });
+  $("search").addEventListener("input", (e) => { view.q = e.target.value; render(); });
+  $("showAvail").onclick = () => { view.filter = "available"; $("showAvail").setAttribute("aria-pressed", "true"); $("showAll").setAttribute("aria-pressed", "false"); render(); };
+  $("showAll").onclick = () => { view.filter = "all"; $("showAll").setAttribute("aria-pressed", "true"); $("showAvail").setAttribute("aria-pressed", "false"); render(); };
+  document.querySelectorAll("th button.sort").forEach(b => b.onclick = () => { view.sort = view.sort === b.dataset.sort ? "fit" : b.dataset.sort; render(); });
+  $("sliders").addEventListener("input", (e) => {
+    const k = e.target.dataset.w; if (!k) return;
+    settings.weights[k] = parseFloat(e.target.value);
+    $("wv-" + k).textContent = k === "scout" ? Math.round(settings.weights[k] * 100) + "%" : settings.weights[k].toFixed(1);
+    saveSettings(); render();
+  });
+  $("resetDraft").onclick = async () => {
+    if (!(await confirmBox("Reset the draft?", "Every team in this competition goes back to available. Stats, ratings and notes stay.", "Reset"))) return;
+    for (const t of teams.values()) if (t.status && t.status !== "available") patchTeam(t.number, { status: "available" });
+    toast("Draft reset");
+  };
+  $("exportBtn").onclick = () => {
+    const q = (s) => /[",\n]/.test(s) ? `"${String(s).replace(/"/g, '""')}"` : String(s);
+    const c = compute();
+    const head = "Team,Name,Qual rank,Auto,TeleOp,Endgame,Penalties,Stats from,Scout avg,Scouts,Exp pts,Fit,Status,Tags";
+    const lines = [c.us, ...c.ranked].filter(Boolean).map(t => { const s = stats(t), sc = scoutAgg(t);
+      return [t.number, q(t.name || ""), t.ev?.rank || "", fmt(s.auto), fmt(s.teleop), fmt(s.endgame), fmt(s.pen), s.src, sc.overall != null ? sc.overall.toFixed(2) : "", sc.count, fmt(expected(t)), t === c.us ? "" : c.fit.get(t.number), t === c.us ? "us" : t.dnp ? "do not pick" : (t.status || "available"), q((t.tags || []).join("; "))].join(","); });
+    navigator.clipboard.writeText([head, ...lines].join("\n")).then(() => toast("Pick list copied as CSV"), () => toast("This view blocks copying. Open the board in a browser tab to copy."));
+  };
+
+  // Always open on the competitions page.
+  if (location.hash) { try { location.hash = ""; } catch {} }
+  route();
+  connect();
+})();
+</script>
+
+</body>
+</html>
