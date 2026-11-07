@@ -196,6 +196,10 @@ main.wrap { padding-block: 20px 48px; display: flex; flex-direction: column; gap
 .banner b { font-weight: 600; }
 
 /* next pick card */
+.pickbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.pickbarText { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
+.pickbarText b { font-family: var(--f-display); font-weight: 800; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; }
+.pickbarText .hint { font-size: 13.5px; }
 .next { position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 20px 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px 32px; }
 .next::before { content: ""; position: absolute; width: 420px; height: 420px; left: -170px; top: -190px; border-radius: 50%; pointer-events: none;
   background: radial-gradient(circle, transparent 0 30%, color-mix(in srgb, var(--accent) 22%, transparent) 38%, color-mix(in srgb, var(--glow) 12%, transparent) 46%, transparent 66%); }
@@ -436,7 +440,11 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 
   <div class="boardview" id="boardView" hidden>
   <div class="livebar" id="liveBar"></div>
-  <section class="next" id="next" aria-live="polite"></section>
+  <div class="pickbar" id="pickBar">
+    <div class="pickbarText"><b>Alliance selection</b><span class="hint" id="pickBarHint"></span></div>
+    <button type="button" class="btn" id="pickToggle" aria-expanded="false" aria-controls="next">Show best pick</button>
+  </div>
+  <section class="next" id="next" aria-live="polite" hidden></section>
 
   <div class="grid">
     <section class="panel">
@@ -583,6 +591,9 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   let current = null;          // the competition this viewer is scouting (from the link's #season-code)
   let view = { filter: "available", q: "", sort: "fit", tab: "pick" };
   const HOME_LIMIT = 4;        // cards per group before "Show more"
+  // the best-pick card stays tucked away until elims; each device remembers if it's open
+  let pickOpen = false;
+  try { pickOpen = localStorage.getItem("ss51-pickopen") === "1"; } catch {}
   const RANK_SHARE = 0.25;     // share of the pick score that comes from qualification rank
   const expanded = { up: false, past: false };
 
@@ -1227,6 +1238,16 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   }
   const chipList = (list, c) => list.map(t => `<button type="button" class="chipbtn" data-team="${t.number}">${t.number} · ${c.fit.get(t.number)}</button>`).join("");
 
+  function renderPickBar(c) {
+    $("next").hidden = !pickOpen;
+    $("pickToggle").textContent = pickOpen ? "Hide" : "Show best pick";
+    $("pickToggle").setAttribute("aria-expanded", String(pickOpen));
+    const partners = c.field.filter(t => t.status === "partner");
+    const top = c.ranked.find(t => t.status !== "taken" && t.status !== "partner" && !t.dnp);
+    $("pickBarHint").textContent = pickOpen ? "Best pick and projected alliance."
+      : partners.length ? `Our pick${partners.length > 1 ? "s" : ""}: ${partners.map(t => t.number).join(", ")}.`
+      : top ? `Top of the pick list right now: ${top.number}${top.name ? " " + top.name : ""}.` : "Open when elims come around.";
+  }
   function renderNext(c) {
     const el = $("next");
     if (!current || !c.all.length) {
@@ -1424,7 +1445,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   function render() {
     isOwner = !!meScout()?.lead;   // website: leads load competitions and manage the board
     const c = compute();
-    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderLive();
+    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
@@ -1696,6 +1717,12 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("availSeg").hidden = tab !== "pick";
     render();
   }
+  $("pickToggle").onclick = () => {
+    pickOpen = !pickOpen;
+    try { localStorage.setItem("ss51-pickopen", pickOpen ? "1" : "0"); } catch {}
+    render();
+    if (pickOpen) $("next").scrollIntoView({ block: "nearest", behavior: "smooth" });
+  };
   $("tabPick").onclick = () => setTab("pick");
   $("tabRank").onclick = () => setTab("rank");
   $("tabNotes").onclick = () => setTab("notes");
