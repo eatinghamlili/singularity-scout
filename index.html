@@ -112,6 +112,16 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.movebox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+.movebox .mlabel { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.movebox small { flex-basis: 100%; }
+.seg3 { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.seg3 button { border: 0; background: var(--sunk); padding: 8px 14px; min-height: 40px; cursor: pointer; font-size: 14px; font-weight: 500; touch-action: manipulation; }
+.seg3 button + button { border-left: 1px solid var(--line); }
+.seg3 button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.seg3 button.mno[aria-pressed="true"] { background: var(--bad); color: #fff; }
+.seg3 button.myes[aria-pressed="true"] { background: var(--good); color: #fff; }
+.seg3 button:disabled { cursor: not-allowed; opacity: .6; }
 .who { display: inline-block; background: var(--c); color: var(--t); font-weight: 600; font-size: 12.5px; line-height: 1.5; padding: 0 8px; border-radius: 999px; white-space: nowrap; }
 .medot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
 .swatches { display: flex; gap: 4px; flex-wrap: wrap; }
@@ -1144,6 +1154,9 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     for (const [k] of CATS) { const v = rs.map(r => score(r, k)).filter(x => x != null); avg[k] = v.length ? v.reduce((a, b) => a + b, 0) / v.length : null; all = all.concat(v); }
     return { count, avg, overall: all.length ? all.reduce((a, b) => a + b, 0) / all.length : null };
   }
+  // "can their robot move?" is shared for the team: {ok: true/false, by, at}; a robot that can't move sinks to the bottom
+  const cantMove = (t) => !!(t.mobility && t.mobility.ok === false);
+  const moveTag = (t) => cantMove(t) ? `<span class="tag dnp" title="A scout marked that this robot can't move">can't move</span>` : "";
   const reliability = (t) => scoutAgg(t).avg.reliability ?? 7;
   const expected = (t) => { const s = stats(t); return (s.auto + s.teleop + s.endgame) * relFactor(reliability(t)) - s.pen; };
 
@@ -1176,7 +1189,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       const rp = rankPct.get(t.number);
       fit.set(t.number, Math.round(rp == null ? blended : (1 - RANK_SHARE) * blended + RANK_SHARE * rp));
     }
-    const ranked = field.slice().sort((a, b) => (!!a.dnp - !!b.dnp) || (fit.get(b.number) - fit.get(a.number)));
+    const ranked = field.slice().sort((a, b) => ((!!a.dnp * 2 + cantMove(a)) - (!!b.dnp * 2 + cantMove(b))) || (fit.get(b.number) - fit.get(a.number)));
     return { all, us, field, avg, need, fit, ranked, rankPct };
   }
 
@@ -1200,7 +1213,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     $("noteCards").innerHTML = list.map(t => {
       const sc = scoutAgg(t);
       const bars = CATS.map(([k, l]) => sc.avg[k] == null ? "" : `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k].toFixed(1)} of 10"><i style="width:${(sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k].toFixed(1)}</b></div>`).join("");
-      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t), t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
       return `<article class="notecard ${t === c.us ? "isus" : ""}">
         <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button>
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
@@ -1221,7 +1234,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
     const row = (t) => {
       const isUs = t === c.us, ev = t.ev || {};
-      const status = isUs ? `<span class="tag src">us</span>` : t.status === "taken" ? `<span class="tag">taken</span>` : t.status === "partner" ? `<span class="tag src">our pick</span>` : t.dnp ? `<span class="tag dnp">do not pick</span>` : "";
+      const status = (isUs ? `<span class="tag src">us</span>` : t.status === "taken" ? `<span class="tag">taken</span>` : t.status === "partner" ? `<span class="tag src">our pick</span>` : t.dnp ? `<span class="tag dnp">do not pick</span>` : "") + (isUs ? "" : moveTag(t));
       return `<tr class="${isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : ""}">
         <td class="rk">${ev.rank ? esc(ev.rank) : "–"}${ev.rank && ev.prevRank && ev.prevRank !== ev.rank ? `<span class="move ${ev.prevRank > ev.rank ? "up" : "down"}" title="Was #${ev.prevRank}">${ev.prevRank > ev.rank ? "▲" : "▼"}${Math.abs(ev.prevRank - ev.rank)}</span>` : ""}</td>
         <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small></div></td>
@@ -1269,7 +1282,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     }
     const partners = c.field.filter(t => t.status === "partner");
     const slots = Math.max(0, settings.size - 1 - partners.length);
-    const avail = c.ranked.filter(t => t.status !== "taken" && t.status !== "partner" && !t.dnp);
+    const avail = c.ranked.filter(t => t.status !== "taken" && t.status !== "partner" && !t.dnp && !cantMove(t));
     const cand = slots > 0 ? avail[0] : null;
     let left;
     if (cand) {
@@ -1334,7 +1347,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     $("rows").innerHTML = list.map(t => {
       const isUs = t === c.us, s = stats(t), sc = scoutAgg(t);
       const cls = isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : "";
-      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
         s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
       const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small>${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
       const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small></span>` : `<span class="scout"><span class="none">not rated</span></span>`;
@@ -1529,7 +1542,7 @@ Pick take for Team 51: one sentence.
 
 DATA
 Stats (OPR points per match): auto ${fmt(s.auto)}, teleop ${fmt(s.teleop)}, endgame ${fmt(s.endgame)}, penalties given ${fmt(s.pen)}${t.ev && t.ev.rank ? `, qualification rank ${t.ev.rank} (${t.ev.w}-${t.ev.l}-${t.ev.t})` : ""}.
-Tags: ${(t.tags || []).join(", ") || "none"}${t.dnp ? ". Marked DO NOT PICK by the team." : "."}
+Tags: ${(t.tags || []).join(", ") || "none"}${t.dnp ? ". Marked DO NOT PICK by the team." : "."}${t.mobility ? (t.mobility.ok ? " Scouts confirmed the robot can move." : " A scout marked that the robot CAN'T MOVE.") : ""}
 Scout numbers:
 ${raters.length ? raters.map(([id, r]) => `- ${nameOf(id)}: ` + CATS.map(([k, l]) => score(r, k) != null ? `${l} ${score(r, k)}` : "").filter(Boolean).join(", ")).join("\n") : "- none"}
 Notes, oldest first:
@@ -1584,7 +1597,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
-    draft = { ...nums, hasNums, upd: !hasNums, tags: (t.tags || []).join(", "), dnp: !!t.dnp };
+    draft = { ...nums, hasNums, upd: !hasNums, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
     renderTeamDlg(); $("teamDlg").showModal();
   }
   function statBox(title, s, extra) {
@@ -1617,6 +1630,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       </div>
       <div class="row2"><label class="fld">Tags (shared)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
         <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}> Do not pick</label></div>
+      <div class="movebox"><span class="mlabel">Can their robot move?</span>
+        <div class="seg3" role="group" aria-label="Can their robot move?">${[["yes", "Yes"], ["no", "No"], ["", "Not sure"]].map(([v, l]) =>
+          `<button type="button" data-moves="${v}" class="${v === "no" ? "mno" : v === "yes" ? "myes" : ""}" aria-pressed="${draft.moves === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
+        ${t.mobility ? `<small class="hint">Last set by ${esc(t.mobility.by === uid ? "you" : nameOf(t.mobility.by))} · ${when(t.mobility.at)}</small>` : ""}</div>
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes on ${esc(t.number)}` : `Notes on ${esc(t.number)}`}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
         ${peopleBoxes(t)}${noteList(t, "dlg" + t.number, NOTES_SHOWN.dlg, dlgBy)}</div>
       ${recapBox(t)}
@@ -1634,6 +1651,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("teamForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
+    if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
+      b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
     if (b.dataset.rate) { const k = b.dataset.rate, v = Number(b.dataset.v); draft[k] = draft[k] === v ? 0 : v; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(draft[k] === Number(x.dataset.v)))); }
     if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
@@ -1656,8 +1675,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (t.ratings && t.ratings[uid]) || {};
     const numsChanged = draft.upd && CATS.some(([k]) => (draft[k] || 0) !== (score(mine, k) || 0));
     const tagsChanged = tags.join("|") !== (t.tags || []).join("|") || dnp !== !!t.dnp;
-    if (!text && !numsChanged && !tagsChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    const movesNow = t.mobility ? (t.mobility.ok ? "yes" : "no") : "", movesChanged = draft.moves !== movesNow;
+    if (!text && !numsChanged && !tagsChanged && !movesChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
     const now = Date.now(), patch = { tags, dnp };
+    if (movesChanged) patch.mobility = draft.moves ? { ok: draft.moves === "yes", by: uid, at: now } : null;
     if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
     if (text) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text, at: now, changed: numsChanged, ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}) } };
     patchTeam(dlgTeam, patch);

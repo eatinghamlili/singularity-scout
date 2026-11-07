@@ -27,7 +27,7 @@ language sql immutable set search_path = '' as $$
        when p like 'scouts/%' then (d - array['name','hash','lead','color','createdAt']) = '{}'::jsonb
                                    and length(coalesce(d->>'name','')) <= 40 and length(coalesce(d->>'hash','')) <= 80
        when p like 'requests/%' then (d - array['season','code','by','at','status','error']) = '{}'::jsonb
-       when p ~ '/teams/' then (d - array['number','name','city','ev','season','loadedAt','status','dnp','tags','ratings','notes','aiRecap']) = '{}'::jsonb
+       when p ~ '/teams/' then (d - array['number','name','city','ev','season','loadedAt','status','dnp','tags','ratings','notes','aiRecap','mobility']) = '{}'::jsonb
        else true
      end
 $$;
