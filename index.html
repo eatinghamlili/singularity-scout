@@ -112,6 +112,34 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.hexwrap { display: flex; flex-direction: column; align-items: center; gap: 4px; min-width: 0; }
+.hex { width: 100%; max-width: 320px; height: auto; overflow: visible; }
+.hex.small { max-width: 230px; }
+.hex .hgrid { fill: none; stroke: var(--line); stroke-width: 1; }
+.hex .hshape { stroke-width: 2; stroke-linejoin: round; }
+.hex .hshape.team { fill: color-mix(in srgb, var(--accent) 28%, transparent); stroke: var(--accent); }
+.hex .hshape.us { fill: color-mix(in srgb, var(--glow) 12%, transparent); stroke: var(--glow); stroke-dasharray: 5 4; }
+.hex .hshape.avg { fill: none; stroke: var(--muted); stroke-dasharray: 3 4; }
+.hex .hdot.team { fill: var(--accent); } .hex .hdot.us { fill: var(--glow); }
+.hex .hlabel { font: 600 11px var(--f-body); fill: var(--muted); }
+.hex.small .hlabel { font-size: 12px; }
+.hex .hval { fill: var(--ink); font-family: var(--f-mono); font-weight: 500; }
+.hexlegend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
+.hexlegend .lg { display: inline-block; width: 16px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 5px; }
+.lg.team { border-color: var(--accent); } .lg.us { border-color: var(--glow); border-top-style: dashed; } .lg.avg { border-color: var(--muted); border-top-style: dotted; }
+.viewtop .hexwrap { justify-self: center; }
+.hexdetail summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.hbgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 6px 14px; margin: 8px 0; }
+.hb { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; font-size: 13.5px; }
+.hb b { font-weight: 600; } .hb small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.weak, .fills { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; font-size: 13px; }
+.weak > b, .fills > b { flex-basis: 100%; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.fillbtn { all: unset; box-sizing: border-box; cursor: pointer; width: 100%; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 0 8px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); }
+.fillbtn:hover { border-color: var(--accent); }
+.fillbtn:focus-visible { outline: 2px solid var(--glow); }
+.fillbtn .fnum { font-family: var(--f-display); font-weight: 800; font-size: 17px; }
+.fillbtn .fname { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; align-self: center; }
+.fillbtn .fvals { grid-column: 1 / -1; font-size: 12px; color: var(--accent-ink); font-family: var(--f-mono); }
 .viewtop { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 20px; align-items: center; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
 .bigscore { display: flex; flex-direction: column; min-width: 120px; }
 .bigscore b { font-family: var(--f-display); font-weight: 800; font-size: 46px; line-height: 1; color: var(--accent-ink); }
@@ -1278,6 +1306,60 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   // "can their robot move?" is shared for the team: {ok: true/false, by, at}; a robot that can't move sinks to the bottom
   const cantMove = (t) => !!(t.mobility && t.mobility.ok === false);
   const moveTag = (t) => cantMove(t) ? `<span class="tag dnp" title="A scout marked that this robot can't move">can't move</span>` : "";
+  /* Hexagon skill profile, 0-10 on six corners. Each corner is 75% the scouts' average rating and
+     25% where the team stands in this competition's data (percentile within the field):
+       Auto / TeleOp / Endgame -> that phase's OPR, Driving -> total OPR, Reliability -> qualification
+       rank. Defense has no competition stat, so it is scouts only. A corner nobody has rated uses
+       the competition data alone; with neither it is empty. */
+  const SKILL_LABEL = { auto: "Auto", teleop: "TeleOp", endgame: "Endgame", driving: "Driving", reliability: "Reliable", defense: "Defense" };
+  const COMP_SHARE = 0.25;
+  function buildSkills(all) {
+    const has = (t) => stats(t).src !== "none";
+    const metric = {
+      auto: (t) => has(t) ? stats(t).auto : null, teleop: (t) => has(t) ? stats(t).teleop : null, endgame: (t) => has(t) ? stats(t).endgame : null,
+      driving: (t) => { if (!has(t)) return null; const x = stats(t); return x.auto + x.teleop + x.endgame; },
+      reliability: (t) => t.ev && t.ev.rank ? -t.ev.rank : null, defense: () => null,
+    };
+    const comp = {};
+    for (const [k] of CATS) {
+      const vals = all.map(metric[k]).filter(v => v != null), n = vals.length;
+      comp[k] = (t) => { const v = metric[k](t); if (v == null || n < 2) return v == null ? null : 5;
+        const below = vals.filter(x => x < v).length, same = vals.filter(x => x === v).length - 1;
+        return (below + same / 2) / (n - 1) * 10; };
+    }
+    const map = new Map(), sums = {}, counts = {};
+    for (const t of all) {
+      const sc = scoutAgg(t), prof = {};
+      for (const [k] of CATS) {
+        const sv = sc.avg[k], cv = comp[k](t);
+        const v = sv != null && cv != null ? (1 - COMP_SHARE) * sv + COMP_SHARE * cv : sv != null ? sv : cv;
+        prof[k] = { value: v, scout: sv, comp: cv };
+        if (v != null) { sums[k] = (sums[k] || 0) + v; counts[k] = (counts[k] || 0) + 1; }
+      }
+      map.set(t.number, prof);
+    }
+    const avg = {}; for (const [k] of CATS) avg[k] = counts[k] ? { value: sums[k] / counts[k] } : { value: null };
+    return { map, avg };
+  }
+  const profVals = (prof) => Object.fromEntries(CATS.map(([k]) => [k, prof && prof[k] ? prof[k].value : null]));
+
+  // SVG hexagon (radar) chart. series: [{vals: {skill: 0-10|null}, kind: "team"|"us"|"avg", name}]
+  function hexChart(series, opts = {}) {
+    const W = opts.size || 240, H = W * 0.92, cx = W / 2, cy = H / 2 + 2, R = W * 0.29;
+    const ang = (i) => -Math.PI / 2 + i * Math.PI / 3;
+    const pt = (i, r) => [cx + r * Math.cos(ang(i)), cy + r * Math.sin(ang(i))];
+    const poly = (fn) => CATS.map(([k], i) => pt(i, fn(k)).map(n => n.toFixed(1)).join(",")).join(" ");
+    const rings = [0.25, 0.5, 0.75, 1].map(f => `<polygon class="hgrid" points="${poly(() => R * f)}"/>`).join("");
+    const axes = CATS.map((_, i) => { const [x, y] = pt(i, R); return `<line class="hgrid" x1="${cx}" y1="${cy}" x2="${x.toFixed(1)}" y2="${y.toFixed(1)}"/>`; }).join("");
+    const shapes = series.slice().reverse().map(sr => `<polygon class="hshape ${sr.kind}" points="${poly(k => R * Math.max(0, Math.min(10, sr.vals[k] ?? 0)) / 10)}"/>`).join("");
+    const main = series[0];
+    const dots = CATS.map(([k], i) => main.vals[k] == null ? "" : (() => { const [x, y] = pt(i, R * Math.max(0, Math.min(10, main.vals[k])) / 10); return `<circle class="hdot ${main.kind}" cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3"/>`; })()).join("");
+    const labels = CATS.map(([k], i) => { const [x, y] = pt(i, R + (opts.small ? 16 : 20)); const anchor = Math.abs(x - cx) < 4 ? "middle" : x > cx ? "start" : "end";
+      const v = main.vals[k]; const dy = i === 0 ? -4 : i === 3 ? 12 : 4;
+      return `<text class="hlabel" x="${x.toFixed(1)}" y="${(y + dy).toFixed(1)}" text-anchor="${anchor}">${SKILL_LABEL[k]}<tspan class="hval"> ${v == null ? "–" : v.toFixed(1)}</tspan></text>`; }).join("");
+    const desc = series.map(sr => `${sr.name}: ` + CATS.map(([k]) => `${SKILL_LABEL[k]} ${sr.vals[k] == null ? "not rated" : sr.vals[k].toFixed(1)}`).join(", ")).join(". ");
+    return `<svg class="hex ${opts.small ? "small" : ""}" viewBox="${-W * 0.12} 0 ${W * 1.24} ${H}" role="img" aria-label="Skill hexagon out of 10. ${esc(desc)}"><title>${esc(desc)}</title>${rings}${axes}${shapes}${dots}${labels}</svg>`;
+  }
   const reliability = (t) => scoutAgg(t).avg.reliability ?? 7;
   const expected = (t) => { const s = stats(t); return (s.auto + s.teleop + s.endgame) * relFactor(reliability(t)) - s.pen; };
 
@@ -1311,7 +1393,8 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       fit.set(t.number, Math.round(rp == null ? blended : (1 - RANK_SHARE) * blended + RANK_SHARE * rp));
     }
     const ranked = field.slice().sort((a, b) => ((!!a.dnp * 2 + cantMove(a)) - (!!b.dnp * 2 + cantMove(b))) || (fit.get(b.number) - fit.get(a.number)));
-    return { all, us, field, avg, need, fit, ranked, rankPct };
+    const skills = buildSkills(all);
+    return { all, us, field, avg, need, fit, ranked, rankPct, skills };
   }
 
   function renderNotes(c) {
@@ -1340,7 +1423,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
-        ${bars ? `<div class="cats">${bars}</div>` : ""}
+        <div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>
         ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
@@ -1556,6 +1639,23 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 
   function renderNeeds(c) {
     const el = $("needs");
+    if (c.us && c.skills) {
+      const ours = profVals(c.skills.map.get(c.us.number)), field = Object.fromEntries(CATS.map(([k]) => [k, c.skills.avg[k].value]));
+      // weak spots: corners where we sit furthest below the field average
+      const gaps = CATS.map(([k]) => ({ k, gap: ours[k] != null && field[k] != null ? field[k] - ours[k] : null })).filter(g => g.gap != null && g.gap > 0.25).sort((a, b) => b.gap - a.gap).slice(0, 3);
+      const pool = c.ranked.filter(t => t !== c.us && t.status !== "taken" && t.status !== "partner" && !t.dnp && !cantMove(t));
+      const fits = gaps.length ? pool.map(t => { const v = profVals(c.skills.map.get(t.number)); return { t, v, score: gaps.reduce((a, g) => a + g.gap * (v[g.k] ?? 0), 0) }; })
+        .filter(x => x.score > 0).sort((a, b) => b.score - a.score).slice(0, 3) : [];
+      const s = stats(c.us);
+      el.innerHTML = `<h2>Our hexagon</h2><p class="sub">Team ${esc(c.us.number)} from this competition's data${scoutAgg(c.us).count ? " and our own ratings" : ""}, against the field average.</p>
+        <div class="hexwrap">${hexChart([{ vals: ours, kind: "us", name: "Team " + c.us.number }, { vals: field, kind: "avg", name: "Field average" }], { size: 230 })}
+          <div class="hexlegend"><span><i class="lg us"></i>${esc(c.us.number)} (us)</span><span><i class="lg avg"></i>Field average</span></div></div>
+        ${gaps.length ? `<div class="weak"><b>Weak spots</b>${gaps.map(g => `<span class="tag dnp">${SKILL_LABEL[g.k]} −${g.gap.toFixed(1)}</span>`).join("")}</div>
+          <div class="fills"><b>Best at covering them</b>${fits.length ? fits.map(x => `<button type="button" class="fillbtn" data-team="${x.t.number}"><span class="fnum">${x.t.number}</span><span class="fname">${esc(x.t.name || "")}</span><span class="fvals">${gaps.map(g => `${SKILL_LABEL[g.k]} ${x.v[g.k] == null ? "–" : x.v[g.k].toFixed(1)}`).join(" · ")}</span></button>`).join("") : `<p class="hint">No available team covers them yet.</p>`}</div>`
+          : `<p class="hint">No weak spots: we're at or above the field average on every corner.</p>`}
+        <details class="hexdetail"><summary>Phase weights used in Fit</summary>${PHASES.map(([k, l]) => `<div class="need"><div class="row1"><b>${l}</b><span class="mult ${c.need[k] > 1.15 ? "hot" : ""}">×${c.need[k].toFixed(2)}</span></div><small class="num">${fmt(s[k])} vs ${fmt(c.avg[k])} field average</small></div>`).join("")}</details>`;
+      return;
+    }
     if (!c.us) { el.innerHTML = `<h2>What we need</h2><p class="sub">${c.all.length ? `Team ${esc(settings.us)} isn't in this competition, so every phase counts the same.` : "Load a competition to compare your robot with the field."} Phases where you're below the field average get extra weight in Fit.</p>`; return; }
     const s = stats(c.us);
     const max = Math.max(1, ...PHASES.map(([k]) => Math.max(s[k], c.avg[k]))) * 1.15;
@@ -1911,20 +2011,26 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // read-only look at a team: the numbers and what scouts wrote, nothing to fill in
   function renderTeamView(t) {
     const sc = scoutAgg(t), s = stats(t);
+    let cc = null; const c0 = () => cc || (cc = compute());
     const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd>${t.ev.w}-${t.ev.l}-${t.ev.t}</dd>` : "";
     const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
-    const cats = CATS.map(([k, l]) => `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k] == null ? "not rated" : sc.avg[k].toFixed(1) + " of 10"}"><i style="width:${sc.avg[k] == null ? 0 : (sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k] == null ? "–" : sc.avg[k].toFixed(1)}</b></div>`).join("");
+    const prof = c0().skills.map.get(t.number) || {};
+    const breakdown = CATS.map(([k, l]) => { const x = prof[k] || {}; return `<div class="hb"><span>${l}</span><b class="num">${x.value == null ? "–" : x.value.toFixed(1)}</b><small>${x.scout != null ? "scouts " + x.scout.toFixed(1) : "no scout rating"}${x.comp != null ? " · comp " + x.comp.toFixed(1) : k === "defense" ? "" : " · no comp data"}</small></div>`; }).join("");
     const flags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
       t.mobility ? (t.mobility.ok ? `<span class="tag src">robot moves</span>` : `<span class="tag dnp">can't move</span>`) : ""].join("");
-    const c = compute(), pos = c.ranked.filter(x => x.status !== "taken").findIndex(x => x === t);
+    const c = c0(), pos = c.ranked.filter(x => x.status !== "taken").findIndex(x => x === t);
     const count = allNotes(t).length;
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
       <div class="viewtop">
         <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
-        <div class="cats">${cats}</div>
+        <div class="hexwrap">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number },
+          ...(c.us && t !== c.us ? [{ vals: profVals(c.skills.map.get(c.us.number)), kind: "us", name: "Team " + c.us.number }] : [])])}
+          <div class="hexlegend"><span><i class="lg team"></i>${esc(t.number)}</span>${c.us && t !== c.us ? `<span><i class="lg us"></i>${esc(c.us.number)} (us)</span>` : ""}</div></div>
       </div>
+      <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
+        <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       <div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>
@@ -2052,7 +2158,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.open) goTo(b.dataset.open);
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
-    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#pickWrap,#notesWrap,#next,#pickBar") ? "view" : "edit");
+    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#pickWrap,#notesWrap,#next,#pickBar,#needs") ? "view" : "edit");
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
     else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
