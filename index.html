@@ -192,6 +192,7 @@ a { color: var(--accent-ink); }
 .qhelp[aria-expanded="true"] { background: var(--accent); color: #fff; }
 .qhelp:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .predhelp { margin: 0; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: var(--sunk); }
+.trybtns { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
 .trymatch summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
 .trygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 6px; }
 .trygrid input { font-size: 16px; width: 100%; box-sizing: border-box; }
@@ -566,6 +567,8 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .evitem .badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); margin-left: 6px; font-weight: 600; }
 .progress { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
 .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--glow)); }
+.toastbtn { all: unset; cursor: pointer; margin-left: 10px; font-weight: 700; color: #f0abfc; text-decoration: underline; text-underline-offset: 3px; }
+.toastbtn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--band); color: var(--band-ink); padding: 9px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
 
 /* ---- polish: depth, motion and a little glow ---- */
@@ -674,7 +677,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <button role="tab" id="tabNotes" aria-selected="false">Scouting notes</button>
           <button role="tab" id="tabQuals" aria-selected="false">Quals</button>
         </div>
-        <input id="search" type="search" placeholder="Find team…" aria-label="Find team">
+        <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team">
         <div class="seg" role="group" aria-label="Show" id="availSeg">
           <button id="showAvail" aria-pressed="false">Available</button>
           <button id="showAll" aria-pressed="true">All</button>
@@ -707,6 +710,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <details class="trymatch"><summary>Try a matchup</summary>
             <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
               <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
+            <div class="trybtns"><button type="button" class="btn" id="tryOurs">Our alliance</button><button type="button" class="btn" id="tryClear">Clear</button></div>
             <div class="tryout" id="tryOut" aria-live="polite"></div></details>
         </div>
         <div class="matchlist" id="matchList"></div>
@@ -857,7 +861,16 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
 
   /* ---------- small UI helpers ---------- */
   let toastTimer;
-  function toast(msg) { const el = $("toast"); el.textContent = msg; el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, 2600); }
+  function toast(msg, action) {
+    const el = $("toast");
+    // an open window sits above the page, so the message moves into it to stay visible
+    const host = [...document.querySelectorAll("dialog[open]")].pop() || document.body;
+    if (el.parentElement !== host) host.appendChild(el);
+    el.textContent = msg;
+    if (action) { const b = document.createElement("button"); b.type = "button"; b.className = "toastbtn"; b.textContent = action.label;
+      b.onclick = () => { el.hidden = true; action.run(); }; el.append(" ", b); }
+    el.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => el.hidden = true, action ? 6000 : 2600);
+  }
   function confirmBox(title, text, yes) {
     return new Promise(res => {
       $("confirmTitle").textContent = title; $("confirmText").textContent = text; $("confirmYes").textContent = yes;
@@ -872,7 +885,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   const chains = {};
   function queue(key, fn) { const p = (chains[key] || Promise.resolve()).catch(() => {}).then(fn); chains[key] = p.catch(() => {}); return p; }
   function onWriteError(e) {
-    if (e && e.code === "invalid_argument") { readOnly = true; toast("You can view this board but not change it."); render(); }
+    if (e && e.code === "invalid_argument" && window.SITE) { toast("That change wasn't saved. Reload the page and try again."); render(); }
+    else if (e && e.code === "invalid_argument") { readOnly = true; toast("You can view this board but not change it."); render(); }
     else if (e && e.code === "quota_exceeded") toast("The board is full. Remove an old competition first.");
     else toast("Couldn't save. Check your connection and try again.");
   }
@@ -887,7 +901,12 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     }
     teams.set(num, merged); render();
     if (!db || !current) return;
-    return queue("t" + num, () => teamRef(num).update(patch)).catch(onWriteError);
+    const key = current;
+    return queue("t" + num, () => teamRef(num).update(patch)).catch((e) => {
+      // put the screen back the way the database has it
+      if (key === current && teams.get(num) === merged) { teams.set(num, t); render(); if ($("teamDlg").open && dlgTeam === num && !dlgDirty) renderTeamDlg(); }
+      onWriteError(e);
+    });
   }
   let settingsTimer;
   function saveSettings(now) {
@@ -942,6 +961,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       db.doc("settings/main").onSnapshot(snap => {
         if (snap.exists) { const s = snap.data(); settings = { ...structuredClone(DEFAULTS), ...s, weights: { ...DEFAULTS.weights, ...(s.weights || {}) } }; }
         settings.us = OUR_TEAM;   // the board is Team 51's only, for now
+        settings.size = Number(settings.size) === 3 ? 3 : 2;
+        for (const k of Object.keys(DEFAULTS.weights)) { const v = Number(settings.weights[k]); settings.weights[k] = Number.isFinite(v) ? Math.max(0, Math.min(k === "scout" ? 1 : 2, v)) : DEFAULTS.weights[k]; }
         if (!snap.metadata.fromCache) gotS = true;
         ready();
       }, () => {});
@@ -1197,7 +1218,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   function colorOf(id) {
     if (!String(id).startsWith("s_")) return "#8a80a3";
     const sid = String(id).slice(2), s = scouts.get(sid);
-    return (s && s.color) || PALETTE[hashIdx(sid)];
+    return (s && /^#[0-9a-fA-F]{6}$/.test(s.color || "") && s.color) || PALETTE[hashIdx(sid)];
   }
   function inkOn(hex) {
     const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
@@ -1292,7 +1313,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       else if (b.dataset.rreset) { const code = await freeCode(""); await db.doc(`scouts/${id}`).update({ hash: await hashCode(code) }); reveal = { name: s.name, code }; renderRoster(); }
       else if (b.dataset.rdel) {
         $("rosterDlg").close();
-        if (await confirmBox(`Remove ${s.name}?`, "Their code stops working. Ratings they already saved stay on the board, marked as a former scout.", "Remove")) { await db.doc(`scouts/${id}`).delete(); toast(`${s.name} removed`); }
+        if (await confirmBox(`Remove ${s.name}?`, "Their code stops working. Ratings they already saved stay on the board, marked as a former scout.", "Remove")) { await db.doc(`scouts/${id}`).delete(); scouts.delete(id); render(); toast(`${s.name} removed`); }
         openRoster();
       }
     } catch { $("rErr").textContent = "Couldn't save. Check your connection."; $("rErr").hidden = false; }
@@ -1377,7 +1398,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const bar = $("liveBar"); if (!bar) return;
     const ev = current && events.get(current); if (!ev) { bar.innerHTML = ""; return; }
     // website: start keeping standings current as soon as a scout opens a competition that is on now
-    const today = new Date().toISOString().slice(0, 10), dayMs = 864e5;
+    const today = localDay(), dayMs = 864e5;
     const shift = (d, n) => new Date(Date.parse(d + "T12:00:00") + n * dayMs).toISOString().slice(0, 10);
     if (!liveOn && uid && !readOnly && liveAutoFor !== current && ev.start && today >= shift(ev.start, -1) && today <= shift(ev.end || ev.start, 1)) { liveAutoFor = current; setTimeout(startLive, 0); }
     const live = ev.live || null;
@@ -1636,9 +1657,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const el = $("tryOut"); if (!el) return;
     const r = nums($("tryRed").value), b = nums($("tryBlue").value);
     if (!lastPred || !r.length || !b.length) { el.innerHTML = `<span class="hint">Type team numbers for both alliances.</span>`; return; }
+    const both = r.filter(n => b.includes(n));
+    if (both.length) { el.innerHTML = `<span class="hint">${both.join(", ")} can't be on both alliances.</span>`; return; }
     const unknown = [...r, ...b].filter(n => !teams.has(n));
     const x = lastPred.matchup(r, b);
-    el.innerHTML = predStrip(x) + (unknown.length ? `<p class="hint">Not at this competition, so treated as a typical team: ${unknown.join(", ")}.</p>` : "");
+    el.innerHTML = predStrip(x) + (r.length > 2 || b.length > 2 ? `<p class="hint">Only 2 robots per alliance play in a match; this adds up all ${Math.max(r.length, b.length)}.</p>` : "") + (unknown.length ? `<p class="hint">Not at this competition, so treated as a typical team: ${unknown.join(", ")}.</p>` : "");
   }
   function predStrip(pr, played) {
     const pct = Math.round(pr.pRed * 100), redFav = pr.pRed >= 0.5;
@@ -1675,7 +1698,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
     $("qualSum").innerHTML = ours.length
-      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match${ours.filter(surOf).length === 1 ? "" : "es"} not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
@@ -1723,6 +1746,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))} notes</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}</small></div>
         <button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
+      ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
       <div class="mnotelist" id="mNotesList">${notes.length ? notes.map((x, i) => `<div class="note ${i === notes.length - 1 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
           <div class="notetop">${who(x.by, x.by === uid ? "You" : null)} <small>${esc(when(x.at))}</small>${x.by === uid && canWrite ? `<button type="button" class="linkbtn" data-mdel="${esc(x.id)}">Delete</button>` : ""}</div>
           <div>${esc(x.text)}</div></div>`).join("")
@@ -1740,7 +1764,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const merged = { label: patch.label || prev?.label || matchLabelOf(key), notes: { ...(prev?.notes || {}) } };
     for (const [k, v] of Object.entries(patch.notes || {})) merged.notes[k] = v;
     matchDocs.set(key, merged); renderMatchDlg(); render();
-    return queue("m" + current + key, () => ref.update({ ...patch, label: merged.label })).catch(onWriteError);
+    const ev = current;
+    return queue("m" + current + key, () => ref.update({ ...patch, label: merged.label })).catch((e) => {
+      if (ev === current && matchDocs.get(key) === merged) { prev ? matchDocs.set(key, prev) : matchDocs.delete(key); renderMatchDlg(); render(); }
+      onWriteError(e);
+    });
   }
   document.addEventListener("click", (e) => {
     if (e.target.closest("[data-team],[data-star]")) return;
@@ -1829,9 +1857,9 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         ${avail.length > 1 ? `<div class="backups">Next up ${chipList(avail.slice(1, 4), c)}</div>` : ""}</div>`;
     } else if (slots === 0 && partners.length) {
       left = `<div><div class="eyebrow">Alliance locked in</div><div class="bigteam">${[c.us?.number, ...partners.map(p => p.number)].filter(Boolean).join(" + ")}</div>
-        <div class="why">If a team declines, these are the best left.</div>${avail.length ? `<div class="backups">Backups ${chipList(avail.slice(0, 3), c)}</div>` : ""}</div>`;
+        <div class="why">${avail.length ? "If a team declines, these are the best left." : "No backups left: every other team is taken, flagged do-not-pick or can't move."}</div>${avail.length ? `<div class="backups">Backups ${chipList(avail.slice(0, 3), c)}</div>` : ""}</div>`;
     } else {
-      left = `<div><div class="eyebrow">No one left to pick</div><div class="why">Every remaining team is taken or flagged do-not-pick. Switch the list to All to review them.</div></div>`;
+      left = `<div><div class="eyebrow">No one left to pick</div><div class="why">Every remaining team is taken, flagged do-not-pick or can't move. They're still on the pick list if you want to review them.</div></div>`;
     }
     const robots = [];
     if (c.us) robots.push([c.us, "us"]);
@@ -2312,9 +2340,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const t = teams.get(num); if (!t) return;
     const x = allNotes(t).find(n => n.id === nid);
     if (!x || !uid || x.by !== uid) { toast("You can only delete your own notes."); return; }
-    if (nid.startsWith("legacy:")) patchTeam(num, { ratings: { [nid.slice(7)]: { note: "" } } });
-    else patchTeam(num, { notes: { [nid]: null } });
-    toast("Note deleted");
+    const refresh = () => { if ($("teamDlg").open && dlgTeam === num && !dlgDirty) renderTeamDlg(); };
+    if (nid.startsWith("legacy:")) {
+      const rid = nid.slice(7), old = (t.ratings || {})[rid]?.note || "";
+      patchTeam(num, { ratings: { [rid]: { note: "" } } });
+      toast("Note deleted", { label: "Undo", run: () => { patchTeam(num, { ratings: { [rid]: { note: old } } }); refresh(); toast("Note restored"); } });
+    } else {
+      const orig = (t.notes || {})[nid];
+      patchTeam(num, { notes: { [nid]: null } });
+      toast("Note deleted", orig ? { label: "Undo", run: () => { patchTeam(num, { notes: { [nid]: orig } }); refresh(); toast("Note restored"); } } : null);
+    }
   }
   $("teamForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -2425,7 +2460,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.dataset.mdel) {
       const x = matchNotes(openMatchKey).find(n => n.id === b.dataset.mdel);
       if (!x || x.by !== uid) { toast("You can only delete your own notes."); return; }
-      saveMatch(openMatchKey, { notes: { [x.id]: null } }); toast("Note deleted");
+      const mk = openMatchKey, orig = (matchDocs.get(mk)?.notes || {})[x.id];
+      saveMatch(mk, { notes: { [x.id]: null } });
+      toast("Note deleted", orig ? { label: "Undo", run: () => { saveMatch(mk, { notes: { [x.id]: orig } }); toast("Note restored"); } } : null);
     }
   });
   $("matchForm").addEventListener("submit", (e) => {
@@ -2444,8 +2481,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const b = e.target.closest("[data-star]"); if (!b || b.disabled || !db) return;
     const k = b.dataset.star, ev = events.get(k); if (!ev) return;
     const on = !ev.starred;
-    events.set(k, { ...ev, starred: on, starredBy: on ? uid : null }); render();
-    queue("ev" + k, () => db.doc(`events/${k}`).update({ starred: on, starredBy: on ? (uid || null) : null, starredAt: Date.now() })).catch(onWriteError);
+    const next = { ...ev, starred: on, starredBy: on ? uid : null }; events.set(k, next); render();
+    queue("ev" + k, () => db.doc(`events/${k}`).update({ starred: on, starredBy: on ? (uid || null) : null, starredAt: Date.now() }))
+      .catch((e) => { if (events.get(k) === next) { events.set(k, ev); render(); } onWriteError(e); });
     toast(on ? `Starred ${ev.name}` : `Unstarred ${ev.name}`);
   });
   $("pickToggle").onclick = () => {
@@ -2461,9 +2499,26 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("qOurs").onclick = () => { qualOurs = true; render(); };
   $("qAll").onclick = () => { qualOurs = false; render(); };
   $("qRefresh").onclick = () => loadQuals(true);
+  // a message showing inside a window that closes moves back to the page
+  const toastHome = new MutationObserver(() => { const el = $("toast"), d = el.parentElement; if (d && d.tagName === "DIALOG" && !d.open) document.body.appendChild(el); });
+  document.querySelectorAll("dialog").forEach(d => toastHome.observe(d, { attributes: true, attributeFilter: ["open"] }));
+  document.addEventListener("keydown", (e) => {
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "") || document.activeElement?.isContentEditable;
+    if (e.key === "/" && !typing && current && !document.querySelector("dialog[open]")) { e.preventDefault(); $("search").focus(); $("search").select(); }
+    else if (e.key === "Escape" && document.activeElement === $("search") && $("search").value) { $("search").value = ""; $("search").dispatchEvent(new Event("input", { bubbles: true })); }
+  });
   $("brandDino").src = BARNEY.logo; $("footDino").src = DINO;
   $("predHelpBtn").onclick = () => { const h = $("predHelp"), open = h.hidden; h.hidden = !open; $("predHelpBtn").setAttribute("aria-expanded", String(open)); };
   $("tryRed").oninput = renderTry; $("tryBlue").oninput = renderTry;
+  // fill red with Team 51 and its picked partners (or the current best pick), ready to test against any opponents
+  $("tryOurs").onclick = () => {
+    const c = compute(); if (!c.us) { toast(`Team ${settings.us} isn't in this competition.`); return; }
+    const partners = c.field.filter(t => t.status === "partner").map(t => t.number);
+    const best = c.ranked.find(t => t !== c.us && t.status !== "taken" && t.status !== "partner" && !t.dnp && !cantMove(t));
+    $("tryRed").value = [c.us.number, ...(partners.length ? partners : best ? [best.number] : [])].join(" ");
+    renderTry(); $("tryBlue").focus();
+  };
+  $("tryClear").onclick = () => { $("tryRed").value = ""; $("tryBlue").value = ""; renderTry(); $("tryRed").focus(); };
   $("notesOnly").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
   window.addEventListener("hashchange", route);

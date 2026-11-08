@@ -31,7 +31,7 @@ REPLACE = [
      'if (!silent && false && db && key && events.get(key)?.live?.on)'),
     ('    const live = ev.live || null;\n',
      '    // website: start keeping standings current as soon as a scout opens a competition that is on now\n'
-     '    const today = new Date().toISOString().slice(0, 10), dayMs = 864e5;\n'
+     '    const today = localDay(), dayMs = 864e5;\n'
      '    const shift = (d, n) => new Date(Date.parse(d + "T12:00:00") + n * dayMs).toISOString().slice(0, 10);\n'
      '    if (!liveOn && uid && !readOnly && liveAutoFor !== current && ev.start && today >= shift(ev.start, -1) && today <= shift(ev.end || ev.start, 1)) { liveAutoFor = current; setTimeout(startLive, 0); }\n'
      '    const live = ev.live || null;\n'),
