@@ -300,16 +300,6 @@ a { color: var(--accent-ink); }
 .notecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
 .notecard { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); }
 .notecard.isus { background: var(--sunk); }
-.notecard.slim { gap: 8px; padding: 10px 12px; }
-.notecard.slim header { display: flex; align-items: baseline; gap: 10px; }
-.nname { all: unset; cursor: pointer; font-weight: 600; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.nname:hover { color: var(--accent-ink); text-decoration: underline; }
-.nname:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
-.notecard.slim .nonote { margin: 0; font-size: 13px; }
-.slimbody { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
-.slimhex { flex: 0 0 168px; padding: 0 10px; } .slimhex .hex { max-width: 148px; }
-.slimhex .hex .hlabel { font-size: 14px; }
-.slimnote { flex: 1 1 220px; min-width: 0; }
 .notecard header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .nnum { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
 .nnum:hover { color: var(--accent-ink); text-decoration: underline; }
@@ -1545,13 +1535,18 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const noteCount = c.all.reduce((a, t) => a + allNotes(t).length, 0);
     $("notesNote").textContent = `${total} of ${c.all.length} teams scouted · ${noteCount} note${noteCount === 1 ? "" : "s"}. Tap a team to add your own.`;
     if (!list.length) { $("noteCards").innerHTML = only && !q ? dinoEmpty("No notes yet", "Tap a team number on the pick list to rate it and leave a note.", "", "sit") : dinoEmpty("No teams match", "Try a different team number or name.", "sm", "lying"); return; }
-    // condensed: just the team and its newest note (numbered); everything else is one tap away in the team view
     $("noteCards").innerHTML = list.map(t => {
-      const n = allNotes(t).length;
-      return `<article class="notecard slim ${t === c.us ? "isus" : ""}">
-        <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button><button type="button" class="nname" data-team="${t.number}">${esc(t.name || "")}</button></header>
-        <div class="slimbody"><div class="hexwrap slimhex">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>
-          <div class="slimnote">${n ? noteList(t, "card" + t.number, 1) : `<p class="hint nonote">No notes yet</p>`}</div></div>
+      const sc = scoutAgg(t);
+      const bars = CATS.map(([k, l]) => sc.avg[k] == null ? "" : `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k].toFixed(1)} of 10"><i style="width:${(sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k].toFixed(1)}</b></div>`).join("");
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t), t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
+      return `<article class="notecard ${t === c.us ? "isus" : ""}">
+        <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button>
+          <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
+          <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
+        ${tags ? `<div class="tags">${tags}</div>` : ""}
+        <div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>
+        ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
+        ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
     }).join("");
   }
@@ -2063,7 +2058,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
      team.ratings[scout]; a note only changes them when the scout ticks "Update my numbers". */
   let dlgTeam = null, draft = null, dlgDirty = false;
   const expandedNotes = new Set();
-  const NOTES_SHOWN = { dlg: 3, card: 2 };
+  const NOTES_SHOWN = { dlg: 3, card: 1 };   // Scouting notes cards show only the newest note
   const when = (at) => at ? new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
   function allNotes(t) {
     const out = [];
