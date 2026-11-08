@@ -173,6 +173,29 @@ a { color: var(--accent-ink); }
 .match[data-match] { cursor: pointer; }
 .match[data-match]:hover { border-color: var(--accent); }
 .match[data-match]:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.predhead { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.predtop { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.predtop > b { font-family: var(--f-display); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: .03em; }
+.predacc { font-size: 13px; color: var(--muted); flex: 1; min-width: 0; }
+.qhelp { all: unset; box-sizing: border-box; cursor: pointer; width: 26px; height: 26px; border-radius: 50%; border: 1.5px solid var(--accent); color: var(--accent-ink); font-weight: 700; font-size: 14px; display: grid; place-items: center; flex: none; }
+.qhelp[aria-expanded="true"] { background: var(--accent); color: #fff; }
+.qhelp:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.predhelp { margin: 0; font-size: 13.5px; line-height: 1.5; padding: 8px 10px; border-radius: 8px; background: var(--sunk); }
+.trymatch summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.trygrid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 8px 0 6px; }
+.trygrid input { font-size: 16px; width: 100%; box-sizing: border-box; }
+.trygrid .fld:first-child input { border-left: 4px solid #dc2626; } .trygrid .fld:last-child input { border-left: 4px solid #2563eb; }
+.mpred { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 2px 2px 0; }
+.mpred .ptitle { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+.mpred .pscore { font-family: var(--f-mono); white-space: nowrap; }
+.mpred .r { color: #dc2626; } .mpred .b { color: #3b82f6; }
+.pbar { flex: 1; min-width: 40px; height: 8px; border-radius: 4px; background: #3b82f6; overflow: hidden; display: block; }
+.pbar i { display: block; height: 100%; background: #dc2626; }
+.pwin { font-weight: 700; white-space: nowrap; font-family: var(--f-mono); }
+.pwin.r { color: #dc2626; } .pwin.b { color: #3b82f6; }
+.pok, .pbad { font-weight: 800; width: 20px; text-align: center; }
+.pok { color: #16a34a; } .pbad { color: #dc2626; }
+@media (max-width: 560px) { .trygrid { grid-template-columns: 1fr; } .mpred .ptitle { display: none; } }
 .mfoot { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); }
 .mnotes.has { color: var(--accent-ink); font-weight: 600; }
 .mopen { color: var(--accent-ink); font-weight: 600; }
@@ -621,6 +644,15 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
           </div>
         </div>
         <p class="hint qualnote" id="qualNote"></p>
+        <div class="predhead" id="predHead">
+          <div class="predtop"><b>Match predictor</b><span class="predacc" id="predAcc"></span>
+            <button type="button" class="qhelp" id="predHelpBtn" aria-expanded="false" aria-controls="predHelp" aria-label="How the predictor works">?</button></div>
+          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches show ✓ or ✗ so you can see how often it's right.</p>
+          <details class="trymatch"><summary>Try a matchup</summary>
+            <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
+              <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
+            <div class="tryout" id="tryOut" aria-live="polite"></div></details>
+        </div>
         <div class="matchlist" id="matchList"></div>
       </div>
       <div class="notesview" id="notesWrap" hidden>
@@ -1458,6 +1490,86 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   setInterval(() => { if (view.tab === "quals" && current && !document.hidden) loadQuals(true); }, 120000);
   document.addEventListener("visibilitychange", () => { if (!document.hidden && view.tab === "quals") loadQuals(false); });
 
+  /* Match predictor, in the style of an EPA rating: each team has a strength in points. It starts from
+     the team's season OPR (or a typical team's share when there is none) and, after every played match
+     here, moves part of the way toward what its alliance actually scored. Scout ratings made before the
+     match, the team's record here so far, and whether it crossed state lines to come (teams don't travel
+     far to lose) scale it a little. Win chance comes from the predicted margin against how far real
+     scores land from predictions at this competition. */
+  const PRED = { scoutPer: 0.035, scoutCap: 0.18, travel: 0.06, record: 0.05 };
+  const stateOf = (city) => { const p = String(city || "").split(","); return p.length > 1 ? p[p.length - 1].trim().toUpperCase() : ""; };
+  const normCdf = (x) => 1 / (1 + Math.exp(-1.702 * x));
+  let lastPred = null;
+  function buildPredictor(list) {
+    const ev = events.get(current) || {}, evState = stateOf(ev.city);
+    const isPlayed = (m) => m.played && m.redScore != null && m.blueScore != null;
+    const played = list.filter(isPlayed);
+    const size = Math.max(1, ...list.map(m => Math.max(m.red.length, m.blue.length)));
+    const seasonNp = (n) => { const t = teams.get(n); return t && t.season ? (t.season.auto || 0) + (t.season.teleop || 0) + (t.season.endgame || 0) : null; };
+    const allNums = [...new Set(list.flatMap(m => [...m.red, ...m.blue].map(x => x.n)))];
+    const known = allNums.map(seasonNp).filter(v => v != null);
+    const meanAlli = played.length ? played.reduce((a, m) => a + m.redScore + m.blueScore, 0) / (played.length * 2) : null;
+    const base = known.length ? known.reduce((a, b) => a + b, 0) / known.length : meanAlli != null ? meanAlli / size : 20;
+    const prior = (n) => seasonNp(n) ?? base;
+    // fouls and other points OPR leaves out: spread the event's average gap evenly
+    let bias = 0;
+    if (played.length >= 4) { let d = 0; for (const m of played) for (const [side, sc] of [[m.red, m.redScore], [m.blue, m.blueScore]]) d += sc - side.reduce((a, x) => a + prior(x.n), 0); bias = d / (played.length * 2) / size; }
+    // scouts' opinion compared with the average team they've rated, counting only ratings made before `time`
+    const overallAt = (n, time) => { const t = teams.get(n); if (!t || !t.ratings) return null;
+      const r = Object.fromEntries(Object.entries(t.ratings).filter(([, x]) => x && (!time || !x.at || x.at <= time)));
+      return scoutAgg({ ratings: r }).overall; };
+    const rated = allNums.map(n => overallAt(n, null)).filter(v => v != null);
+    const scoutMean = rated.length ? rated.reduce((a, b) => a + b, 0) / rated.length : null;
+    const epa = new Map(), cnt = new Map(), rec = new Map();
+    const get = (n) => { if (!epa.has(n)) { epa.set(n, prior(n) + bias); cnt.set(n, 0); rec.set(n, { w: 0, l: 0, g: 0 }); } return epa.get(n); };
+    const mult = (n, time) => {
+      let f = 1; const t = teams.get(n);
+      const o = scoutMean != null ? overallAt(n, time) : null;
+      if (o != null) f *= 1 + Math.max(-PRED.scoutCap, Math.min(PRED.scoutCap, PRED.scoutPer * (o - scoutMean)));
+      const st = t ? stateOf(t.city) : ""; if (st && evState && st !== evState) f *= 1 + PRED.travel;
+      const r = rec.get(n); if (r && r.g) f *= 1 + PRED.record * (r.w - r.l) / r.g * Math.min(1, r.g / 3);
+      return f;
+    };
+    const sideScore = (side, time) => side.reduce((a, x) => a + (x.noShow ? 0 : get(x.n) * mult(x.n, time)), 0);
+    const out = new Map(), res = [];
+    for (const m of list) {
+      const time = m.time ? Date.parse(m.time) : null;
+      const red = sideScore(m.red, isPlayed(m) ? time : null), blue = sideScore(m.blue, isPlayed(m) ? time : null);
+      out.set(matchKey(m), { red, blue });
+      if (!isPlayed(m)) continue;
+      res.push(m.redScore - red, m.blueScore - blue);
+      for (const [side, actual, pred, opp] of [[m.red, m.redScore, red, m.blueScore], [m.blue, m.blueScore, blue, m.redScore]]) {
+        const err = actual - pred, live = side.filter(x => !x.noShow);
+        for (const x of live) { const c = cnt.get(x.n) || 0, k = c === 0 ? 0.5 : c < 3 ? 0.4 : 0.3;
+          epa.set(x.n, Math.max(0, get(x.n) + k * err / Math.max(1, live.length))); cnt.set(x.n, c + 1); }
+        for (const x of side) if (!x.sur) { const r = rec.get(x.n) || { w: 0, l: 0, g: 0 }; r.g++; if (actual > opp) r.w++; else if (actual < opp) r.l++; rec.set(x.n, r); }
+      }
+    }
+    // widened a little: a handful of matches understates how much scores really swing
+    const sd = res.length >= 6 ? 1.2 * Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) : Math.max(8, 0.35 * (meanAlli ?? base * size));
+    let right = 0, total = 0;
+    for (const m of list) { const pr = out.get(matchKey(m)); pr.pRed = normCdf((pr.red - pr.blue) / (sd * Math.SQRT2));
+      if (isPlayed(m) && m.redScore !== m.blueScore) { total++; if ((pr.pRed >= 0.5) === (m.redScore > m.blueScore)) right++; pr.right = (pr.pRed >= 0.5) === (m.redScore > m.blueScore); } }
+    const matchup = (redNums, blueNums) => { const sc = (ns) => ns.reduce((a, n) => a + get(n) * mult(n, null), 0);
+      const r = sc(redNums), b = sc(blueNums); return { red: r, blue: b, pRed: normCdf((r - b) / (sd * Math.SQRT2)) }; };
+    return { out, right, total, matchup };
+  }
+  const nums = (txt) => [...new Set(String(txt || "").split(/[^0-9]+/).filter(Boolean).map(Number))];
+  function renderTry() {
+    const el = $("tryOut"); if (!el) return;
+    const r = nums($("tryRed").value), b = nums($("tryBlue").value);
+    if (!lastPred || !r.length || !b.length) { el.innerHTML = `<span class="hint">Type team numbers for both alliances.</span>`; return; }
+    const unknown = [...r, ...b].filter(n => !teams.has(n));
+    const x = lastPred.matchup(r, b);
+    el.innerHTML = predStrip(x) + (unknown.length ? `<p class="hint">Not at this competition, so treated as a typical team: ${unknown.join(", ")}.</p>` : "");
+  }
+  function predStrip(pr, played) {
+    const pct = Math.round(pr.pRed * 100), redFav = pr.pRed >= 0.5;
+    return `<div class="mpred"><span class="ptitle">Predicted</span><span class="pscore num"><b class="r">${Math.round(pr.red)}</b> – <b class="b">${Math.round(pr.blue)}</b></span>
+      <span class="pbar" aria-hidden="true"><i style="width:${pct}%"></i></span>
+      <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The prediction picked the winner">✓</span>` : `<span class="pbad" title="The prediction picked the wrong winner">✗</span>`}</div>`;
+  }
+
   function renderQuals(c) {
     if ($("qualsWrap").hidden) return;
     $("qOurs").setAttribute("aria-pressed", String(qualOurs)); $("qAll").setAttribute("aria-pressed", String(!qualOurs));
@@ -1469,6 +1581,9 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       $("qualNote").textContent = ""; return;
     }
     const has = (m, n) => m.red.some(t => t.n === n) || m.blue.some(t => t.n === n);
+    const P = lastPred = buildPredictor(list);
+    $("predAcc").textContent = P.total ? `Picked the winner in ${P.right} of ${P.total} played matches (${Math.round(P.right / P.total * 100)}%)` : "No matches played yet to check it against.";
+    renderTry();
     const label = (m) => (m.level === "Quals" ? "Q" : m.level === "DoubleElim" || m.level === "Playoff" ? "P" : m.level.slice(0, 1)) + (m.series ? m.series + "-" : "") + m.id;
     const fmtT = (iso) => { if (!iso) return ""; const d = new Date(iso); const today = new Date().toDateString() === d.toDateString();
       return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (today ? "" : " · " + d.toLocaleDateString([], { month: "short", day: "numeric" })); };
@@ -1481,8 +1596,9 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     const next = ours.find(m => !m.played);
     const sideTxt = (m) => { const red = m.red.some(t => t.n === us); const mine = (red ? m.red : m.blue).filter(t => t.n !== us).map(t => t.n), opp = (red ? m.blue : m.red).map(t => t.n);
       return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
+    const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
     $("qualSum").innerHTML = ours.length
-      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match not counted)` : ""}</span>${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
@@ -1502,6 +1618,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
         <div class="mhead"><b>${label(m)}</b>${[...m.red, ...m.blue].some(t => t.sur) ? `<span class="mstate" title="* marks a surrogate: that match doesn't count toward their record">has surrogate*</span>` : ""}<span class="mstate ${m === nextAll && !done ? "soon" : ""}">${state}</span><span class="mtime">${esc(fmtT(m.time))}</span></div>
         <div class="alli red ${win === "red" ? "won" : ""}"><div class="mteams">${m.red.map(chip).join("")}</div><span class="mscore">${done ? m.redScore : "–"}</span></div>
         <div class="alli blue ${win === "blue" ? "won" : ""}"><div class="mteams">${m.blue.map(chip).join("")}</div><span class="mscore">${done ? m.blueScore : "–"}</span></div>
+        ${predStrip(P.out.get(mk), done && m.redScore !== m.blueScore ? !!P.out.get(mk).right : null)}
         <div class="mfoot"><span class="mnotes ${mn ? "has" : ""}">${mn ? `${mn} note${mn === 1 ? "" : "s"}` : "No notes yet"}</span><span class="mopen">Notes ›</span></div>
       </div>`;
     }).join("");
@@ -2261,6 +2378,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("qOurs").onclick = () => { qualOurs = true; render(); };
   $("qAll").onclick = () => { qualOurs = false; render(); };
   $("qRefresh").onclick = () => loadQuals(true);
+  $("predHelpBtn").onclick = () => { const h = $("predHelp"), open = h.hidden; h.hidden = !open; $("predHelpBtn").setAttribute("aria-expanded", String(open)); };
+  $("tryRed").oninput = renderTry; $("tryBlue").oninput = renderTry;
   $("notesOnly").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
   window.addEventListener("hashchange", route);
