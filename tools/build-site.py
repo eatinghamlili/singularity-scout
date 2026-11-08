@@ -5,7 +5,7 @@ The board was first made as a claude.ai page. This script turns it into a normal
   * FTCScout is fetched straight from the visitor's browser (no desktop app needed)
   * every signed-in scout's browser keeps rankings updated during a competition
   * leads (from the roster) do what the board owner did on claude.ai
-  * claude.ai-only wording is replaced and the AI recap is hidden
+  * claude.ai-only wording is replaced; AI overviews come from the team-recap server function
 
 Run from the singularity-scout folder:   python tools/build-site.py ../alliance-pick-board.html
 """
@@ -62,8 +62,7 @@ REPLACE = [
     ('"Open this board on claude.ai to load and save competitions."', '"The team database isn\'t connected yet. See README.md."'),
     ('"Notes save only when the board is open on claude.ai."', '"The team database isn\'t connected, so notes can\'t be saved."'),
     ('"View-only access can\'t add notes."', '"This device can\'t save notes right now."'),
-    # no AI on the public website
-    ('  function recapBox(t) {\n', '  function recapBox(t) {\n    if (window.SITE) return "";   // no AI recap on the public website\n'),
+    # the website gets AI overviews from its own server function (supabase/functions/team-recap), not claude.ai
     ('  getSample();\n', '  if (!window.SITE) getSample();\n'),
 ]
 

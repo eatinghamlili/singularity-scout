@@ -83,6 +83,15 @@
       };
     }
     db = { doc: docRef, collection: colRef };
+
+    // AI overview of a team's scouting: the server function builds the prompt from the
+    // database and saves the result on the team, so this only names which team.
+    window.SITE.recap = async (event, team, force) => {
+      const { data, error } = await sb.functions.invoke("team-recap", { body: { event, team, force: !!force } });
+      if (!error) return data;
+      try { const body = await error.context.json(); if (body && body.error) return body; } catch (e) {}
+      return { error: "ai_error" };
+    };
   }
 
   let deviceId = "";

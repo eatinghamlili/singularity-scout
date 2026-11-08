@@ -112,6 +112,9 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.cardai { border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 8px; padding: 6px 10px; background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.cardai summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--accent-ink); }
+.cardai .aitext { font-size: 13.5px; margin-top: 6px; }
 .grouphead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .grouphead .hint { font-size: 13px; }
 .evgroup + .evgroup, .evgroup .evcards + .grouphead, .evgroup .morebtn + .grouphead { margin-top: 10px; }
@@ -1278,9 +1281,9 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       || allNotes(t).some(x => x.text.toLowerCase().includes(q)) || (t.tags || []).join(" ").toLowerCase().includes(q));
     const scouted = (t) => scoutAgg(t).count > 0 || allNotes(t).length > 0 || (t.tags || []).length || t.dnp;
     if (only) list = list.filter(scouted);
-    // order by pick list, then us, then everyone else
-    const pos = (t) => t === c.us ? 0 : (pickPos.get(t.number) ?? 999);
-    list.sort((a, b) => pos(a) - pos(b) || a.number - b.number);
+    // highest scout average first; teams nobody has rated yet go last (most notes first among them)
+    const avgOf = (t) => scoutAgg(t).overall ?? -1;
+    list.sort((a, b) => avgOf(b) - avgOf(a) || allNotes(b).length - allNotes(a).length || a.number - b.number);
     const total = c.all.filter(scouted).length;
     const noteCount = c.all.reduce((a, t) => a + allNotes(t).length, 0);
     $("notesNote").textContent = `${total} of ${c.all.length} teams scouted · ${noteCount} note${noteCount === 1 ? "" : "s"}. Tap a team to add your own.`;
@@ -1295,6 +1298,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
         ${bars ? `<div class="cats">${bars}</div>` : ""}
+        ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
     }).join("");
@@ -1679,15 +1683,22 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   let sampleFn, aiBusy = false, aiCtl = null;
   const getSample = () => sampleFn !== undefined ? Promise.resolve(sampleFn) : (window.claude?.use?.("sample") || Promise.resolve(null)).then(f => (sampleFn = f || null), () => (sampleFn = null));
   function scoutInputs(t) { return allNotes(t).length + Object.values(t.ratings || {}).filter(r => r && CATS.some(([k]) => score(r, k) != null)).length; }
+  function recapSig(t) {
+    const notes = allNotes(t).slice().sort((a, b) => a.at - b.at).map(n => `${n.by}:${n.at}`).join(",");
+    const nums = Object.entries(t.ratings || {}).filter(([, r]) => r && CATS.some(([k]) => score(r, k) != null))
+      .map(([id, r]) => `${id}:${CATS.map(([k]) => score(r, k) ?? "").join("/")}`).join(",");
+    return `${notes}|${nums}|${t.dnp ? 1 : 0}|${t.mobility?.ok ?? ""}`;
+  }
+  const aiTried = new Set();   // teams whose overview this page already asked for (no repeat asks after an error)
   function recapBox(t) {
-    if (window.SITE) return "";   // no AI recap on the public website
     const r = t.aiRecap, inputs = scoutInputs(t);
-    const stale = r && r.inputs !== inputs;
+    const stale = r && r.inputs !== recapSig(t) && r.inputs !== inputs;
     const can = db && !readOnly && uid && inputs > 0;
-    return `<section class="airecap" id="aiBox"><div class="aihead"><h3>AI recap of everyone's thoughts</h3>
-      <button type="button" class="btn ${r ? "" : "primary"}" id="aiBtn" ${can && sampleFn !== null ? "" : "disabled"}>${r ? (stale ? "Update recap" : "Redo recap") : "Recap everyone's thoughts"}</button></div>
-      <div class="aitext" id="aiText">${r ? esc(r.text) : `<span class="hint">${inputs ? "Have Claude read every scout's notes and numbers on this team and sum them up." : "Add notes or numbers first. The recap is built from what scouts have written."}</span>`}</div>
-      <p class="hint aimeta" id="aiMeta">${r ? `Written ${when(r.at)}${r.by ? " · asked by " + esc(r.by === uid ? "you" : nameOf(r.by)) : ""}${stale ? " · new notes since, update it to include them" : ""} · AI can get things wrong, so check the notes above.` : (sampleFn === null ? "AI recaps aren't available in this view." : "")}</p></section>`;
+    const byTxt = r && r.by && r.by !== "ai" ? " · asked by " + esc(r.by === uid ? "you" : nameOf(r.by)) : "";
+    return `<section class="airecap" id="aiBox"><div class="aihead"><h3>AI overview of everyone's notes</h3>
+      <button type="button" class="btn ${r ? "" : "primary"}" id="aiBtn" ${can && sampleFn !== null ? "" : "disabled"}>${r ? (stale ? "Update overview" : "Redo") : "Write overview"}</button></div>
+      <div class="aitext" id="aiText">${r ? esc(r.text) : `<span class="hint">${inputs ? "Claude reads every scout's notes and numbers on this team and sums them up." : "Add notes or numbers first. The overview is built from what scouts have written."}</span>`}</div>
+      <p class="hint aimeta" id="aiMeta">${r ? `Written ${when(r.at)}${byTxt}${stale ? " · new notes since, updating…" : ""} · AI can get things wrong, so check the notes below.` : (sampleFn === null ? "AI overviews aren't available in this view." : "")}</p></section>`;
   }
   function recapPrompt(t) {
     const ev = events.get(current);
@@ -1718,8 +1729,28 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     sampling_disabled: "AI recaps are turned off for your account or organization.", rate_limited: "You've hit a usage limit. Try again in a little while.",
     prompt_too_large: "There's too much scouting on this team to recap at once.", refused: "Claude couldn't write a recap for this team.", empty_completion: "Claude returned an empty recap. Try again.",
     session_expired: "Your session expired. Reload the board and try again.", cancelled: "Recap stopped." }[c] || "Couldn't write the recap. Try again in a moment.");
-  async function runRecap() {
+  const siteErr = (c) => ({ not_configured: "The AI overview isn't switched on yet: a lead needs to add the Anthropic API key in Supabase (see README).",
+    rate_limited: "The AI is busy right now. Try again in a minute.", refused: "Claude couldn't write an overview for this team.",
+    nothing_to_recap: "Add notes or numbers first.", not_found: "This team isn't saved yet." }[c] || "Couldn't write the overview. Try again in a moment.");
+  async function runRecap(force) {
     const num = dlgTeam, t = teams.get(num); if (!t || aiBusy) return;
+    if (window.SITE && window.SITE.recap) {
+      aiBusy = true; aiTried.add(current + "/" + num);
+      const btn = $("aiBtn"); if (btn) { btn.disabled = true; btn.textContent = "Writing…"; }
+      if (!t.aiRecap) { const tx = $("aiText"); if (tx) tx.textContent = "Reading every scout's notes…"; }
+      let r; try { r = await window.SITE.recap(current, num, !!force); } catch { r = { error: "ai_error" }; }
+      aiBusy = false;
+      if (r && r.text) {
+        teams.set(num, { ...teams.get(num), aiRecap: { text: r.text, at: r.at, inputs: r.inputs, by: r.by } });
+        if ($("teamDlg").open && dlgTeam === num) { const keep = $("dNote")?.value; renderTeamDlg(); if ($("dNote") && keep) $("dNote").value = keep; }
+        renderNotes(compute());
+      } else {
+        const el = $("aiMeta"); if (el) el.textContent = siteErr(r && r.error);
+        const b = $("aiBtn"); if (b) { b.disabled = false; b.textContent = t.aiRecap ? "Update overview" : "Write overview"; }
+        if (!t.aiRecap) { const tx = $("aiText"); if (tx) tx.innerHTML = `<span class="hint">No overview yet.</span>`; }
+      }
+      return;
+    }
     const sample = await getSample();
     if (!sample) { $("aiMeta").textContent = "AI recaps aren't available in this view."; return; }
     aiBusy = true; aiCtl = new AbortController();
@@ -1741,7 +1772,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       if (e && e.code === "not_granted") sampleFn = null;
     }
   }
-  document.addEventListener("click", (e) => { if (e.target.closest("#aiBtn")) runRecap(); });
+  document.addEventListener("click", (e) => { if (e.target.closest("#aiBtn")) runRecap(true); });
+  // website: write or refresh the overview by itself when a team with new notes is opened
+  function autoRecap() {
+    const t = teams.get(dlgTeam); if (!window.SITE || !window.SITE.recap || !t || !uid || readOnly) return;
+    if (!scoutInputs(t) || aiTried.has(current + "/" + dlgTeam)) return;
+    if (!t.aiRecap || t.aiRecap.inputs !== recapSig(t)) runRecap(false);
+  }
   $("teamDlg").addEventListener("close", () => { if (aiBusy && aiCtl) aiCtl.abort(); });
   if (!window.SITE) getSample();
 
@@ -1764,7 +1801,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
     draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
-    renderTeamDlg(); $("teamDlg").showModal();
+    renderTeamDlg(); $("teamDlg").showModal(); autoRecap();
   }
   function statBox(title, s, extra) {
     if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
@@ -1802,9 +1839,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <div class="seg3" role="group" aria-label="Can their robot move?">${[["yes", "Yes"], ["no", "No"], ["", "Not sure"]].map(([v, l]) =>
           `<button type="button" data-moves="${v}" class="${v === "no" ? "mno" : v === "yes" ? "myes" : ""}" aria-pressed="${draft.moves === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         ${t.mobility ? `<small class="hint">Last set by ${esc(t.mobility.by === uid ? "you" : nameOf(t.mobility.by))} · ${when(t.mobility.at)}</small>` : ""}</div>
+      ${recapBox(t)}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes on ${esc(t.number)}` : `Notes on ${esc(t.number)}`}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
         ${peopleBoxes(t)}${noteList(t, "dlg" + t.number, NOTES_SHOWN.dlg, dlgBy)}</div>
-      ${recapBox(t)}
       <div class="dlgfoot sticky">${draft.hasNums && canRate ? `<button type="button" class="btn danger left" id="dClear">Clear my numbers</button>` : ""}
         <button type="button" class="btn" data-close>Close</button><button type="submit" class="btn primary" ${canRate ? "" : "disabled"}>Save</button></div>`;
   }
