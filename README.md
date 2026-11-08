@@ -62,9 +62,10 @@ Rankings, match results and registrations come from FIRST's official FTC Events 
 
 ## Security, honestly
 
-- **Anyone with the link can read the board and add scouting.** 4-digit codes tell teammates apart; they are not passwords.
-- The database refuses: deleting competitions or teams, records outside the board's own types, unexpected fields, and very large records. Only roster entries and competition requests can be removed.
-- Your team's notes are visible to anyone who has the link, so share it only with the team.
+- **Scout codes are checked on the server.** The scrambled codes live in a private table (`scout_keys`) the website can't read. Signing in gives the phone a signed token that lasts 45 days. After 20 wrong codes in 10 minutes from one connection, sign-in pauses for 10 minutes.
+- **Every change goes through the `board` server function**, which checks who is making it: notes are saved under your own name, only your own notes can be deleted, only your own ratings can be changed, and only leads can change the roster. The database refuses changes from anywhere else.
+- **Reading is still open to anyone with the link**, so share it only with the team.
+- Codes are 4 digits, so they identify teammates; they aren't bank-grade passwords.
 
 ## Keeping it running
 

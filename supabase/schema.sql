@@ -76,3 +76,29 @@ grant execute on function public.merge_doc(text, jsonb) to anon, authenticated;
 -- Live updates to every open board.
 alter table public.docs replica identity full;
 alter publication supabase_realtime add table public.docs;
+
+
+-- ---------------------------------------------------------------------------------------------
+-- Server-checked sign-in (2026-11-08). Codes move to a private table; the public may only read.
+-- All writes go through the `board` edge function (supabase/functions/board), which runs with the
+-- service role and checks each change against the signed-in scout.
+create extension if not exists pgcrypto;
+create table if not exists public.scout_keys (id text primary key, hash text not null unique, updated_at timestamptz not null default now());
+alter table public.scout_keys enable row level security;
+revoke all on public.scout_keys from anon, authenticated;
+create table if not exists public.auth_attempts (ip text not null, at timestamptz not null default now());
+create index if not exists auth_attempts_ip_at on public.auth_attempts (ip, at);
+alter table public.auth_attempts enable row level security;
+revoke all on public.auth_attempts from anon, authenticated;
+create table if not exists public.app_secrets (name text primary key, value text not null);
+alter table public.app_secrets enable row level security;
+revoke all on public.app_secrets from anon, authenticated;
+insert into public.app_secrets (name, value) values ('token_key', encode(extensions.gen_random_bytes(32), 'hex')) on conflict (name) do nothing;
+insert into public.scout_keys (id, hash) select split_part(path, '/', 2), data->>'hash' from public.docs
+  where path like 'scouts/%' and coalesce(data->>'hash','') ~ '^[0-9a-f]{64}$' on conflict (id) do update set hash = excluded.hash;
+update public.docs set data = data - 'hash' where path like 'scouts/%' and data ? 'hash';
+drop policy if exists "add records" on public.docs;
+drop policy if exists "change records" on public.docs;
+drop policy if exists "remove scouts and requests" on public.docs;
+revoke insert, update, delete on public.docs from anon, authenticated;
+revoke execute on function public.merge_doc(text, jsonb) from anon, authenticated, public;
