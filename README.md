@@ -66,10 +66,12 @@ Rankings, match results and registrations come from FIRST's official FTC Events 
 
 ## Updating the page later
 
-The page is built from the claude.ai board's file. After changing that file:
+The page's source is `src/board.html` (the same file also runs as the claude.ai board). After changing it:
 
 ```
-python tools/build-site.py ../alliance-pick-board.html
+python tools/build-site.py src/board.html
 ```
 
-Then upload the new `index.html` to GitHub.
+Then commit and push; GitHub Pages serves the new `index.html` within a minute.
+
+A daily automated maintenance run (Claude, scheduled on the team lead's computer) tests the site against the separate **dev** database, fixes problems, makes small improvements, and pushes only when every check passes. What it did each day is written to `docs/daily-log.md`.
