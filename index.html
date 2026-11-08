@@ -665,8 +665,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         </div>
         <input id="search" type="search" placeholder="Find team…" aria-label="Find team">
         <div class="seg" role="group" aria-label="Show" id="availSeg">
-          <button id="showAvail" aria-pressed="true">Available</button>
-          <button id="showAll" aria-pressed="false">All</button>
+          <button id="showAvail" aria-pressed="false">Available</button>
+          <button id="showAll" aria-pressed="true">All</button>
         </div>
         <button class="btn" id="exportBtn">Copy CSV</button>
       </div>
@@ -737,7 +737,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <h2>How to use it</h2>
         <ol>
           <li><b>Load from FTCScout</b> to pull a competition's teams and OPR.</li>
-          <li>To rate a team or add a note, tap its number in <b>Rankings</b> or <b>Quals</b>. Add a note each time you watch it, and rate it 1–10. Ratings from everyone are averaged. The pick list and Scouting notes open a read-only summary.</li>
+          <li>To rate a team or add a note, tap its number on the <b>Pick list</b>, <b>Rankings</b> or <b>Quals</b>. Add a note each time you watch it, and rate it 1–10. Ratings from everyone are averaged. Scouting notes opens a read-only summary.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
         <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button></div>
@@ -835,7 +835,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   let loaded = false, readOnly = false, offline = false;
   let unsubTeams = null, subscribedKey = null;
   let current = null;          // the competition this viewer is scouting (from the link's #season-code)
-  let view = { filter: "available", q: "", sort: "fit", tab: "pick" };
+  let view = { filter: "all", q: "", sort: "fit", tab: "pick" };
   const HOME_LIMIT = 4;        // cards per group before "Show more"
   // the best-pick card stays tucked away until elims; each device remembers if it's open
   let pickOpen = false;
@@ -1522,7 +1522,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const total = c.all.filter(scouted).length;
     const noteCount = c.all.reduce((a, t) => a + allNotes(t).length, 0);
     $("notesNote").textContent = `${total} of ${c.all.length} teams scouted · ${noteCount} note${noteCount === 1 ? "" : "s"}. Tap a team to add your own.`;
-    if (!list.length) { $("noteCards").innerHTML = only && !q ? dinoEmpty("No notes yet", "Tap a team number in Rankings or Quals to rate it and leave a note.", "", "sit") : dinoEmpty("No teams match", "Try a different team number or name.", "sm", "lying"); return; }
+    if (!list.length) { $("noteCards").innerHTML = only && !q ? dinoEmpty("No notes yet", "Tap a team number on the pick list to rate it and leave a note.", "", "sit") : dinoEmpty("No teams match", "Try a different team number or name.", "sm", "lying"); return; }
     $("noteCards").innerHTML = list.map(t => {
       const sc = scoutAgg(t);
       const bars = CATS.map(([k, l]) => sc.avg[k] == null ? "" : `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k].toFixed(1)} of 10"><i style="width:${(sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k].toFixed(1)}</b></div>`).join("");
@@ -2375,7 +2375,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.open) goTo(b.dataset.open);
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
-    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#pickWrap,#notesWrap,#next,#pickBar,#needs") ? "view" : "edit");
+    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs") ? "view" : "edit");
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
     else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
