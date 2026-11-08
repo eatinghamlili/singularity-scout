@@ -63,7 +63,13 @@
       return {
         id: path.split("/").pop(), path,
         get: async () => snapOf(path, await getRow()),
-        set: async (data) => { await check(sb.from("docs").upsert({ path, data, updated_at: new Date().toISOString() })); onChange(path); },
+        // competition, team and match records are never replaced wholesale, only merged into, so a page that
+        // hasn't finished loading can't wipe out notes and ratings by writing a fresh copy over them
+        set: async (data) => {
+          if (path.startsWith("events/")) await check(sb.rpc("merge_doc", { p_path: path, p_patch: data }));
+          else await check(sb.from("docs").upsert({ path, data, updated_at: new Date().toISOString() }));
+          onChange(path);
+        },
         // nested objects merge (notes, ratings); done in the database so simultaneous saves don't clash
         update: async (data) => { await check(sb.rpc("merge_doc", { p_path: path, p_patch: data })); onChange(path); },
         delete: async () => { await check(sb.from("docs").delete().eq("path", path)); onChange(path); },
