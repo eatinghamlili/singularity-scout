@@ -3,7 +3,7 @@
 -- recreated in a new project: paste into Supabase → SQL Editor → Run.
 
 -- Every board record is one JSON document addressed by a path, e.g. 'scouts/om0x234a',
--- 'events/2026-USCALACAS1', 'events/2026-USCALACAS1/teams/49'.
+-- 'events/2026-USCALACAS1', 'events/2026-USCALACAS1/teams/49', 'events/2026-USCALACAS2/matches/Q-0-12'.
 create table public.docs (
   path text primary key,
   parent text generated always as (regexp_replace(path, '/[^/]+$', '')) stored,
@@ -15,7 +15,7 @@ create index docs_parent_idx on public.docs (parent);
 -- Only the board's own record shapes, and nothing huge.
 create or replace function public.docs_path_ok(p text) returns boolean
 language sql immutable set search_path = '' as $$
-  select p ~ '^(settings/main|scouts/[A-Za-z0-9_-]{1,40}|requests/[0-9]{4}-[A-Z0-9]{1,30}|events/[0-9]{4}-[A-Z0-9]{1,30}|events/[0-9]{4}-[A-Z0-9]{1,30}/teams/[0-9]{1,6})$'
+  select p ~ '^(settings/main|scouts/[A-Za-z0-9_-]{1,40}|requests/[0-9]{4}-[A-Z0-9]{1,30}|events/[0-9]{4}-[A-Z0-9]{1,30}|events/[0-9]{4}-[A-Z0-9]{1,30}/teams/[0-9]{1,6}|events/[0-9]{4}-[A-Z0-9]{1,30}/matches/[A-Za-z0-9_-]{1,24})$'
 $$;
 
 create or replace function public.docs_shape_ok(p text, d jsonb) returns boolean
@@ -28,6 +28,7 @@ language sql immutable set search_path = '' as $$
                                    and length(coalesce(d->>'name','')) <= 40 and length(coalesce(d->>'hash','')) <= 80
        when p like 'requests/%' then (d - array['season','code','by','at','status','error']) = '{}'::jsonb
        when p ~ '/teams/' then (d - array['number','name','city','ev','season','loadedAt','status','dnp','tags','ratings','notes','aiRecap','mobility']) = '{}'::jsonb
+       when p ~ '/matches/' then (d - array['label','notes']) = '{}'::jsonb
        else true
      end
 $$;
