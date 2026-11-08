@@ -28,7 +28,103 @@
       return { code: "unavailable", message: (e && e.message) || "Database error" };
     };
     const snapOf = (path, row) => ({ id: path.split("/").pop(), exists: !!row, data: () => (row ? row.data : undefined), metadata: meta });
-    async function check(promise) { const { data, error } = await promise; if (error) throw mapErr(error); return data; }
+    // a request that never reached the database (no signal, venue Wi-Fi) rather than one it refused
+    const isNetErr = (e) => !navigator.onLine || !!(e && (e.code === "offline" || (!e.code && /fetch|network|load failed|timed? ?out|abort/i.test(String(e.message || e)))));
+    async function check(promise) {
+      let res; try { res = await promise; } catch (e) { throw isNetErr(e) ? { code: "offline", message: String(e && e.message || e) } : mapErr(e); }
+      const { data, error } = res;
+      if (error) throw isNetErr(error) ? { code: "offline", message: error.message } : mapErr(error);
+      return data;
+    }
+
+    /* ---- offline: everything read is kept on this phone, and changes made without signal wait in an
+       outbox and upload in order once the connection is back. The database merges notes, so a scout
+       uploading late never overwrites anyone else. ---- */
+    const CK = "ss51-c:", OUTBOX = "ss51-outbox";
+    const store = {
+      get(k) { try { const v = localStorage.getItem(CK + k); return v ? JSON.parse(v) : undefined; } catch (e) { return undefined; } },
+      set(k, v) {
+        const txt = JSON.stringify(v);
+        try { localStorage.setItem(CK + k, txt); }
+        catch (e) {   // phone storage full: drop the saved copies (never the outbox) and try once more
+          try { Object.keys(localStorage).filter((x) => x.startsWith(CK)).forEach((x) => localStorage.removeItem(x)); localStorage.setItem(CK + k, txt); } catch (e2) {}
+        }
+      },
+    };
+    let outbox = []; try { outbox = JSON.parse(localStorage.getItem(OUTBOX) || "[]"); } catch (e) { outbox = []; }
+    const saveOutbox = () => { try { localStorage.setItem(OUTBOX, JSON.stringify(outbox)); } catch (e) {} status(); };
+    // same rule as the database's jsonb_deep_merge: objects merge key by key, anything else (null included) replaces
+    const deepMerge = (a, b) => {
+      if (!a || typeof a !== "object" || Array.isArray(a) || !b || typeof b !== "object" || Array.isArray(b)) return b;
+      const out = { ...a };
+      for (const [k, v] of Object.entries(b)) out[k] = v && typeof v === "object" && !Array.isArray(v) && out[k] && typeof out[k] === "object" && !Array.isArray(out[k]) ? deepMerge(out[k], v) : v;
+      return out;
+    };
+    // what a record looks like once this phone's waiting changes land
+    const withPending = (path, row) => {
+      let data = row ? row.data : undefined, gone = false;
+      for (const op of outbox) if (op.path === path) {
+        if (op.kind === "delete") { data = undefined; gone = true; }
+        else if (op.kind === "upsert") { data = op.data; gone = false; }
+        else { data = data === undefined ? op.data : deepMerge(data, op.data); gone = false; }
+      }
+      return data === undefined || gone ? null : { path, data };
+    };
+    const pendingChildren = (parent) => [...new Set(outbox.map((o) => o.path).filter((p) => parentOf(p) === parent))];
+    let syncing = false, refused = 0;
+    async function flush() {
+      if (syncing || !outbox.length || !navigator.onLine) return;
+      syncing = true; status();
+      try {
+        while (outbox.length) {
+          const op = outbox[0];
+          try {
+            if (op.kind === "merge") await check(sb.rpc("merge_doc", { p_path: op.path, p_patch: op.data }));
+            else if (op.kind === "upsert") await check(sb.from("docs").upsert({ path: op.path, data: op.data, updated_at: new Date().toISOString() }));
+            else await check(sb.from("docs").delete().eq("path", op.path));
+          } catch (e) {
+            if (e && e.code === "offline") break;          // still no signal: keep everything, try again later
+            refused++;                                    // the database refused it: drop it so the rest can go
+          }
+          outbox.shift(); saveOutbox(); onChange(op.path);
+        }
+      } finally { syncing = false; status(); }
+    }
+    // run a change now, or keep it in the outbox when there's no signal
+    async function write(kind, path, data, send) {
+      if (outbox.length || !navigator.onLine) { queue(kind, path, data); return; }
+      try { await send(); }
+      catch (e) { if (e && e.code === "offline") { queue(kind, path, data); return; } throw e; }
+      onChange(path);
+    }
+    function queue(kind, path, data) {
+      outbox.push({ kind, path, data, at: Date.now() }); saveOutbox();
+      onChange(path); setTimeout(flush, 0);
+    }
+    window.addEventListener("online", () => { status(); flush(); });
+    window.addEventListener("offline", status);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) flush(); });
+    setInterval(flush, 15000);
+
+    // small status pill: shows only when offline or when changes are waiting
+    let pill = null;
+    function status() {
+      if (!document.body) { document.addEventListener("DOMContentLoaded", status, { once: true }); return; }
+      if (!pill) {
+        pill = document.createElement("div"); pill.id = "syncPill"; pill.setAttribute("role", "status"); pill.setAttribute("aria-live", "polite");
+        pill.style.cssText = "position:fixed;left:12px;bottom:calc(12px + env(safe-area-inset-bottom,0px));z-index:60;max-width:calc(100vw - 24px);padding:7px 12px;border-radius:999px;font:600 13px/1.3 system-ui,-apple-system,'Segoe UI',sans-serif;box-shadow:0 6px 18px rgb(20 6 50 / .35);color:#fff;background:#1b0f33;border:1px solid #7c3aed";
+        document.body.appendChild(pill);
+      }
+      const n = outbox.length, off = !navigator.onLine;
+      let text = "";
+      if (off) text = n ? `Offline · ${n} change${n === 1 ? "" : "s"} saved on this phone, will upload when you're back online` : "Offline · showing what was last loaded. Notes you write will upload later.";
+      else if (n) text = syncing ? `Uploading ${n} change${n === 1 ? "" : "s"}…` : `${n} change${n === 1 ? "" : "s"} waiting to upload…`;
+      else if (refused) { text = `${refused} change${refused === 1 ? "" : "s"} made offline couldn't be saved.`; setTimeout(() => { refused = 0; status(); }, 8000); }
+      pill.textContent = text; pill.hidden = !text;
+      pill.style.background = off ? "#3b0764" : refused && !n ? "#7f1d1d" : "#1b0f33";
+      window.SITE.sync = { offline: off, pending: n };
+    }
+    window.SITE.flush = flush;
 
     // ---- live updates: one Realtime channel for the whole table; each listener re-reads
     // what it watches when a matching row changes. A slow poll covers any missed message.
@@ -59,26 +155,40 @@
     }
 
     function docRef(path) {
-      const getRow = async () => (await check(sb.from("docs").select("path,data").eq("path", path).maybeSingle())) || null;
+      // read the record; with no signal, use this phone's copy. Waiting changes are shown on top either way.
+      const getRow = async () => {
+        let row;
+        try { row = (await check(sb.from("docs").select("path,data").eq("path", path).maybeSingle())) || null; store.set("doc:" + path, row); }
+        catch (e) { if (e.code !== "offline") throw e; row = store.get("doc:" + path); if (row === undefined && !outbox.some((o) => o.path === path)) throw e; }
+        return withPending(path, row || null);
+      };
       return {
         id: path.split("/").pop(), path,
         get: async () => snapOf(path, await getRow()),
         // competition, team and match records are never replaced wholesale, only merged into, so a page that
         // hasn't finished loading can't wipe out notes and ratings by writing a fresh copy over them
         set: async (data) => {
-          if (path.startsWith("events/")) await check(sb.rpc("merge_doc", { p_path: path, p_patch: data }));
-          else await check(sb.from("docs").upsert({ path, data, updated_at: new Date().toISOString() }));
-          onChange(path);
+          if (path.startsWith("events/")) await write("merge", path, data, () => check(sb.rpc("merge_doc", { p_path: path, p_patch: data })));
+          else await write("upsert", path, data, () => check(sb.from("docs").upsert({ path, data, updated_at: new Date().toISOString() })));
         },
         // nested objects merge (notes, ratings); done in the database so simultaneous saves don't clash
-        update: async (data) => { await check(sb.rpc("merge_doc", { p_path: path, p_patch: data })); onChange(path); },
-        delete: async () => { await check(sb.from("docs").delete().eq("path", path)); onChange(path); },
+        update: async (data) => write("merge", path, data, () => check(sb.rpc("merge_doc", { p_path: path, p_patch: data }))),
+        delete: async () => write("delete", path, null, () => check(sb.from("docs").delete().eq("path", path))),
         onSnapshot: (next, error) => watch(docWatch, path, async () => { const row = await getRow(); return { sig: row && row.data, value: snapOf(path, row) }; }, next, error),
         collection: (sub) => colRef(path + "/" + sub),
       };
     }
     function colRef(path) {
-      const rows = async () => (await check(sb.from("docs").select("path,data").eq("parent", path).order("path").limit(1000))) || [];
+      const rows = async () => {
+        let list;
+        try { list = (await check(sb.from("docs").select("path,data").eq("parent", path).order("path").limit(1000))) || []; store.set("col:" + path, list); }
+        catch (e) { if (e.code !== "offline") throw e; list = store.get("col:" + path); if (list === undefined) throw e; }
+        const waiting = pendingChildren(path);
+        if (!waiting.length) return list;
+        const byPath = new Map(list.map((r) => [r.path, r]));
+        for (const p of waiting) { const r = withPending(p, byPath.get(p) || null); if (r) byPath.set(p, r); else byPath.delete(p); }
+        return [...byPath.values()].sort((a, b) => a.path.localeCompare(b.path));
+      };
       const query = (list) => { const docs = list.map((r) => snapOf(r.path, r)); return { docs, size: docs.length, empty: !docs.length, docChanges: () => [], metadata: meta }; };
       return {
         path,
@@ -96,10 +206,18 @@
     // AI_OVERVIEW in tools/build-site.py, and add ANTHROPIC_API_KEY in Supabase (README).
     // FIRST's official FTC Events API, through the ftc-events function (the login stays in Supabase)
     window.SITE.first = async (path) => {
-      const { data, error } = await sb.functions.invoke("ftc-events", { body: { path } });
-      if (error) throw error;
-      return data;
+      try {
+        const { data, error } = await sb.functions.invoke("ftc-events", { body: { path } });
+        if (error) throw error;
+        store.set("first:" + path, data);
+        return data;
+      } catch (e) {
+        const kept = store.get("first:" + path);
+        if (kept !== undefined && (!navigator.onLine || isNetErr(e) || /fetch|relay|network/i.test(String(e && e.message)))) return kept;
+        throw e;
+      }
     };
+    status(); setTimeout(flush, 2000);
     const AI_OVERVIEW = false;
     if (AI_OVERVIEW) window.SITE.recap = async (event, team, force) => {
       const { data, error } = await sb.functions.invoke("team-recap", { body: { event, team, force: !!force } });
@@ -119,5 +237,8 @@
     profiles: async (ids) => Object.fromEntries(ids.map((i) => [i, { id: i, name: "", isMe: false }])),
   };
   const caps = { db, user, mcp: {} };
+  if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
+    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+  }
   window.claude = { use: (name) => Promise.resolve(caps[name] || null) };
 })();

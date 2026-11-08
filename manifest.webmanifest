@@ -1,0 +1,14 @@
+{
+  "name": "Singularity Scout",
+  "short_name": "Scout 51",
+  "description": "Team 51 NerdHerd Singularity's FTC scouting and alliance selection board.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1b0f33",
+  "theme_color": "#1b0f33",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

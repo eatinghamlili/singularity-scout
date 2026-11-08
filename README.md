@@ -45,6 +45,14 @@ Rankings, match results and registrations come from FIRST's official FTC Events 
 - OPR still comes from FTCScout (FIRST doesn't publish it).
 - If FIRST can't be reached, the site switches to FTCScout on its own. The Quals tab says which one it's showing.
 
+## Works with bad or no signal
+
+- **Opens offline.** `sw.js` keeps the site's files on each phone, so it loads even with no signal (it still checks for updates first, giving up after a few seconds on weak Wi-Fi).
+- **Reads offline.** Everything a phone has loaded (competitions, teams, notes, ratings, the match schedule) is kept on that phone and shown when there's no connection.
+- **Writes offline.** Notes, ratings, picks and stars made without signal wait in an outbox on the phone and upload in order once it's back. A small pill in the corner shows "Offline" or how many changes are waiting. The database merges notes, so a late upload never overwrites anyone else's.
+- **Installs like an app.** On a phone, use Share → Add to Home Screen (iPhone) or Install app (Android).
+- Tip for event days: open the competition once before you lose signal so it's saved on every phone.
+
 ## How it behaves
 
 - **Leads** load competitions from FTCScout and manage the roster. **Scouts** rate, write notes, mark picks and request competitions.
