@@ -306,6 +306,10 @@ a { color: var(--accent-ink); }
 .nname:hover { color: var(--accent-ink); text-decoration: underline; }
 .nname:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .notecard.slim .nonote { margin: 0; font-size: 13px; }
+.slimbody { display: flex; flex-wrap: wrap; gap: 8px 22px; align-items: flex-start; }
+.slimhex { flex: 0 0 168px; padding: 0 10px; } .slimhex .hex { max-width: 148px; }
+.slimhex .hex .hlabel { font-size: 14px; }
+.slimnote { flex: 1 1 220px; min-width: 0; }
 .notecard header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .nnum { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
 .nnum:hover { color: var(--accent-ink); text-decoration: underline; }
@@ -1546,7 +1550,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       const n = allNotes(t).length;
       return `<article class="notecard slim ${t === c.us ? "isus" : ""}">
         <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button><button type="button" class="nname" data-team="${t.number}">${esc(t.name || "")}</button></header>
-        ${n ? noteList(t, "card" + t.number, 1) : `<p class="hint nonote">No notes yet</p>`}
+        <div class="slimbody"><div class="hexwrap slimhex">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>
+          <div class="slimnote">${n ? noteList(t, "card" + t.number, 1) : `<p class="hint nonote">No notes yet</p>`}</div></div>
       </article>`;
     }).join("");
   }
