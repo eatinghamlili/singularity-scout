@@ -37,6 +37,14 @@ It runs in the Supabase function `team-recap` (`supabase/functions/team-recap/in
 
 Never put the key in the website files; they're public.
 
+## Official data from FIRST
+
+Rankings, match results and registrations come from FIRST's official FTC Events API, through the Supabase function `ftc-events` (`supabase/functions/ftc-events/index.ts`). The API key stays in Supabase's secrets; the website never sees it, and the function only lets four public lists through (an event, its teams, rankings and the match schedule/results).
+
+- The key is the Supabase secret `first_key`. The FIRST username defaults to the account the key was issued to; a secret named `FTC_API_USERNAME` holding a username overrides it.
+- OPR still comes from FTCScout (FIRST doesn't publish it).
+- If FIRST can't be reached, the site switches to FTCScout on its own. The Quals tab says which one it's showing.
+
 ## How it behaves
 
 - **Leads** load competitions from FTCScout and manage the roster. **Scouts** rate, write notes, mark picks and request competitions.

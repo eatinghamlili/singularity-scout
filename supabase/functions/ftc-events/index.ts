@@ -6,8 +6,8 @@
 // can't be used for anything else. Answers are cached for a minute to stay well inside
 // FIRST's rate limits when many scouts have the board open.
 //
-// Needs two secrets (Supabase dashboard -> Edge Functions -> Secrets): FTC_API_USERNAME (the FIRST
-// account name the key was issued to) and the key itself as first_key (or FTC_API_KEY).
+// Needs the key as a Supabase secret (dashboard -> Edge Functions -> Secrets), e.g. first_key.
+// The FIRST username defaults to the account the key was issued to; FTC_API_USERNAME overrides it.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
 const CORS = {
@@ -27,16 +27,24 @@ const ALLOWED = [
   new RegExp(`^\\d{4}/rankings/${CODE}$`),
   new RegExp(`^\\d{4}/schedule/${CODE}/(qual|playoff)/hybrid$`),
 ];
+// The key is the long dashed code FIRST emails; find it in whichever of these secrets holds it.
+// The username is the FIRST account it was issued to (FTC_API_USERNAME when that holds a name).
+const GUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const DEFAULT_USER = "eathamlili";
+function login() {
+  const vals = ["first_key", "FTC_API_KEY", "FTC_API_USERNAME", "eathamlili"].map((n) => (Deno.env.get(n) || "").trim()).filter(Boolean);
+  const key = vals.find((v) => GUID.test(v)) || "";
+  const named = (Deno.env.get("FTC_API_USERNAME") || "").trim();
+  return { key, user: named && !GUID.test(named) ? named : DEFAULT_USER };
+}
 const TTL = 60_000;
 const cache = new Map<string, { at: number; status: number; body: string }>();
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
   if (req.method !== "POST") return json({ error: "Use POST." }, 405);
-  const env = (...names: string[]) => names.map((n) => (Deno.env.get(n) || "").trim()).find(Boolean) || "";
-  const user = env("FTC_API_USERNAME", "first_username", "FIRST_USERNAME"), key = env("FTC_API_KEY", "first_key", "FIRST_KEY");
+  const { user, key } = login();
   if (!key) return json({ error: "The FIRST API key isn't set up yet." }, 503);
-  if (!user) return json({ error: "The FIRST API username isn't set up yet (add the secret FTC_API_USERNAME)." }, 503);
 
   let path = "";
   try { path = String((await req.json())?.path || ""); } catch { /* fall through */ }

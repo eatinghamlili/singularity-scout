@@ -94,6 +94,12 @@
     // database and saves the result on the team, so this only names which team.
     // Switched OFF for now (paid API). To turn it on: set AI_OVERVIEW = true, rebuild with
     // AI_OVERVIEW in tools/build-site.py, and add ANTHROPIC_API_KEY in Supabase (README).
+    // FIRST's official FTC Events API, through the ftc-events function (the login stays in Supabase)
+    window.SITE.first = async (path) => {
+      const { data, error } = await sb.functions.invoke("ftc-events", { body: { path } });
+      if (error) throw error;
+      return data;
+    };
     const AI_OVERVIEW = false;
     if (AI_OVERVIEW) window.SITE.recap = async (event, team, force) => {
       const { data, error } = await sb.functions.invoke("team-recap", { body: { event, team, force: !!force } });

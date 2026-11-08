@@ -1025,13 +1025,13 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       if (!e || !e.code) throw { code: "not_json" };
       return { code: e.code, name: e.name, start: e.start, end: e.end, city: place(e), regionCode: e.regionCode || "", type: e.type || "" };
     },
-    async eventTeams(season, code) {
+    async ftcsEventTeams(season, code) {
       const parts = await this.get(`/events/${season}/${code}/teams`);
       return (parts || []).map(p => ({ number: p.teamNumber, ev: evPart(p.stats) }));
     },
     async regionTeams(region) { const out = {}; for (const t of (await this.get(`/teams/search?region=${encodeURIComponent(region)}`)) || []) out[t.number] = { name: t.name || "", city: place(t) }; return out; },
     async team(num) { const t = await this.get(`/teams/${num}`); return t ? { name: t.name || "", city: place(t) } : null; },
-    async eventMatches(season, code) {
+    async ftcsEventMatches(season, code) {
       const list = await this.get(`/events/${season}/${code}/matches`);
       const side = (m, color) => (m.teams || []).filter(t => t.alliance === color)
         .sort((a, b) => String(a.station).localeCompare(String(b.station)))
@@ -1045,6 +1045,53 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       })).sort((a, b) => (a.level === "Quals" ? 0 : 1) - (b.level === "Quals" ? 0 : 1) || String(a.scheduled || "").localeCompare(String(b.scheduled || "")) || a.id - b.id);
     },
     async seasonStats(season, num) { return seasonPart(await this.get(`/teams/${num}/quick-stats?season=${season}`)); },
+
+    /* FIRST's official FTC Events API (website only, through the team's server function).
+       Rankings, match results and registrations come from FIRST when it answers; OPR still
+       comes from FTCScout, which FIRST doesn't publish. Any FIRST failure falls back to FTCScout. */
+    async first(path) { const f = window.SITE && window.SITE.first; if (!f) return null; try { return await f(path); } catch { return null; } },
+    async firstRoster(season, code) {
+      const out = [];
+      for (let page = 1; page <= 20; page++) {
+        const r = await this.first(`${season}/teams?eventCode=${code}${page > 1 ? "&page=" + page : ""}`);
+        if (!r || !Array.isArray(r.teams)) return page === 1 ? null : out;
+        out.push(...r.teams.map(t => Number(t.teamNumber)).filter(Boolean));
+        if (!r.pageTotal || page >= r.pageTotal) break;
+      }
+      return out;
+    },
+    async eventTeams(season, code) {
+      const [ftcs, ranks] = await Promise.all([this.ftcsEventTeams(season, code).catch(() => null), this.first(`${season}/rankings/${code}`)]);
+      const official = new Map((ranks && Array.isArray(ranks.rankings) ? ranks.rankings : []).map(r => [Number(r.teamNumber), r]));
+      if (ftcs) {
+        // FIRST's standings are official and post first; FTCScout's numbers stay for OPR
+        for (const p of ftcs) { const r = official.get(p.number); if (r && p.ev) Object.assign(p.ev, { rank: r.rank ?? p.ev.rank, rp: r.sortOrder1 ?? p.ev.rp, w: r.wins ?? p.ev.w, l: r.losses ?? p.ev.l, t: r.ties ?? p.ev.t, played: r.matchesPlayed ?? p.ev.played }); }
+        // teams FIRST lists that FTCScout hasn't caught up on yet
+        const roster = await this.firstRoster(season, code);
+        if (roster) for (const n of roster) if (!ftcs.some(p => p.number === n)) ftcs.push({ number: n, ev: null });
+        return ftcs;
+      }
+      const roster = await this.firstRoster(season, code);
+      if (!roster) throw { code: "x", message: `Couldn't reach ${this.name} or FIRST. Check the internet connection.` };
+      return roster.map(n => ({ number: n, ev: null }));
+    },
+    async eventMatches(season, code) {
+      const conv = (m) => {
+        const side = (color) => (m.teams || []).filter(t => String(t.station || "").startsWith(color)).sort((a, b) => String(a.station).localeCompare(String(b.station)))
+          .map(t => ({ n: Number(t.teamNumber), noShow: !!t.noShow, dq: !!t.dq, sur: !!t.surrogate }));
+        const played = !!m.postResultTime || m.scoreRedFinal != null && m.actualStartTime != null;
+        return { id: m.matchNumber, level: "Quals", series: 0, played, time: m.actualStartTime || m.startTime || null, scheduled: m.startTime || null,
+          red: side("Red"), blue: side("Blue"), redScore: played ? m.scoreRedFinal : null, blueScore: played ? m.scoreBlueFinal : null };
+      };
+      const [quals, ftcs] = await Promise.all([this.first(`${season}/schedule/${code}/qual/hybrid`), this.ftcsEventMatches(season, code).catch(() => null)]);
+      if (quals && Array.isArray(quals.schedule) && quals.schedule.length) {
+        this.matchesFrom = "FIRST";
+        // FIRST for qualifications; playoffs keep FTCScout's numbering so their notes stay put
+        return [...quals.schedule.map(conv).sort((a, b) => a.id - b.id), ...(ftcs || []).filter(m => m.level !== "Quals")];
+      }
+      if (ftcs) { this.matchesFrom = this.name; return ftcs; }
+      throw { code: "x", message: `Couldn't reach ${this.name} or FIRST for the match schedule.` };
+    },
   };
   function evPart(st) {
     if (!st || !st.opr) return null;
@@ -1705,7 +1752,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     if (q) shown = shown.filter(m => [...m.red, ...m.blue].some(t => String(t.n).includes(q)));
     const nextAll = list.find(m => !m.played);
     $("qualNote").textContent = list.length
-      ? `${list.filter(m => m.played).length} of ${list.length} matches played${quals.at ? ` · updated ${ago(quals.at)}` : ""}. From ${SOURCE.name}. Tap a match for its notes, or a team number for that team's scouting.`
+      ? `${list.filter(m => m.played).length} of ${list.length} matches played${quals.at ? ` · updated ${ago(quals.at)}` : ""}. From ${SOURCE.matchesFrom === "FIRST" ? "FIRST (official)" : SOURCE.name}. Tap a match for its notes, or a team number for that team's scouting.`
       : `${SOURCE.name} hasn't posted a match schedule for this competition yet.`;
     if (!shown.length) { $("matchList").innerHTML = list.length ? dinoEmpty("No matches match", "Try a different team number.", "sm", "lying") : dinoEmpty("No matches yet", "The schedule usually appears the morning of the event.", "", "sleep"); return; }
     const chip = (t) => `<button type="button" class="mteam ${t.n === us ? "me" : ""} ${picks.has(t.n) ? "pick" : ""}" data-team="${t.n}" title="${esc((teams.get(t.n) || {}).name || "")}">${t.n}${t.sur ? "*" : ""}${t.noShow ? `<small>no show</small>` : ""}${t.dq ? `<small>DQ</small>` : ""}</button>`;
@@ -1993,7 +2040,10 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     try {
       for (const [k, e] of due) {
         regCheckedAt[k] = Date.now();
-        let parts; try { parts = await SOURCE.eventTeams(e.season, e.code); } catch { continue; }
+        let parts = null;
+        const roster = await SOURCE.firstRoster(e.season, e.code);
+        if (roster) parts = roster.map(n => ({ number: n }));
+        else { try { parts = await SOURCE.ftcsEventTeams(e.season, e.code); } catch { continue; } }
         if (!Array.isArray(parts) || !parts.length) continue;   // no list yet: leave what we have
         const hasUs = parts.some(p => p.number === settings.us), teamCount = parts.length;
         if (!!e.hasUs !== hasUs || (e.teamCount || 0) !== teamCount) {
