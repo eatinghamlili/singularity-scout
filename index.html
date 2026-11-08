@@ -124,6 +124,18 @@ a { color: var(--accent-ink); }
 .hex .hlabel { font: 600 11px var(--f-body); fill: var(--muted); }
 .hex.small .hlabel { font-size: 12px; }
 .hex .hval { fill: var(--ink); font-family: var(--f-mono); font-weight: 500; }
+.cmpbox { width: 100%; max-width: 300px; display: flex; flex-direction: column; align-items: center; gap: 6px; margin-top: 4px; }
+.cmpbtn { font-size: 13px; padding: 6px 12px; }
+.cmplist { width: 100%; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 6px; display: flex; flex-direction: column; gap: 6px; }
+.cmpfind { width: 100%; box-sizing: border-box; font-size: 16px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); }
+.cmpitems { max-height: 220px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.cmpitem { all: unset; box-sizing: border-box; cursor: pointer; display: flex; gap: 8px; align-items: baseline; padding: 6px 8px; border-radius: 6px; font-size: 13.5px; }
+.cmpitem[hidden] { display: none; }
+.cmpitem b { font-family: var(--f-display); font-weight: 800; min-width: 52px; }
+.cmpitem span { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cmpitem:hover, .cmpitem:focus-visible { background: var(--sunk); outline: 2px solid transparent; }
+.cmpitem:focus-visible { outline-color: var(--glow); }
+.cmpitem.on { background: color-mix(in srgb, var(--glow) 18%, transparent); }
 .hexlegend { display: flex; gap: 14px; font-size: 12.5px; color: var(--muted); }
 .hexlegend .lg { display: inline-block; width: 16px; height: 0; border-top: 3px solid; vertical-align: middle; margin-right: 5px; }
 .lg.team { border-color: var(--accent); } .lg.us { border-color: var(--glow); border-top-style: dashed; } .lg.avg { border-color: var(--muted); border-top-style: dotted; }
@@ -1971,6 +1983,17 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     }
   }
   document.addEventListener("click", (e) => { if (e.target.closest("#aiBtn")) runRecap(true); });
+  // team view: choose whose hexagon to lay over this team's
+  document.addEventListener("click", (e) => {
+    const tog = e.target.closest("[data-cmptoggle]"), pick = e.target.closest("[data-cmp]");
+    if (tog) { cmpOpen = !cmpOpen; renderTeamDlg(); if (cmpOpen) { const f = document.querySelector("#teamForm .cmpfind"); if (f && matchMedia("(hover: hover)").matches) f.focus(); } }
+    else if (pick) { dlgCmp = Number(pick.dataset.cmp); cmpOpen = false; renderTeamDlg(); const b = document.querySelector("#teamForm [data-cmptoggle]"); if (b) b.focus(); }
+  });
+  document.addEventListener("input", (e) => {
+    if (!e.target.classList || !e.target.classList.contains("cmpfind")) return;
+    const q = e.target.value.trim().toLowerCase();
+    e.target.parentElement.querySelectorAll(".cmpitem").forEach(b => { b.hidden = !!q && !b.dataset.find.includes(q); });
+  });
   // website: write or refresh the overview by itself when a team with new notes is opened
   function autoRecap() {
     const t = teams.get(dlgTeam); if (!window.SITE || !window.SITE.recap || !t || !uid || readOnly) return;
@@ -1992,9 +2015,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       .map(([id, g]) => box(id, id === uid ? "You" : nameOf(id), g, dlgBy === id)).join("")}</div>`;
   }
 
-  let dlgMode = "edit";
+  let dlgMode = "edit", dlgCmp = null, cmpOpen = false;
   function openTeam(num, mode) {
-    dlgTeam = num; dlgDirty = false; dlgBy = null; dlgMode = mode === "view" ? "view" : "edit";
+    dlgTeam = num; dlgDirty = false; dlgBy = null; dlgMode = mode === "view" ? "view" : "edit"; dlgCmp = null; cmpOpen = false;
     const t = teams.get(num); if (!t) return;
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
@@ -2025,9 +2048,19 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
       <div class="viewtop">
         <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
-        <div class="hexwrap">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number },
-          ...(c.us && t !== c.us ? [{ vals: profVals(c.skills.map.get(c.us.number)), kind: "us", name: "Team " + c.us.number }] : [])])}
-          <div class="hexlegend"><span><i class="lg team"></i>${esc(t.number)}</span>${c.us && t !== c.us ? `<span><i class="lg us"></i>${esc(c.us.number)} (us)</span>` : ""}</div></div>
+        ${(() => {
+          const cmpNum = dlgCmp === null ? (c.us && t !== c.us ? c.us.number : 0) : dlgCmp;
+          const other = cmpNum ? teams.get(cmpNum) : null;
+          const label = (x) => `${esc(x.number)}${x === c.us ? " (us)" : ""}`;
+          const choices = [...(c.us && t !== c.us ? [c.us] : []), ...c.all.filter(x => x !== t && x !== c.us).sort((a, b) => a.number - b.number)];
+          return `<div class="hexwrap">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number },
+            ...(other ? [{ vals: profVals(c.skills.map.get(other.number)), kind: "us", name: "Team " + other.number }] : [])])}
+            <div class="hexlegend"><span><i class="lg team"></i>${esc(t.number)}</span>${other ? `<span><i class="lg us"></i>${label(other)}</span>` : ""}</div>
+            <div class="cmpbox"><button type="button" class="btn cmpbtn" data-cmptoggle aria-expanded="${cmpOpen}">Compare with: <b>${other ? label(other) : "nobody"}</b> ▾</button>
+              ${cmpOpen ? `<div class="cmplist"><input type="search" class="cmpfind" placeholder="Find a team…" aria-label="Find a team to compare with" autocomplete="off">
+                <div class="cmpitems" role="listbox" aria-label="Teams to compare with">${choices.map(x => `<button type="button" role="option" aria-selected="${x === other}" class="cmpitem ${x === other ? "on" : ""}" data-cmp="${x.number}" data-find="${esc((x.number + " " + (x.name || "")).toLowerCase())}"><b>${label(x)}</b><span>${esc(x.name || "")}</span></button>`).join("")}
+                  ${other ? `<button type="button" class="cmpitem" data-cmp="0" data-find=""><span>Show only ${esc(t.number)}</span></button>` : ""}</div></div>` : ""}</div></div>`;
+        })()}
       </div>
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
