@@ -79,7 +79,9 @@
     const FN = cfg.url.replace(/\/$/, "") + "/functions/v1/board";
     async function callBoard(body, withToken) {
       let res;
-      try { res = await fetch(FN, { method: "POST", headers: { apikey: cfg.key, "Content-Type": "application/json", ...(withToken ? { "x-scout-token": token() } : {}) }, body: JSON.stringify(body) }); }
+      // a change waiting in the outbox goes up as the scout who made it, even if someone else signed in since
+      const tok = typeof withToken === "string" ? withToken : withToken ? token() : "";
+      try { res = await fetch(FN, { method: "POST", headers: { apikey: cfg.key, "Content-Type": "application/json", ...(tok ? { "x-scout-token": tok } : {}) }, body: JSON.stringify(body) }); }
       catch (e) { throw { code: "offline", message: String(e && e.message || e) }; }
       let out = null; try { out = await res.json(); } catch (e) {}
       return { status: res.status, out: out || {} };
@@ -92,9 +94,18 @@
       return { id: r.out.id, name: r.out.name };
     };
     window.SITE.signOut = () => { try { localStorage.removeItem(TOKEN); } catch (e) {} };
+    // photos: sent (already shrunk by the page) to the board function, which stores them and returns the address
+    window.SITE.uploadPhoto = async (path, blob) => {
+      if (!navigator.onLine) throw { code: "offline", message: "No connection." };
+      const data = await new Promise((ok, no) => { const r = new FileReader(); r.onload = () => ok(String(r.result).split(",")[1] || ""); r.onerror = () => no(r.error); r.readAsDataURL(blob); });
+      const res = await callBoard({ action: "upload", path, type: blob.type || "image/jpeg", data }, true);
+      if (res.status === 200 && res.out.url) return res.out.url;
+      if (res.status === 401) throw { code: "signin", message: res.out.message || "Sign in again to add photos." };
+      throw { code: "upload", message: res.out.message || "The photo couldn't be uploaded." };
+    };
     // one change, through the server's checks
     async function sendOp(op) {
-      const r = await callBoard({ action: "write", ops: [{ kind: op.kind, path: op.path, data: op.data }] }, true);
+      const r = await callBoard({ action: "write", ops: [{ kind: op.kind, path: op.path, data: op.data }] }, op.token || true);
       if (r.status === 200) return;
       if (r.status === 401) throw { code: "signin", message: r.out.message || "Sign in again." };
       if (r.status === 403) throw { code: "invalid_argument", message: r.out.message || "Not allowed." };
@@ -115,11 +126,11 @@
       try {
         while (outbox.length) {
           const op = outbox[0];
-          if (!token()) break;                             // not signed in: keep everything until they are
+          if (!token() && !op.token) break;                // not signed in: keep everything until they are
           try { await sendOp(op); }
           catch (e) {
             if (e && e.code === "offline") break;          // still no signal: keep everything, try again later
-            if (e && e.code === "signin") { signedOut(e.message); break; }
+            if (e && e.code === "signin") { if (op.token) { delete op.token; saveOutbox(); } signedOut(e.message); break; }   // expired: retry with the next sign-in
             refused++;                                    // the server refused it: drop it so the rest can go
           }
           outbox.shift(); saveOutbox(); onChange(op.path);
@@ -138,7 +149,7 @@
       onChange(path);
     }
     function queue(kind, path, data) {
-      outbox.push({ kind, path, data, at: Date.now() }); saveOutbox();
+      outbox.push({ kind, path, data, at: Date.now(), token: token() || undefined }); saveOutbox();
       onChange(path); setTimeout(flush, 0);
     }
     window.addEventListener("online", () => { status(); flush(); });

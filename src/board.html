@@ -554,6 +554,41 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .evitem .badge { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); margin-left: 6px; font-weight: 600; }
 .progress { height: 6px; background: var(--sunk); border-radius: 3px; overflow: hidden; }
 .progress span { display: block; height: 100%; width: 0; background: linear-gradient(90deg, var(--accent), var(--glow)); }
+.hexphoto { display: flex; flex-direction: column; align-items: center; gap: 8px; min-width: 0; width: 100%; }
+.pviewsw { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; background: var(--sunk); }
+.pviewsw button { all: unset; cursor: pointer; padding: 4px 14px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.pviewsw button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.pviewsw button:focus-visible { outline: 2px solid var(--glow); outline-offset: -2px; }
+.photoframe { all: unset; box-sizing: border-box; cursor: pointer; position: relative; display: block; width: 100%; max-width: 360px; aspect-ratio: 4 / 3; border-radius: 14px; overflow: hidden;
+  background: var(--sunk); border: 2px solid color-mix(in srgb, var(--accent) 45%, var(--line)); box-shadow: var(--shadow); transition: transform .15s ease, box-shadow .15s ease; }
+.photoframe > img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photoframe:focus-visible { outline: 3px solid var(--glow); outline-offset: 3px; }
+@media (hover: hover) { .photoframe:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); } }
+.photoframe .nophoto { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; color: var(--muted); }
+.photoframe .nophoto img { width: 46%; max-width: 160px; height: auto; }
+.photoframe .nophoto b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--ink); }
+/* the marker that says the photo can be changed: a lying-down Barney Jr. on a purple tab */
+.photobadge { position: absolute; left: 8px; bottom: 8px; display: flex; align-items: center; gap: 6px; padding: 3px 12px 3px 3px; border-radius: 999px;
+  background: color-mix(in srgb, #3b0764 88%, transparent); color: #f5f3ff; font-size: 12.5px; font-weight: 700; box-shadow: 0 4px 14px rgb(20 6 50 / .45); border: 1.5px solid #c4b5fd; }
+.photobadge img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; background: #ede9fe; }
+.notephotos { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.notephotos a { display: block; width: 76px; height: 76px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.notephotos img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photorow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.photorow .rlabel2 { flex-basis: 100%; }
+.photothumbs { display: flex; flex-wrap: wrap; gap: 6px; flex-basis: 100%; }
+.photothumbs:empty { display: none; }
+.pthumb { position: relative; width: 72px; height: 72px; border-radius: 8px; overflow: hidden; border: 1px solid var(--line); }
+.pthumb img { width: 100%; height: 100%; object-fit: cover; }
+.pthumb button { position: absolute; top: 2px; right: 2px; width: 24px; height: 24px; border-radius: 50%; border: 0; background: rgb(20 6 50 / .75); color: #fff; font-size: 16px; line-height: 1; cursor: pointer; }
+.photogrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 8px; }
+.photochoice { all: unset; box-sizing: border-box; cursor: pointer; position: relative; aspect-ratio: 4 / 3; border-radius: 10px; overflow: hidden; border: 2px solid var(--line); }
+.photochoice img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.photochoice.on { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 30%, transparent); }
+.photochoice:focus-visible { outline: 3px solid var(--glow); outline-offset: 2px; }
+.photocur { position: absolute; left: 6px; bottom: 6px; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); font-size: 11.5px; font-weight: 700; }
+.photoadd { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.photoadd label.busy { opacity: .6; pointer-events: none; }
 .toastbtn { all: unset; cursor: pointer; margin-left: 10px; font-weight: 700; color: #f0abfc; text-decoration: underline; text-underline-offset: 3px; }
 .toastbtn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--band); color: var(--band-ink); padding: 9px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
@@ -794,6 +829,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   </form>
 </dialog>
 
+<dialog id="photoDlg"><form class="dlg" id="photoForm" method="dialog"></form></dialog>
 <dialog id="matchDlg"><form class="dlg" id="matchForm" method="dialog"></form></dialog>
 
 <dialog id="confirmDlg">
@@ -1595,7 +1631,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
-        <div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>
+        ${hexOrPhoto(t, "card" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
         ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
@@ -2223,13 +2259,65 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   const when = (at) => at ? new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
   function allNotes(t) {
     const out = [];
-    for (const [nid, x] of Object.entries(t.notes || {})) if (x && x.text) out.push({ id: nid, by: x.by, text: x.text, at: x.at || 0, changed: !!x.changed, nums: x.nums || null });
+    for (const [nid, x] of Object.entries(t.notes || {})) if (x && x.text) out.push({ id: nid, by: x.by, text: x.text, at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [] });
     for (const [id, r] of Object.entries(t.ratings || {})) if (r && r.note) out.push({ id: "legacy:" + id, by: id, text: r.note, at: r.at || 0 });   // notes saved before history existed
     // number them oldest-first: n = order on this team, mine = order among this scout's notes
     out.sort((a, b) => a.at - b.at);
     const per = {};
     out.forEach((x, i) => { x.n = i + 1; x.mine = per[x.by] = (per[x.by] || 0) + 1; });
     return out.reverse();
+  }
+  /* ---------- photos (website only: uploads go through the team's server function) ---------- */
+  const PHOTOS_ON = () => !!(window.SITE && window.SITE.uploadPhoto);
+  const okPhotoUrl = (u) => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u);
+  const photoStrip = (list, num) => list && list.length ? `<div class="notephotos">${list.map(u => `<a href="${esc(u)}" target="_blank" rel="noopener" title="Open full size"><img src="${esc(u)}" alt="Photo of team ${esc(num)}" loading="lazy"></a>`).join("")}</div>` : "";
+  // every photo on a team, newest first, with the chosen main photo at the front
+  function teamPhotos(t) {
+    const out = [];
+    if (t.photo && okPhotoUrl(t.photo.url)) out.push(t.photo.url);
+    for (const x of allNotes(t)) for (const u of x.photos || []) if (!out.includes(u)) out.push(u);
+    return out;
+  }
+  const coverOf = (t) => teamPhotos(t)[0] || null;
+  // phones take huge pictures: shrink to at most 1280 px and re-encode before uploading
+  async function shrinkPhoto(file) {
+    let src;
+    try { src = await createImageBitmap(file, { imageOrientation: "from-image" }); }
+    catch { src = await new Promise((ok, no) => { const im = new Image(); im.onload = () => ok(im); im.onerror = () => no(new Error("unreadable")); im.src = URL.createObjectURL(file); }); }
+    const w = src.width || src.naturalWidth, h = src.height || src.naturalHeight, k = Math.min(1, 1280 / Math.max(w, h));
+    const cv = document.createElement("canvas"); cv.width = Math.round(w * k); cv.height = Math.round(h * k);
+    cv.getContext("2d").drawImage(src, 0, 0, cv.width, cv.height);
+    const blob = await new Promise(ok => cv.toBlob(ok, "image/webp", 0.8));
+    if (blob && blob.type === "image/webp") return blob;
+    return await new Promise(ok => cv.toBlob(ok, "image/jpeg", 0.82));   // Safari can't make WebP
+  }
+  // the hexagon, or the team's photo (tap it to change it)
+  const photoMode = new Map();
+  function hexOrPhoto(t, key, hexHtml) {
+    if (!PHOTOS_ON()) return hexHtml;
+    const on = !!photoMode.get(key), n = teamPhotos(t).length, cover = coverOf(t);
+    const sw = `<div class="pviewsw" role="group" aria-label="Show for team ${esc(t.number)}"><button type="button" data-pview="${esc(key)}" data-v="hex" aria-pressed="${!on}">Hexagon</button><button type="button" data-pview="${esc(key)}" data-v="photo" aria-pressed="${on}">Photo${n ? ` · ${n}` : ""}</button></div>`;
+    if (!on) return `<div class="hexphoto">${sw}${hexHtml}</div>`;
+    return `<div class="hexphoto">${sw}<button type="button" class="photoframe ${cover ? "" : "empty"}" data-photopick="${t.number}" aria-label="${cover ? "Change" : "Add"} the photo for team ${esc(t.number)}">
+      ${cover ? `<img src="${esc(cover)}" alt="Team ${esc(t.number)}'s robot">` : `<span class="nophoto"><img src="${BARNEY.sleep}" alt=""><b>No photo yet</b></span>`}
+      <span class="photobadge"><img src="${BARNEY.lying}" alt=""><span>${cover ? "Tap the photo to change it" : "Tap to add a photo"}</span></span></button></div>`;
+  }
+  let pendingPhotos = [];   // photos picked in the note window, uploaded when the note is saved
+  async function uploadPhotos(num, files) {
+    const urls = [];
+    for (const f of files) urls.push(await window.SITE.uploadPhoto(`events/${current}/teams/${num}`, f));
+    return urls;
+  }
+  function renderPhotoDlg(num) {
+    const t = teams.get(num); if (!t) return;
+    const list = teamPhotos(t), cur = coverOf(t), canAdd = !!(uid && db && !readOnly);
+    $("photoForm").innerHTML = `
+      <div class="dlghead"><div><h2>Photo for ${esc(t.number)} ${esc(t.name || "")}</h2><small>Pick the main photo, or add a new one.</small></div><button type="button" class="x" data-photoclose aria-label="Close">×</button></div>
+      ${list.length ? `<div class="photogrid" role="listbox" aria-label="Photos of team ${esc(t.number)}">${list.map(u => `<button type="button" role="option" class="photochoice ${u === cur ? "on" : ""}" aria-selected="${u === cur}" data-setphoto="${esc(u)}"><img src="${esc(u)}" alt="" loading="lazy">${u === cur ? `<span class="photocur">Main photo</span>` : ""}</button>`).join("")}</div>`
+        : `<div class="dinoempty sm sleep"><img src="${BARNEY.sleep}" alt=""><b>No photos yet</b><span>Take one of their robot, or add one to a note.</span></div>`}
+      ${canAdd ? `<div class="photoadd"><label class="btn primary">Take a photo<input type="file" accept="image/*" capture="environment" data-newphoto="${t.number}" hidden></label>
+        <label class="btn">Choose from photos<input type="file" accept="image/*" data-newphoto="${t.number}" hidden></label></div>` : `<p class="hint">Sign in with your scout code to add photos.</p>`}
+      <div class="dlgfoot"><button type="button" class="btn" data-photoclose>Close</button></div>`;
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
@@ -2243,7 +2331,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <div class="notetop"><span class="ord" title="${ordinal(x.n)} note on this team">${ordinal(x.n)}</span>${who(x.by, x.by === uid ? "You" : null)}
         <small>${x.mine > 1 ? `${x.by === uid ? "your" : "their"} ${ordinal(x.mine)} note · ` : ""}${when(x.at)}${i === 0 ? " · latest" : ""}${x.changed ? " · updated numbers" : ""}</small>
         ${canDel(x) ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${t.number}">Delete</button>` : ""}</div>
-        <div>${esc(x.text)}</div>${x.changed ? numsLine(x.nums) : ""}</div>`).join("")}</div>
+        <div>${esc(x.text)}</div>${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
       ${more > 0 ? `<button type="button" class="linkbtn morenotes" data-notesmore="${esc(key)}">${open ? "Show fewer notes" : `Show ${more} earlier note${more === 1 ? "" : "s"}`}</button>` : ""}`;
   }
 
@@ -2376,7 +2464,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
 
   let dlgMode = "edit", dlgCmp = null, cmpOpen = false;
+  const pendingThumbs = () => pendingPhotos.map((p, i) => `<span class="pthumb"><img src="${p.preview}" alt="Photo ${i + 1} to attach"><button type="button" data-unphoto="${i}" aria-label="Remove photo ${i + 1}">×</button></span>`).join("");
   function openTeam(num, mode) {
+    pendingPhotos.forEach(p => URL.revokeObjectURL(p.preview)); pendingPhotos = [];
     dlgTeam = num; dlgDirty = false; dlgBy = null; dlgMode = mode === "view" ? "view" : "edit"; dlgCmp = null; cmpOpen = false;
     const t = teams.get(num); if (!t) return;
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
@@ -2413,13 +2503,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
           const other = cmpNum ? teams.get(cmpNum) : null;
           const label = (x) => `${esc(x.number)}${x === c.us ? " (us)" : ""}`;
           const choices = [...(c.us && t !== c.us ? [c.us] : []), ...c.all.filter(x => x !== t && x !== c.us).sort((a, b) => a.number - b.number)];
-          return `<div class="hexwrap">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number },
+          return hexOrPhoto(t, "view" + t.number, `<div class="hexwrap">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number },
             ...(other ? [{ vals: profVals(c.skills.map.get(other.number)), kind: "us", name: "Team " + other.number }] : [])])}
             <div class="hexlegend"><span><i class="lg team"></i>${esc(t.number)}</span>${other ? `<span><i class="lg us"></i>${label(other)}</span>` : ""}</div>
             <div class="cmpbox"><button type="button" class="btn cmpbtn" data-cmptoggle aria-expanded="${cmpOpen}">Compare with: <b>${other ? label(other) : "nobody"}</b> ▾</button>
               ${cmpOpen ? `<div class="cmplist"><input type="search" class="cmpfind" placeholder="Find a team…" aria-label="Find a team to compare with" autocomplete="off">
                 <div class="cmpitems" role="listbox" aria-label="Teams to compare with">${choices.map(x => `<button type="button" role="option" aria-selected="${x === other}" class="cmpitem ${x === other ? "on" : ""}" data-cmp="${x.number}" data-find="${esc((x.number + " " + (x.name || "")).toLowerCase())}"><b>${label(x)}</b><span>${esc(x.name || "")}</span></button>`).join("")}
-                  ${other ? `<button type="button" class="cmpitem" data-cmp="0" data-find=""><span>Show only ${esc(t.number)}</span></button>` : ""}</div></div>` : ""}</div></div>`;
+                  ${other ? `<button type="button" class="cmpitem" data-cmp="0" data-find=""><span>Show only ${esc(t.number)}</span></button>` : ""}</div></div>` : ""}</div></div>`);
         })()}
       </div>
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
@@ -2448,6 +2538,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
       <label class="fld">${draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note for this match" : "Add a note"}<textarea id="dNote" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      ${PHOTOS_ON() && canRate ? `<div class="photorow"><span class="rlabel2">Photos</span>
+        <label class="btn photobtn">Take photo<input type="file" accept="image/*" capture="environment" id="dPhotoCam" data-addphoto hidden></label>
+        <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
+        <div class="photothumbs" id="dThumbs">${pendingThumbs()}</div></div>` : ""}
       <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
         <div class="numshead"><h3>Your numbers (1–10)${sc.count ? ` · team avg from ${sc.count} scout${sc.count === 1 ? "" : "s"}` : ""}</h3>
 </div>
@@ -2511,16 +2605,38 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const numsChanged = draft.upd && CATS.some(([k]) => (draft[k] || 0) !== (score(mine, k) || 0));
     const tagsChanged = tags.join("|") !== (t.tags || []).join("|") || dnp !== !!t.dnp;
     const movesNow = t.mobility ? (t.mobility.ok ? "yes" : "no") : "", movesChanged = draft.moves !== movesNow;
-    if (!text && !numsChanged && !tagsChanged && !movesChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    const photos = photoUrlsForSave ? [] : pendingPhotos.slice();
+    if (!text && !numsChanged && !tagsChanged && !movesChanged && !photos.length && !(photoUrlsForSave && photoUrlsForSave.length)) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    if (photos.length) { savePhotoNote(t, text, photos); return; }
     const now = Date.now(), patch = { tags, dnp };
     if (movesChanged) patch.mobility = draft.moves ? { ok: draft.moves === "yes", by: uid, at: now } : null;
     if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
-    if (text) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text, at: now, changed: numsChanged, ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}) } };
+    const withPhotos = photoUrlsForSave || []; photoUrlsForSave = null;
+    if (text || withPhotos.length) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || "Photo", at: now, changed: numsChanged, ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
+    if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
     patchTeam(dlgTeam, patch);
     dlgDirty = false; $("teamDlg").close();
-    toast(text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
+    toast(withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
   });
   $("teamDlg").addEventListener("close", () => { dlgDirty = false; });
+  // a note with photos: upload them (shrunk), then save everything in one go
+  async function savePhotoNote(t, text, photos) {
+    const num = t.number, btn = $("teamForm").querySelector('button[type="submit"]');
+    if (btn) { btn.disabled = true; btn.textContent = "Uploading photos…"; }
+    let urls = [];
+    try { urls = await uploadPhotos(num, photos.map(p => p.blob)); }
+    catch (e) {
+      if (btn) { btn.disabled = false; btn.textContent = "Save"; }
+      toast(e && e.code === "offline" ? "Photos need a connection. Try again when you have signal, or remove them to save the note now." : (e && e.message) || "The photos couldn't be uploaded. Try again.");
+      return;
+    }
+    // the rest of the form is read again so numbers, tags and "can it move" save exactly as without photos
+    pendingPhotos.forEach(p => URL.revokeObjectURL(p.preview)); pendingPhotos = [];
+    $("dNote").value = text; photoUrlsForSave = urls;
+    if (btn) btn.disabled = false;
+    $("teamForm").requestSubmit();
+  }
+  let photoUrlsForSave = null;
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-notesmore],[data-delnote],[data-notesby]"); if (!b) return;
     if (b.dataset.notesby !== undefined) {
@@ -2634,6 +2750,46 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // a message showing inside a window that closes moves back to the page
   const toastHome = new MutationObserver(() => { const el = $("toast"), d = el.parentElement; if (d && d.tagName === "DIALOG" && !d.open) document.body.appendChild(el); });
   document.querySelectorAll("dialog").forEach(d => toastHome.observe(d, { attributes: true, attributeFilter: ["open"] }));
+  document.addEventListener("click", (e) => {
+    const sw = e.target.closest("[data-pview]");
+    if (sw) { photoMode.set(sw.dataset.pview, sw.dataset.v === "photo"); if ($("teamDlg").open && sw.closest("#teamDlg")) renderTeamDlg(); else render(); return; }
+    const pick = e.target.closest("[data-photopick]");
+    if (pick) { const num = Number(pick.dataset.photopick); photoDlgTeam = num; renderPhotoDlg(num); $("photoDlg").showModal(); return; }
+    if (e.target.closest("[data-photoclose]")) { $("photoDlg").close(); return; }
+    const choice = e.target.closest("[data-setphoto]");
+    if (choice) {
+      const num = photoDlgTeam, url = choice.dataset.setphoto;
+      if (!uid) { toast("Sign in with your scout code to change photos."); return; }
+      patchTeam(num, { photo: { url, by: uid, at: Date.now() } }); $("photoDlg").close(); toast(`Main photo updated for ${num}`);
+      if ($("teamDlg").open) renderTeamDlg();
+      return;
+    }
+    const un = e.target.closest("[data-unphoto]");
+    if (un) { const [p] = pendingPhotos.splice(Number(un.dataset.unphoto), 1); if (p) URL.revokeObjectURL(p.preview); const el = $("dThumbs"); if (el) el.innerHTML = pendingThumbs(); }
+  });
+  let photoDlgTeam = null;
+  document.addEventListener("change", async (e) => {
+    const inp = e.target;
+    if (inp.matches && inp.matches("[data-addphoto]")) {
+      // photos for the note being written: shrink now, upload when the note is saved
+      const files = [...(inp.files || [])].slice(0, 6 - pendingPhotos.length); inp.value = "";
+      for (const f of files) { try { const blob = await shrinkPhoto(f); pendingPhotos.push({ blob, preview: URL.createObjectURL(blob) }); } catch { toast("That picture couldn't be read."); } }
+      dlgDirty = true; const el = $("dThumbs"); if (el) el.innerHTML = pendingThumbs();
+      if (pendingPhotos.length >= 6) toast("6 photos is the most for one note.");
+    } else if (inp.matches && inp.matches("[data-newphoto]")) {
+      // a new main photo straight from the photo window
+      const num = Number(inp.dataset.newphoto), f = inp.files && inp.files[0]; inp.value = ""; if (!f) return;
+      const form = $("photoForm"); form.querySelectorAll("label.btn").forEach(l => l.classList.add("busy"));
+      try {
+        const [url] = await uploadPhotos(num, [await shrinkPhoto(f)]);
+        patchTeam(num, { photo: { url, by: uid, at: Date.now() } });
+        $("photoDlg").close(); toast(`Photo added for ${num}`); if ($("teamDlg").open) renderTeamDlg();
+      } catch (err) {
+        form.querySelectorAll("label.btn").forEach(l => l.classList.remove("busy"));
+        toast(err && err.code === "offline" ? "Adding photos needs a connection. Try again when you have signal." : (err && err.message) || "The photo couldn't be uploaded. Try again.");
+      }
+    }
+  });
   document.addEventListener("keydown", (e) => {
     const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.tagName || "") || document.activeElement?.isContentEditable;
     if (e.key === "/" && !typing && current && !document.querySelector("dialog[open]")) { e.preventDefault(); $("search").focus(); $("search").select(); }

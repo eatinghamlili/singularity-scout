@@ -58,6 +58,11 @@ async function getDoc(path: string) {
   return (data?.data ?? null) as Record<string, any> | null;
 }
 const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "object" && !Array.isArray(v);
+// photos live in the public "photos" storage bucket; notes and teams may only point at those
+const PHOTO_BASE = Deno.env.get("SUPABASE_URL")!.replace(/\/$/, "") + "/storage/v1/object/public/photos/";
+const PHOTO_TAIL = /^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}\/[a-z0-9]{8,24}\.(webp|jpg|png)$/;
+const PHOTO_URL = { test: (u: string) => u.startsWith(PHOTO_BASE) && PHOTO_TAIL.test(u.slice(PHOTO_BASE.length)) };
+const okPhotos = (v: unknown) => v === undefined || (Array.isArray(v) && v.length <= 6 && v.every((u) => typeof u === "string" && PHOTO_URL.test(u)));
 
 // ---- what a scout may change ----
 function checkShape(path: string, data: any) {
@@ -74,6 +79,7 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     const old = existing?.[id];
     if (v === null) { if (old && old.by !== me) return "You can only delete your own notes."; continue; }
     if (!isObj(v)) return "A note must be an object.";
+    if (!okPhotos(v.photos)) return "Photos must be uploaded through the board.";
     if (old && old.by !== me) return "You can only edit your own notes.";
     if (!old && v.by !== me) return "Notes are saved under your own name.";
     if (old && v.by !== undefined && v.by !== me) return "Notes are saved under your own name.";
@@ -96,6 +102,24 @@ async function signIn(req: Request, body: any) {
     return fail(401, "wrong_code", "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.");
   }
   return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id) });
+}
+
+// a photo for a team or match: the page shrinks it first, so it arrives small (a few hundred KB)
+async function upload(req: Request, body: any) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  if (!me || !(await getDoc(`scouts/${me}`))) return fail(401, "signin", "Sign in with your scout code to add photos.");
+  const doc = String(body?.path || "");
+  if (!/^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}$/.test(doc)) return fail(400, "bad_path", "Photos go on a team or a match.");
+  const type = String(body?.type || ""), ext = ({ "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" } as Record<string, string>)[type];
+  if (!ext) return fail(400, "bad_type", "That kind of picture isn't supported.");
+  let bytes: Uint8Array;
+  try { const bin = atob(String(body?.data || "")); bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); }
+  catch { return fail(400, "bad_data", "That picture couldn't be read."); }
+  if (bytes.length < 100 || bytes.length > 2_000_000) return fail(400, "too_big", "That picture is too large.");
+  const name = `${doc}/${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.${ext}`;
+  const { error } = await db.storage.from("photos").upload(name, bytes, { contentType: type, upsert: false });
+  if (error) return fail(500, "server", "The photo couldn't be saved. Try again.");
+  return json({ url: PHOTO_BASE + name });
 }
 
 async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | null, rosterEmpty: boolean) {
@@ -145,6 +169,10 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
       const others = Object.keys(data.ratings).filter((k) => k !== uid);
       if (others.length) return "You can only change your own ratings.";
     }
+    if (data.photo !== undefined && data.photo !== null) {
+      if (!isObj(data.photo) || typeof data.photo.url !== "string" || !PHOTO_URL.test(data.photo.url)) return "Photos must be uploaded through the board.";
+      data = { ...data, photo: { url: data.photo.url, by: uid, at: Date.now() } };   // stamped with who chose it
+    }
     if (kind === "upsert") return "Teams and matches are only ever merged into."; // never replaced wholesale
   }
 
@@ -164,6 +192,7 @@ Deno.serve(async (req) => {
   let body: any = null; try { body = await req.json(); } catch { /* empty */ }
   try {
     if (body?.action === "signin") return await signIn(req, body);
+    if (body?.action === "upload") return await upload(req, body);
     if (body?.action !== "write" || !Array.isArray(body.ops) || !body.ops.length || body.ops.length > 50) return fail(400, "bad_request", "Unknown request.");
     const me = await readToken(req.headers.get("x-scout-token"));
     const meDoc = me ? await getDoc(`scouts/${me}`) : null;
