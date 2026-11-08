@@ -71,6 +71,43 @@
       return data === undefined || gone ? null : { path, data };
     };
     const pendingChildren = (parent) => [...new Set(outbox.map((o) => o.path).filter((p) => parentOf(p) === parent))];
+    // ---- signing in: the code is checked on the server, which hands back a signed token for this phone ----
+    const TOKEN = "ss51-token", ME = "ss51-scout";
+    const token = () => { try { return localStorage.getItem(TOKEN) || ""; } catch (e) { return ""; } };
+    // a phone signed in the old way (no token) signs in again once
+    try { if (!token()) localStorage.removeItem(ME); } catch (e) {}
+    const FN = cfg.url.replace(/\/$/, "") + "/functions/v1/board";
+    async function callBoard(body, withToken) {
+      let res;
+      try { res = await fetch(FN, { method: "POST", headers: { apikey: cfg.key, "Content-Type": "application/json", ...(withToken ? { "x-scout-token": token() } : {}) }, body: JSON.stringify(body) }); }
+      catch (e) { throw { code: "offline", message: String(e && e.message || e) }; }
+      let out = null; try { out = await res.json(); } catch (e) {}
+      return { status: res.status, out: out || {} };
+    }
+    window.SITE.signIn = async (code) => {
+      let r; try { r = await callBoard({ action: "signin", code }, false); } catch (e) { return { error: "Can't reach the team database. Check the connection and try again." }; }
+      if (r.status !== 200 || !r.out.token) return { error: r.out.message || "Couldn't sign in. Try again." };
+      try { localStorage.setItem(TOKEN, r.out.token); } catch (e) {}
+      setTimeout(flush, 0);
+      return { id: r.out.id, name: r.out.name };
+    };
+    window.SITE.signOut = () => { try { localStorage.removeItem(TOKEN); } catch (e) {} };
+    // one change, through the server's checks
+    async function sendOp(op) {
+      const r = await callBoard({ action: "write", ops: [{ kind: op.kind, path: op.path, data: op.data }] }, true);
+      if (r.status === 200) return;
+      if (r.status === 401) throw { code: "signin", message: r.out.message || "Sign in again." };
+      if (r.status === 403) throw { code: "invalid_argument", message: r.out.message || "Not allowed." };
+      if (r.status >= 500 || r.status === 0) throw { code: "offline", message: r.out.message || "Server busy." };
+      throw { code: "invalid_argument", message: r.out.message || "Not allowed." };
+    }
+    function signedOut(message) {
+      try { localStorage.removeItem(TOKEN); localStorage.removeItem(ME); } catch (e) {}
+      // changes waiting in the outbox stay on this phone and upload after signing in again
+      alertOnce = message || "Sign in again with your scout code. Your waiting changes are kept on this phone.";
+      status(); setTimeout(() => location.reload(), 1800);
+    }
+    let alertOnce = "";
     let syncing = false, refused = 0;
     async function flush() {
       if (syncing || !outbox.length || !navigator.onLine) return;
@@ -78,23 +115,26 @@
       try {
         while (outbox.length) {
           const op = outbox[0];
-          try {
-            if (op.kind === "merge") await check(sb.rpc("merge_doc", { p_path: op.path, p_patch: op.data }));
-            else if (op.kind === "upsert") await check(sb.from("docs").upsert({ path: op.path, data: op.data, updated_at: new Date().toISOString() }));
-            else await check(sb.from("docs").delete().eq("path", op.path));
-          } catch (e) {
+          if (!token()) break;                             // not signed in: keep everything until they are
+          try { await sendOp(op); }
+          catch (e) {
             if (e && e.code === "offline") break;          // still no signal: keep everything, try again later
-            refused++;                                    // the database refused it: drop it so the rest can go
+            if (e && e.code === "signin") { signedOut(e.message); break; }
+            refused++;                                    // the server refused it: drop it so the rest can go
           }
           outbox.shift(); saveOutbox(); onChange(op.path);
         }
       } finally { syncing = false; status(); }
     }
     // run a change now, or keep it in the outbox when there's no signal
-    async function write(kind, path, data, send) {
+    async function write(kind, path, data) {
       if (outbox.length || !navigator.onLine) { queue(kind, path, data); return; }
-      try { await send(); }
-      catch (e) { if (e && e.code === "offline") { queue(kind, path, data); return; } throw e; }
+      try { await sendOp({ kind, path, data }); }
+      catch (e) {
+        if (e && e.code === "offline") { queue(kind, path, data); return; }
+        if (e && e.code === "signin") { queue(kind, path, data); signedOut(e.message); return; }
+        throw e;
+      }
       onChange(path);
     }
     function queue(kind, path, data) {
@@ -117,7 +157,8 @@
       }
       const n = outbox.length, off = !navigator.onLine;
       let text = "";
-      if (off) text = n ? `Offline · ${n} change${n === 1 ? "" : "s"} saved on this phone, will upload when you're back online` : "Offline · showing what was last loaded. Notes you write will upload later.";
+      if (alertOnce) text = alertOnce;
+      else if (off) text = n ? `Offline · ${n} change${n === 1 ? "" : "s"} saved on this phone, will upload when you're back online` : "Offline · showing what was last loaded. Notes you write will upload later.";
       else if (n) text = syncing ? `Uploading ${n} change${n === 1 ? "" : "s"}…` : `${n} change${n === 1 ? "" : "s"} waiting to upload…`;
       else if (refused) { text = `${refused} change${refused === 1 ? "" : "s"} made offline couldn't be saved.`; setTimeout(() => { refused = 0; status(); }, 8000); }
       pill.textContent = text; pill.hidden = !text;
@@ -168,12 +209,11 @@
         // competition, team and match records are never replaced wholesale, only merged into, so a page that
         // hasn't finished loading can't wipe out notes and ratings by writing a fresh copy over them
         set: async (data) => {
-          if (path.startsWith("events/")) await write("merge", path, data, () => check(sb.rpc("merge_doc", { p_path: path, p_patch: data })));
-          else await write("upsert", path, data, () => check(sb.from("docs").upsert({ path, data, updated_at: new Date().toISOString() })));
+          await write(path.startsWith("events/") ? "merge" : "upsert", path, data);
         },
         // nested objects merge (notes, ratings); done in the database so simultaneous saves don't clash
-        update: async (data) => write("merge", path, data, () => check(sb.rpc("merge_doc", { p_path: path, p_patch: data }))),
-        delete: async () => write("delete", path, null, () => check(sb.from("docs").delete().eq("path", path))),
+        update: async (data) => write("merge", path, data),
+        delete: async () => write("delete", path, null),
         onSnapshot: (next, error) => watch(docWatch, path, async () => { const row = await getRow(); return { sig: row && row.data, value: snapOf(path, row) }; }, next, error),
         collection: (sub) => colRef(path + "/" + sub),
       };

@@ -65,6 +65,21 @@ REPLACE = [
     # the website gets AI overviews from its own server function (supabase/functions/team-recap), not claude.ai.
     # Switched off for now: the section is hidden unless platform.js turns window.SITE.recap on.
     ('  getSample();\n', '  if (!window.SITE) getSample();\n'),
+    # sign in: the code is checked on the server, never against data in the page
+    ('''    const h = await hashCode(code);
+    const hit = [...scouts.entries()].find(([, s]) => s.hash === h);
+    if (hit) { gateMsg = ""; setMe(hit[0]); toast(`Welcome, ${hit[1].name}`); }''',
+     '''    const r = await window.SITE.signIn(code);
+    if (r && r.id) { gateMsg = ""; setMe(r.id); toast(`Welcome, ${r.name}`); return; }
+    if (r && r.error && !/match anyone/.test(r.error)) { gateMsg = r.error; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } return; }
+    const hit = null;
+    if (hit) { setMe(hit[0]); }'''),
+    # the first lead signs in properly after creating the roster
+    ('const r = await addScout($("sName").value, $("sCode").value.trim(), true); setMe(r.id);',
+     'const r = await addScout($("sName").value, $("sCode").value.trim(), true); await trySignIn(r.code);'),
+    # signing out forgets this phone's token too
+    ('$("meBtn").onclick = () => { gateMsg = ""; setMe(null); };',
+     '$("meBtn").onclick = () => { gateMsg = ""; window.SITE.signOut && window.SITE.signOut(); setMe(null); };'),
     ('  function recapBox(t) {\n', '  function recapBox(t) {\n    if (window.SITE && !window.SITE.recap) return "";   // AI overview switched off on the website\n'),
 ]
 

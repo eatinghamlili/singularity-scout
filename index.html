@@ -1295,9 +1295,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
 
   async function trySignIn(code) {
     if (!/^\d{4}$/.test(code)) return;
-    const h = await hashCode(code);
-    const hit = [...scouts.entries()].find(([, s]) => s.hash === h);
-    if (hit) { gateMsg = ""; setMe(hit[0]); toast(`Welcome, ${hit[1].name}`); }
+    const r = await window.SITE.signIn(code);
+    if (r && r.id) { gateMsg = ""; setMe(r.id); toast(`Welcome, ${r.name}`); return; }
+    if (r && r.error && !/match anyone/.test(r.error)) { gateMsg = r.error; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } return; }
+    const hit = null;
+    if (hit) { setMe(hit[0]); }
     else { gateMsg = "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours."; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } }
   }
   async function freeCode(wanted) {
@@ -1380,10 +1382,10 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "setupForm") return;
     e.preventDefault();
-    try { if (!/^\d{4}$/.test($("sCode").value.trim())) throw "Pick a 4-digit code for yourself."; const r = await addScout($("sName").value, $("sCode").value.trim(), true); setMe(r.id); toast(`Roster created. Your code is ${r.code}.`); }
+    try { if (!/^\d{4}$/.test($("sCode").value.trim())) throw "Pick a 4-digit code for yourself."; const r = await addScout($("sName").value, $("sCode").value.trim(), true); await trySignIn(r.code); toast(`Roster created. Your code is ${r.code}.`); }
     catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : "Couldn't save. Check your connection."; el.hidden = false; } }
   });
-  $("meBtn").onclick = () => { gateMsg = ""; setMe(null); };
+  $("meBtn").onclick = () => { gateMsg = ""; window.SITE.signOut && window.SITE.signOut(); setMe(null); };
   $("rosterBtn").onclick = openRoster;
 
   /* ---------- live updates during a competition ----------
