@@ -706,7 +706,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <div class="predhead" id="predHead">
           <div class="predtop"><b>Match predictor</b><span class="predacc" id="predAcc"></span>
             <button type="button" class="qhelp" id="predHelpBtn" aria-expanded="false" aria-controls="predHelp" aria-label="How the predictor works">?</button></div>
-          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches show ✓ or ✗ so you can see how often it's right.</p>
+          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches show ✓ or ✗ so you can see how often it's right.</p>
           <details class="trymatch"><summary>Try a matchup</summary>
             <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
               <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
@@ -1641,7 +1641,38 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
      match, the team's record here so far, and whether it crossed state lines to come (teams don't travel
      far to lose) scale it a little. Win chance comes from the predicted margin against how far real
      scores land from predictions at this competition. */
-  const PRED = { scoutPer: 0.035, scoutCap: 0.18, travel: 0.06, record: 0.05 };
+  const PRED = { scoutPer: 0.035, scoutCap: 0.18, travel: 0.06, record: 0.05,
+    lastSeason: 0.4,   // last season's world-rank percentile moves a starting strength by up to ~40% of a typical team per standard deviation
+    fade: 5,           // ...and that nudge halves after 5 matches this season, fading further with every match
+    spread: 1.0 };     // win chances use the real spread of results (1.2 was too timid)
+  // last season's world ranking per team (FTCScout), fetched once per competition; a percentile carries across seasons, points don't
+  const prevSeason = new Map();
+  let prevLoadingFor = null;
+  async function loadPrevSeason(list) {
+    const ev = events.get(current); if (!ev || !ev.season || prevLoadingFor === current) return;
+    prevLoadingFor = current;
+    const nums = [...new Set(list.flatMap(m => [...m.red, ...m.blue].map(x => x.n)))].filter(n => !prevSeason.has(n));
+    for (let i = 0; i < nums.length; i += 6) {
+      await Promise.all(nums.slice(i, i + 6).map(async (n) => {
+        try { const q = await SOURCE.get(`/teams/${n}/quick-stats?season=${Number(ev.season) - 1}`); prevSeason.set(n, q && q.tot && q.count ? { rank: q.tot.rank, count: q.count } : null); }
+        catch { prevSeason.set(n, null); }
+      }));
+    }
+    if (view.tab === "quals") render();
+  }
+  // inverse of the normal curve (Acklam's approximation): turns a percentile into "standard deviations above average"
+  function zOfPct(p) {
+    const a = [-39.69683028665376, 220.9460984245205, -275.9285104469687, 138.357751867269, -30.66479806614716, 2.506628277459239],
+      b = [-54.47609879822406, 161.5858368580409, -155.6989798598866, 66.80131188771972, -13.28068155288572],
+      c = [-0.007784894002430293, -0.3223964580411365, -2.400758277161838, -2.549732539343734, 4.374664141464968, 2.938163982698783],
+      d = [0.007784695709041462, 0.3224671290700398, 2.445134137142996, 3.754408661907416];
+    const q0 = Math.min(0.995, Math.max(0.005, p));
+    if (q0 < 0.02425) { const q = Math.sqrt(-2 * Math.log(q0)); return (((((c[0] * q + c[1]) * q + c[2]) * q + c[3]) * q + c[4]) * q + c[5]) / ((((d[0] * q + d[1]) * q + d[2]) * q + d[3]) * q + 1); }
+    if (q0 > 1 - 0.02425) return -zOfPct(1 - q0);
+    const q = q0 - 0.5, r = q * q;
+    return (((((a[0] * r + a[1]) * r + a[2]) * r + a[3]) * r + a[4]) * r + a[5]) * q / (((((b[0] * r + b[1]) * r + b[2]) * r + b[3]) * r + b[4]) * r + 1);
+  }
+  const lastSeasonZ = (n) => { const v = prevSeason.get(n); return v ? Math.max(-2.5, Math.min(2.5, zOfPct(1 - (v.rank - 0.5) / v.count))) : 0; };
   const stateOf = (city) => { const p = String(city || "").split(","); return p.length > 1 ? p[p.length - 1].trim().toUpperCase() : ""; };
   const normCdf = (x) => 1 / (1 + Math.exp(-1.702 * x));
   let lastPred = null;
@@ -1675,7 +1706,12 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       const r = rec.get(n); if (r && r.g) f *= 1 + PRED.record * (r.w - r.l) / r.g * Math.min(1, r.g / 3);
       return f;
     };
-    const sideScore = (side, time) => side.reduce((a, x) => a + (x.noShow ? 0 : get(x.n) * mult(x.n, time)), 0);
+    // last season's nudge counts fully before a team has any results this season, half after 5 matches, and keeps fading;
+    // a team with earlier events this season (season OPR known) already counts as 5 matches in
+    const seen = (n) => (seasonNp(n) != null ? PRED.fade : 0) + (cnt.get(n) || 0);
+    const nudge = (n) => base * PRED.lastSeason * lastSeasonZ(n) * PRED.fade / (PRED.fade + seen(n));
+    const strength = (n) => Math.max(0, get(n) + nudge(n));
+    const sideScore = (side, time) => side.reduce((a, x) => a + (x.noShow ? 0 : strength(x.n) * mult(x.n, time)), 0);
     const out = new Map(), res = [];
     for (const m of list) {
       const time = m.time ? Date.parse(m.time) : null;
@@ -1691,11 +1727,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       }
     }
     // widened a little: a handful of matches understates how much scores really swing
-    const sd = res.length >= 6 ? 1.2 * Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) : Math.max(8, 0.35 * (meanAlli ?? base * size));
+    const sd = res.length >= 6 ? PRED.spread * Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) : Math.max(8, 0.35 * (meanAlli ?? base * size));
     let right = 0, total = 0;
     for (const m of list) { const pr = out.get(matchKey(m)); pr.pRed = normCdf((pr.red - pr.blue) / (sd * Math.SQRT2));
       if (isPlayed(m) && m.redScore !== m.blueScore) { total++; if ((pr.pRed >= 0.5) === (m.redScore > m.blueScore)) right++; pr.right = (pr.pRed >= 0.5) === (m.redScore > m.blueScore); } }
-    const matchup = (redNums, blueNums) => { const sc = (ns) => ns.reduce((a, n) => a + get(n) * mult(n, null), 0);
+    const matchup = (redNums, blueNums) => { const sc = (ns) => ns.reduce((a, n) => a + strength(n) * mult(n, null), 0);
       const r = sc(redNums), b = sc(blueNums); return { red: r, blue: b, pRed: normCdf((r - b) / (sd * Math.SQRT2)) }; };
     return { out, right, total, matchup };
   }
@@ -1728,6 +1764,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       $("qualNote").textContent = ""; return;
     }
     const has = (m, n) => m.red.some(t => t.n === n) || m.blue.some(t => t.n === n);
+    loadPrevSeason(list);
     const P = lastPred = buildPredictor(list);
     $("predAcc").textContent = P.total ? `Picked the winner in ${P.right} of ${P.total} played matches (${Math.round(P.right / P.total * 100)}%)` : "No matches played yet to check it against.";
     renderTry();
