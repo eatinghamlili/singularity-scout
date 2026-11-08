@@ -134,6 +134,34 @@ a { color: var(--accent-ink); }
 .tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
 .tabs button:focus-visible { outline: 2px solid var(--glow); }
 .ranknote { margin: 0; padding: 10px 14px 0; }
+.qualsview { padding: 12px 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+.qualshead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 10px 16px; }
+.qualsum { display: flex; flex-direction: column; gap: 2px; font-size: 14px; min-width: 0; }
+.qualsum > b { font-family: var(--f-display); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: .03em; }
+.qualsum .nextm { color: var(--accent-ink); font-weight: 500; }
+.qualctl { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.qualnote { margin: 0; }
+.matchlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+.match { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
+.match.ours { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
+.mhead { display: flex; align-items: baseline; gap: 8px; }
+.mhead b { font-family: var(--f-display); font-weight: 800; font-size: 19px; }
+.mstate { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.mstate.soon { color: var(--glow); }
+.mtime { margin-left: auto; font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.alli { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 8px; border-radius: 6px; border-left: 4px solid; }
+.alli.red { border-color: #dc2626; background: color-mix(in srgb, #dc2626 8%, transparent); }
+.alli.blue { border-color: #2563eb; background: color-mix(in srgb, #2563eb 8%, transparent); }
+.alli.won .mscore { font-weight: 700; color: var(--ink); }
+.alli.won { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent); }
+.mteams { display: flex; flex-wrap: wrap; gap: 6px; }
+.mscore { font-family: var(--f-mono); font-size: 17px; color: var(--muted); min-width: 32px; text-align: right; }
+.mteam { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 700; font-size: 16px; padding: 2px 8px; border-radius: 6px; background: var(--surface); border: 1px solid var(--line); min-height: 28px; display: inline-flex; align-items: center; gap: 4px; touch-action: manipulation; }
+.mteam:hover { border-color: var(--accent); }
+.mteam:focus-visible { outline: 2px solid var(--glow); }
+.mteam.me { background: var(--band); color: var(--band-ink); border-color: var(--band); }
+.mteam.pick { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.mteam small { font-family: var(--f-body); font-size: 10px; font-weight: 600; color: var(--bad); }
 .move { font-family: var(--f-mono); font-size: 11px; font-weight: 500; margin-left: 4px; vertical-align: 2px; }
 .move.up { color: var(--good); } .move.down { color: var(--bad); }
 .livebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
@@ -191,6 +219,14 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .rrow b { font-weight: 600; }
 .rrow .lead { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; margin-left: 6px; }
 .rrow .btns { display: flex; gap: 6px; flex-wrap: wrap; }
+.rname { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1 1 100%; min-height: 36px; border-radius: 6px; touch-action: manipulation; }
+.rname:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.rname .chev { margin-left: auto; font-size: 20px; line-height: 1; color: var(--muted); transition: transform .15s; }
+.rrow.open .chev { transform: rotate(90deg); }
+.rrow.open { background: var(--sunk); }
+.redit { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 4px 0 6px; }
+.redit .rlabel2 { font-size: 12px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+.redit .btns { flex-basis: 100%; }
 .rrow .btns .btn { padding: 3px 9px; font-size: 13px; }
 .reveal { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid var(--accent); border-radius: 10px; padding: 12px 14px; font-size: 14px; }
 .reveal .num { font-size: 30px; letter-spacing: .25em; display: block; margin: 4px 0; color: var(--ink); }
@@ -474,6 +510,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
           <button role="tab" id="tabPick" aria-selected="true">Pick list</button>
           <button role="tab" id="tabRank" aria-selected="false">Rankings</button>
           <button role="tab" id="tabNotes" aria-selected="false">Scouting notes</button>
+          <button role="tab" id="tabQuals" aria-selected="false">Quals</button>
         </div>
         <input id="search" type="search" placeholder="Find team…" aria-label="Find team">
         <div class="seg" role="group" aria-label="Show" id="availSeg">
@@ -488,6 +525,20 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
           <thead><tr><th>Rank</th><th>Team</th><th class="r">W-L-T</th><th class="r">Played</th><th class="r">RP</th><th class="r">OPR</th><th class="r">On pick list</th><th></th></tr></thead>
           <tbody id="rankRows"></tbody>
         </table>
+      </div>
+      <div class="qualsview" id="qualsWrap" hidden>
+        <div class="qualshead">
+          <div class="qualsum" id="qualSum"></div>
+          <div class="qualctl">
+            <div class="seg" role="group" aria-label="Which matches">
+              <button type="button" id="qOurs" aria-pressed="true">Our matches</button>
+              <button type="button" id="qAll" aria-pressed="false">All</button>
+            </div>
+            <button type="button" class="btn" id="qRefresh">Refresh</button>
+          </div>
+        </div>
+        <p class="hint qualnote" id="qualNote"></p>
+        <div class="matchlist" id="matchList"></div>
       </div>
       <div class="notesview" id="notesWrap" hidden>
         <div class="noteshead"><p class="hint" id="notesNote"></p>
@@ -760,6 +811,19 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
     },
     async regionTeams(region) { const out = {}; for (const t of (await this.get(`/teams/search?region=${encodeURIComponent(region)}`)) || []) out[t.number] = { name: t.name || "", city: place(t) }; return out; },
     async team(num) { const t = await this.get(`/teams/${num}`); return t ? { name: t.name || "", city: place(t) } : null; },
+    async eventMatches(season, code) {
+      const list = await this.get(`/events/${season}/${code}/matches`);
+      const side = (m, color) => (m.teams || []).filter(t => t.alliance === color)
+        .sort((a, b) => String(a.station).localeCompare(String(b.station)))
+        .map(t => ({ n: t.teamNumber, noShow: !!t.noShow, dq: !!t.dq, sur: !!t.surrogate }));
+      return (Array.isArray(list) ? list : []).map(m => ({
+        id: m.id, level: m.tournamentLevel || "Quals", series: m.series || 0, played: !!m.hasBeenPlayed,
+        time: m.actualStartTime || m.scheduledStartTime || null, scheduled: m.scheduledStartTime || null,
+        red: side(m, "Red"), blue: side(m, "Blue"),
+        redScore: m.scores && m.scores.red ? m.scores.red.totalPoints : null,
+        blueScore: m.scores && m.scores.blue ? m.scores.blue.totalPoints : null,
+      })).sort((a, b) => (a.level === "Quals" ? 0 : 1) - (b.level === "Quals" ? 0 : 1) || String(a.scheduled || "").localeCompare(String(b.scheduled || "")) || a.id - b.id);
+    },
     async seasonStats(season, num) { return seasonPart(await this.get(`/teams/${num}/quick-stats?season=${season}`)); },
   };
   function evPart(st) {
@@ -1000,15 +1064,17 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 
   function renderRoster() {
     const list = [...scouts.entries()].sort((a, b) => a[1].name.localeCompare(b[1].name));
-    $("rosterList").innerHTML = list.length ? list.map(([id, s]) => `<div class="rrow"><div>${who("s_" + id)}${s.lead ? `<span class="lead">Lead</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}</div>
-      <div class="swatches" role="group" aria-label="Color for ${esc(s.name)}">${PALETTE.map(c => `<button type="button" class="sw" data-rcolor="${id}" data-c="${c}" style="background:${c}" aria-label="Use this color" aria-pressed="${colorOf("s_" + id) === c}"></button>`).join("")}</div>
+    $("rosterList").innerHTML = list.length ? list.map(([id, s]) => { const open = rosterOpen === id; return `<div class="rrow ${open ? "open" : ""}">
+      <button type="button" class="rname" data-ropen="${id}" aria-expanded="${open}" title="${open ? "Close" : "Change"} ${esc(s.name)}">${who("s_" + id)}${s.lead ? `<span class="lead">Lead</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}<span class="chev" aria-hidden="true">›</span></button>
+      ${open ? `<div class="redit"><span class="rlabel2">Color</span><div class="swatches" role="group" aria-label="Color for ${esc(s.name)}">${PALETTE.map(c => `<button type="button" class="sw" data-rcolor="${id}" data-c="${c}" style="background:${c}" aria-label="Use this color" aria-pressed="${colorOf("s_" + id) === c}"></button>`).join("")}</div>
       <div class="btns"><button type="button" class="btn" data-rlead="${id}">${s.lead ? "Remove lead" : "Make lead"}</button>
       <button type="button" class="btn" data-rreset="${id}">New code</button>
-      ${id === me ? "" : `<button type="button" class="btn danger" data-rdel="${id}">Remove</button>`}</div></div>`).join("") : `<div class="rrow"><span class="hint">No scouts yet.</span></div>`;
+      ${id === me ? "" : `<button type="button" class="btn danger" data-rdel="${id}">Remove</button>`}</div></div>` : ""}</div>`; }).join("") : `<div class="rrow"><span class="hint">No scouts yet.</span></div>`;
     $("reveal").hidden = !reveal;
     if (reveal) $("reveal").innerHTML = `Code for <b>${esc(reveal.name)}</b><span class="num">${esc(reveal.code)}</span>Give it to them now. It won't be shown again; use New code if it's lost.`;
   }
-  function openRoster() { reveal = null; $("rErr").hidden = true; renderRoster(); $("rosterDlg").showModal(); }
+  let rosterOpen = null;   // the one scout whose controls are showing
+  function openRoster() { reveal = null; rosterOpen = null; $("rErr").hidden = true; renderRoster(); $("rosterDlg").showModal(); }
   $("rosterForm").addEventListener("submit", async (e) => {
     e.preventDefault(); if (!canManage()) return;
     $("rErr").hidden = true;
@@ -1018,6 +1084,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   $("rosterForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-rclose")) { reveal = null; $("rosterDlg").close(); return; }
+    if (b.dataset.ropen) { rosterOpen = rosterOpen === b.dataset.ropen ? null : b.dataset.ropen; renderRoster(); return; }
     if (!canManage()) return;
     const id = b.dataset.rlead || b.dataset.rreset || b.dataset.rdel || b.dataset.rcolor; const s = id && scouts.get(id); if (!s) return;
     try {
@@ -1224,6 +1291,69 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
         ${bars ? `<div class="cats">${bars}</div>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
+    }).join("");
+  }
+
+  /* ---------- Quals: the competition's match schedule and results ----------
+     Read straight from the stats source each time (it's public), never saved. Refreshes every
+     2 minutes while the tab is open. */
+  let quals = { key: null, at: 0, list: null, err: "", loading: false }, qualOurs = true;
+  async function loadQuals(force) {
+    const ev = current && events.get(current); if (!ev || quals.loading) return;
+    if (!force && quals.key === current && Date.now() - quals.at < 60000) return;
+    if (quals.key !== current) quals = { key: current, at: 0, list: null, err: "", loading: false };
+    quals.loading = true; render();
+    try { const list = await SOURCE.eventMatches(ev.season, ev.code); if (quals.key === current) { quals.list = list; quals.err = ""; quals.at = Date.now(); } }
+    catch (e) { if (quals.key === current) quals.err = e && e.code === "x" ? e.message : explain(e); }
+    quals.loading = false; render();
+  }
+  setInterval(() => { if (view.tab === "quals" && current && !document.hidden) loadQuals(true); }, 120000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && view.tab === "quals") loadQuals(false); });
+
+  function renderQuals(c) {
+    if ($("qualsWrap").hidden) return;
+    $("qOurs").setAttribute("aria-pressed", String(qualOurs)); $("qAll").setAttribute("aria-pressed", String(!qualOurs));
+    $("qRefresh").disabled = quals.loading;
+    const us = settings.us, picks = new Set(c.field.filter(t => t.status === "partner").map(t => t.number));
+    const list = quals.key === current ? quals.list : null;
+    if (!list) {
+      $("qualSum").innerHTML = ""; $("matchList").innerHTML = `<div class="empty">${quals.err ? esc(quals.err) : "Getting the match schedule…"}</div>`;
+      $("qualNote").textContent = ""; return;
+    }
+    const has = (m, n) => m.red.some(t => t.n === n) || m.blue.some(t => t.n === n);
+    const label = (m) => (m.level === "Quals" ? "Q" : m.level === "DoubleElim" || m.level === "Playoff" ? "P" : m.level.slice(0, 1)) + (m.series ? m.series + "-" : "") + m.id;
+    const fmtT = (iso) => { if (!iso) return ""; const d = new Date(iso); const today = new Date().toDateString() === d.toDateString();
+      return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) + (today ? "" : " · " + d.toLocaleDateString([], { month: "short", day: "numeric" })); };
+    // our record and next match
+    const ours = list.filter(m => has(m, us));
+    let w = 0, l = 0, tie = 0;
+    const surOf = (m) => [...m.red, ...m.blue].some(t => t.n === us && t.sur);
+    // surrogate matches don't count toward a team's record
+    for (const m of ours) if (m.played && m.redScore != null && !surOf(m)) { const red = m.red.some(t => t.n === us); const a = red ? m.redScore : m.blueScore, b = red ? m.blueScore : m.redScore; a > b ? w++ : a < b ? l++ : tie++; }
+    const next = ours.find(m => !m.played);
+    const sideTxt = (m) => { const red = m.red.some(t => t.n === us); const mine = (red ? m.red : m.blue).filter(t => t.n !== us).map(t => t.n), opp = (red ? m.blue : m.red).map(t => t.n);
+      return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
+    $("qualSum").innerHTML = ours.length
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match not counted)` : ""}</span>${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
+    const q = view.q.trim();
+    let shown = qualOurs && ours.length ? ours : list;
+    if (q) shown = shown.filter(m => [...m.red, ...m.blue].some(t => String(t.n).includes(q)));
+    const nextAll = list.find(m => !m.played);
+    $("qualNote").textContent = list.length
+      ? `${list.filter(m => m.played).length} of ${list.length} matches played${quals.at ? ` · updated ${ago(quals.at)}` : ""}. From ${SOURCE.name}; tap a team number to see its scouting.`
+      : `${SOURCE.name} hasn't posted a match schedule for this competition yet.`;
+    if (!shown.length) { $("matchList").innerHTML = `<div class="empty">${list.length ? "No matches match." : "No match schedule yet. It usually appears the morning of the event."}</div>`; return; }
+    const chip = (t) => `<button type="button" class="mteam ${t.n === us ? "me" : ""} ${picks.has(t.n) ? "pick" : ""}" data-team="${t.n}" title="${esc((teams.get(t.n) || {}).name || "")}">${t.n}${t.sur ? "*" : ""}${t.noShow ? `<small>no show</small>` : ""}${t.dq ? `<small>DQ</small>` : ""}</button>`;
+    $("matchList").innerHTML = shown.map(m => {
+      const done = m.played && m.redScore != null;
+      const win = done ? (m.redScore > m.blueScore ? "red" : m.blueScore > m.redScore ? "blue" : "tie") : "";
+      const state = done ? "Played" : m === nextAll ? "Up next" : "Upcoming";
+      return `<div class="match ${has(m, us) ? "ours" : ""} ${done ? "done" : ""}">
+        <div class="mhead"><b>${label(m)}</b>${[...m.red, ...m.blue].some(t => t.sur) ? `<span class="mstate" title="* marks a surrogate: that match doesn't count toward their record">has surrogate*</span>` : ""}<span class="mstate ${m === nextAll && !done ? "soon" : ""}">${state}</span><span class="mtime">${esc(fmtT(m.time))}</span></div>
+        <div class="alli red ${win === "red" ? "won" : ""}"><div class="mteams">${m.red.map(chip).join("")}</div><span class="mscore">${done ? m.redScore : "–"}</span></div>
+        <div class="alli blue ${win === "blue" ? "won" : ""}"><div class="mteams">${m.blue.map(chip).join("")}</div><span class="mscore">${done ? m.blueScore : "–"}</span></div>
+      </div>`;
     }).join("");
   }
 
@@ -1469,7 +1599,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   function render() {
     isOwner = !!meScout()?.lead;   // website: leads load competitions and manage the board
     const c = compute();
-    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderLive();
+    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
@@ -1748,7 +1878,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function setTab(tab) {
     view.tab = tab;
     $("tabPick").setAttribute("aria-selected", String(tab === "pick")); $("tabRank").setAttribute("aria-selected", String(tab === "rank")); $("tabNotes").setAttribute("aria-selected", String(tab === "notes"));
-    $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("availSeg").hidden = tab !== "pick";
+    $("tabQuals").setAttribute("aria-selected", String(tab === "quals"));
+    $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("qualsWrap").hidden = tab !== "quals"; $("availSeg").hidden = tab !== "pick";
+    if (tab === "quals") loadQuals(false);
     render();
   }
   // tapping the dark area outside a window closes it (handy on phones)
@@ -1762,6 +1894,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("tabPick").onclick = () => setTab("pick");
   $("tabRank").onclick = () => setTab("rank");
   $("tabNotes").onclick = () => setTab("notes");
+  $("tabQuals").onclick = () => setTab("quals");
+  $("qOurs").onclick = () => { qualOurs = true; render(); };
+  $("qAll").onclick = () => { qualOurs = false; render(); };
+  $("qRefresh").onclick = () => loadQuals(true);
   $("notesOnly").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
   window.addEventListener("hashchange", route);
