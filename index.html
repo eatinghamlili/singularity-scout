@@ -1081,7 +1081,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           .map(t => ({ n: Number(t.teamNumber), noShow: !!t.noShow, dq: !!t.dq, sur: !!t.surrogate }));
         const played = !!m.postResultTime || m.scoreRedFinal != null && m.actualStartTime != null;
         return { id: m.matchNumber, level: "Quals", series: 0, played, time: m.actualStartTime || m.startTime || null, scheduled: m.startTime || null,
-          red: side("Red"), blue: side("Blue"), redScore: played ? m.scoreRedFinal : null, blueScore: played ? m.scoreBlueFinal : null };
+          red: side("Red"), blue: side("Blue"), redScore: played ? m.scoreRedFinal : null, blueScore: played ? m.scoreBlueFinal : null,
+          redFoul: played && m.scoreRedFoul != null ? m.scoreRedFoul : null, blueFoul: played && m.scoreBlueFoul != null ? m.scoreBlueFoul : null };
       };
       const [quals, ftcs] = await Promise.all([this.first(`${season}/schedule/${code}/qual/hybrid`), this.ftcsEventMatches(season, code).catch(() => null)]);
       if (quals && Array.isArray(quals.schedule) && quals.schedule.length) {
@@ -1644,7 +1645,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   const PRED = { scoutPer: 0.035, scoutCap: 0.18, travel: 0.06, record: 0.05,
     lastSeason: 0.4,   // last season's world-rank percentile moves a starting strength by up to ~40% of a typical team per standard deviation
     fade: 5,           // ...and that nudge halves after 5 matches this season, fading further with every match
-    spread: 1.0 };     // win chances use the real spread of results (1.2 was too timid)
+    spread: 1.0,
+    ridge: 1 };        // how strongly the OPR fit leans on each team's starting strength (in matches' worth)     // win chances use the real spread of results (1.2 was too timid)
   // last season's world ranking per team (FTCScout), fetched once per competition; a percentile carries across seasons, points don't
   const prevSeason = new Map();
   let prevLoadingFor = null;
@@ -1712,12 +1714,42 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const nudge = (n) => base * PRED.lastSeason * lastSeasonZ(n) * PRED.fade / (PRED.fade + seen(n));
     const strength = (n) => Math.max(0, get(n) + nudge(n));
     const sideScore = (side, time) => side.reduce((a, x) => a + (x.noShow ? 0 : strength(x.n) * mult(x.n, time)), 0);
-    const out = new Map(), res = [];
+    const out = new Map(), res = [], hist = [];
+    const hasFouls = (m) => m.redFoul != null && m.blueFoul != null;
+    // solve (A'A + lam I) x = A'(y - A prior), the usual shrunk OPR; n is a few dozen teams at most
+    const solve = (M, b) => { const n = b.length, a = M.map((r, i) => [...r, b[i]]);
+      for (let c = 0; c < n; c++) { let p = c; for (let r = c + 1; r < n; r++) if (Math.abs(a[r][c]) > Math.abs(a[p][c])) p = r; [a[c], a[p]] = [a[p], a[c]];
+        for (let r = 0; r < n; r++) if (r !== c) { const f = a[r][c] / a[c][c]; for (let k = c; k <= n; k++) a[r][k] -= f * a[c][k]; } }
+      return a.map((r, i) => r[n] / r[i]); };
+    const ridge = (startOf) => {
+      const nums = [...new Set([...allNums, ...hist.flatMap(h => [...h.red, ...h.blue].map(x => x.n))])], ix = new Map(nums.map((n, i) => [n, i]));
+      const rows = [], ys = [];
+      for (const h of hist) for (const [side, sc, foul] of [[h.red, h.redScore, h.redFoul], [h.blue, h.blueScore, h.blueFoul]])
+        { rows.push(side.filter(x => !x.noShow).map(x => ix.get(x.n))); ys.push(hasFouls(h) ? sc - foul : sc); }
+      const pri = nums.map(startOf), n = nums.length;
+      const M = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => i === j ? PRED.ridge : 0)), b = new Array(n).fill(0);
+      rows.forEach((r, k) => { const resid = ys[k] - r.reduce((a, i) => a + pri[i], 0); for (const i of r) { b[i] += resid; for (const j of r) M[i][j] += 1; } });
+      const x = rows.length ? solve(M, b).map((v, i) => v + pri[i]) : pri;
+      let ss = 0; rows.forEach((r, k) => { const e = ys[k] - r.reduce((a, i) => a + x[i], 0); ss += e * e; });
+      return { at: (num) => x[ix.get(num)] ?? base, sd: rows.length >= 6 ? Math.max(8, Math.sqrt(ss / rows.length) * 1.25) : null };
+    };
+    // fouls an alliance can expect: the event average, nudged by how much the opposing teams have given away (2 matches' worth of average as a cushion)
+    const foulsFor = (opp) => {
+      const fh = hist.filter(hasFouls); if (!fh.length) return 0;
+      const avg = fh.reduce((a, h) => a + h.redFoul + h.blueFoul, 0) / (fh.length * 2);
+      const given = (n) => { let sum = 0, k = 0; for (const h of fh) { if (h.blue.some(x => x.n === n)) { sum += h.redFoul; k++; } if (h.red.some(x => x.n === n)) { sum += h.blueFoul; k++; } } return (sum + avg) / (k + 2); };
+      return opp.length ? opp.reduce((a, x) => a + given(x.n), 0) : avg;
+    };
+    const fitNow = () => ridge((n) => strength(n));
     for (const m of list) {
       const time = m.time ? Date.parse(m.time) : null;
       const red = sideScore(m.red, isPlayed(m) ? time : null), blue = sideScore(m.blue, isPlayed(m) ? time : null);
-      out.set(matchKey(m), { red, blue });
+      const fit = fitNow(), useFouls = hist.some(hasFouls);
+      const rRed = m.red.reduce((a, x) => a + (x.noShow ? 0 : fit.at(x.n) * mult(x.n, isPlayed(m) ? time : null)), 0) + (useFouls ? foulsFor(m.blue) : 0);
+      const rBlue = m.blue.reduce((a, x) => a + (x.noShow ? 0 : fit.at(x.n) * mult(x.n, isPlayed(m) ? time : null)), 0) + (useFouls ? foulsFor(m.red) : 0);
+      out.set(matchKey(m), { red, blue, rRed, rBlue, rSd: fit.sd });
       if (!isPlayed(m)) continue;
+      hist.push(m);
       res.push(m.redScore - red, m.blueScore - blue);
       for (const [side, actual, pred, opp] of [[m.red, m.redScore, red, m.blueScore], [m.blue, m.blueScore, blue, m.redScore]]) {
         const err = actual - pred, live = side.filter(x => !x.noShow);
@@ -1729,10 +1761,16 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     // widened a little: a handful of matches understates how much scores really swing
     const sd = res.length >= 6 ? PRED.spread * Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) : Math.max(8, 0.35 * (meanAlli ?? base * size));
     let right = 0, total = 0;
-    for (const m of list) { const pr = out.get(matchKey(m)); pr.pRed = normCdf((pr.red - pr.blue) / (sd * Math.SQRT2));
+    for (const m of list) { const pr = out.get(matchKey(m));
+      const pE = normCdf((pr.red - pr.blue) / (sd * Math.SQRT2)), pR = normCdf((pr.rRed - pr.rBlue) / ((pr.rSd || sd) * Math.SQRT2));
+      pr.pRed = (pE + pR) / 2; pr.red = (pr.red + pr.rRed) / 2; pr.blue = (pr.blue + pr.rBlue) / 2;
       if (isPlayed(m) && m.redScore !== m.blueScore) { total++; if ((pr.pRed >= 0.5) === (m.redScore > m.blueScore)) right++; pr.right = (pr.pRed >= 0.5) === (m.redScore > m.blueScore); } }
-    const matchup = (redNums, blueNums) => { const sc = (ns) => ns.reduce((a, n) => a + strength(n) * mult(n, null), 0);
-      const r = sc(redNums), b = sc(blueNums); return { red: r, blue: b, pRed: normCdf((r - b) / (sd * Math.SQRT2)) }; };
+    const finalFit = fitNow();
+    const matchup = (redNums, blueNums) => {
+      const sc = (ns) => ns.reduce((a, n) => a + strength(n) * mult(n, null), 0), sr = (ns, opp) => ns.reduce((a, n) => a + finalFit.at(n) * mult(n, null), 0) + foulsFor(opp.map(n => ({ n })));
+      const r = sc(redNums), b = sc(blueNums), rr = sr(redNums, blueNums), rb = sr(blueNums, redNums);
+      const pRed = (normCdf((r - b) / (sd * Math.SQRT2)) + normCdf((rr - rb) / ((finalFit.sd || sd) * Math.SQRT2))) / 2;
+      return { red: (r + rr) / 2, blue: (b + rb) / 2, pRed }; };
     return { out, right, total, matchup };
   }
   const nums = (txt) => [...new Set(String(txt || "").split(/[^0-9]+/).filter(Boolean).map(Number))];
