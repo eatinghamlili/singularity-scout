@@ -1980,6 +1980,32 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   }
 
   let noteCounts = {}, countsAt = 0, countsBusy = false;
+  /* Keep "We're competing" honest: for competitions that haven't happened yet, re-check the registered
+     teams every 30 minutes, so Team 51 shows up there as soon as it registers (and drops off if it withdraws). */
+  const REG_EVERY = 30 * 60000, regCheckedAt = {};
+  let regBusy = false;
+  async function refreshRegistrations() {
+    if (regBusy || !db || !uid || readOnly || !mcp) return;
+    const today = localDay();
+    const due = [...events.entries()].filter(([k, e]) => e.season && e.code && String(e.end || e.start) >= today && Date.now() - (regCheckedAt[k] || 0) > REG_EVERY);
+    if (!due.length) return;
+    regBusy = true;
+    try {
+      for (const [k, e] of due) {
+        regCheckedAt[k] = Date.now();
+        let parts; try { parts = await SOURCE.eventTeams(e.season, e.code); } catch { continue; }
+        if (!Array.isArray(parts) || !parts.length) continue;   // no list yet: leave what we have
+        const hasUs = parts.some(p => p.number === settings.us), teamCount = parts.length;
+        if (!!e.hasUs !== hasUs || (e.teamCount || 0) !== teamCount) {
+          await queue("ev" + k, () => db.doc(`events/${k}`).update({ hasUs, teamCount })).catch(() => {});
+          const cur = events.get(k); if (cur) events.set(k, { ...cur, hasUs, teamCount });
+          if (!current) render();
+        }
+      }
+    } finally { regBusy = false; }
+  }
+  // the groups depend on today's date: redraw the competitions page every minute so it rolls over at midnight
+  setInterval(() => { if (!current && !document.hidden) render(); }, 60000);
   async function loadNoteCounts() {
     if (!db || countsBusy) return;
     countsBusy = true;
@@ -1997,6 +2023,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   function renderHome() {
     if (current) return;
     if (loaded && events.size && Date.now() - countsAt > 60000) loadNoteCounts();
+    if (loaded && events.size) setTimeout(refreshRegistrations, 0);
     const today = localDay();   // the team's own calendar day, not UTC (UTC is already tomorrow on a California evening)
     const all = [...events.entries()];
     // within each group: upcoming first (Team 51's, then soonest), then past (most recent first)
