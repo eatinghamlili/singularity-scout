@@ -112,6 +112,15 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.viewtop { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 12px 20px; align-items: center; padding: 12px 14px; border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--line)); }
+.bigscore { display: flex; flex-direction: column; min-width: 120px; }
+.bigscore b { font-family: var(--f-display); font-weight: 800; font-size: 46px; line-height: 1; color: var(--accent-ink); }
+.bigscore span { font-size: 12.5px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.bigscore small { font-size: 12.5px; color: var(--muted); margin-top: 4px; }
+.viewexp { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; font-size: 14px; }
+.viewexp b { font-family: var(--f-display); font-weight: 800; font-size: 20px; }
+.viewexp .hint { flex-basis: 100%; font-size: 12.5px; }
+@media (max-width: 560px) { .viewtop { grid-template-columns: minmax(0, 1fr); } }
 .evwrap { position: relative; display: flex; min-width: 0; }
 .evwrap .evcard { flex: 1; }
 .evcard.starred { border-color: color-mix(in srgb, #eab308 55%, var(--line)); }
@@ -1883,14 +1892,15 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       .map(([id, g]) => box(id, id === uid ? "You" : nameOf(id), g, dlgBy === id)).join("")}</div>`;
   }
 
-  function openTeam(num) {
-    dlgTeam = num; dlgDirty = false; dlgBy = null;
+  let dlgMode = "edit";
+  function openTeam(num, mode) {
+    dlgTeam = num; dlgDirty = false; dlgBy = null; dlgMode = mode === "view" ? "view" : "edit";
     const t = teams.get(num); if (!t) return;
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
     draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
-    renderTeamDlg(); $("teamDlg").showModal(); autoRecap();
+    renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
   }
   function statBox(title, s, extra) {
     if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
@@ -1898,8 +1908,33 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <dt>Auto</dt><dd>${fmt(s.auto)}</dd><dt>TeleOp</dt><dd>${fmt(s.teleop)}</dd><dt>Endgame</dt><dd>${fmt(s.endgame)}</dd>
       <dt>Total (no pen.)</dt><dd>${fmt(s.total)}</dd>${extra}</dl></div>`;
   }
+  // read-only look at a team: the numbers and what scouts wrote, nothing to fill in
+  function renderTeamView(t) {
+    const sc = scoutAgg(t), s = stats(t);
+    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd>${t.ev.w}-${t.ev.l}-${t.ev.t}</dd>` : "";
+    const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
+    const cats = CATS.map(([k, l]) => `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k] == null ? "not rated" : sc.avg[k].toFixed(1) + " of 10"}"><i style="width:${sc.avg[k] == null ? 0 : (sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k] == null ? "–" : sc.avg[k].toFixed(1)}</b></div>`).join("");
+    const flags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
+      t.mobility ? (t.mobility.ok ? `<span class="tag src">robot moves</span>` : `<span class="tag dnp">can't move</span>`) : ""].join("");
+    const c = compute(), pos = c.ranked.filter(x => x.status !== "taken").findIndex(x => x === t);
+    const count = allNotes(t).length;
+    $("teamForm").innerHTML = `
+      <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
+        <button type="button" class="x" data-close aria-label="Close">×</button></div>
+      <div class="viewtop">
+        <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
+        <div class="cats">${cats}</div>
+      </div>
+      ${flags ? `<div class="tags">${flags}</div>` : ""}
+      <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
+      <div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>
+      <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
+        ${peopleBoxes(t)}${noteList(t, "view" + t.number, 6, dlgBy)}</div>
+      <div class="dlgfoot sticky"><button type="button" class="btn primary" data-close>Close</button></div>`;
+  }
   function renderTeamDlg() {
     const t = teams.get(dlgTeam); if (!t) { $("teamDlg").close(); return; }
+    if (dlgMode === "view") return renderTeamView(t);
     const sc = scoutAgg(t);
     const canRate = !!(db && uid && !readOnly);
     const numsOn = canRate && draft.upd;
@@ -2017,7 +2052,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.open) goTo(b.dataset.open);
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
-    else if (b.dataset.team) openTeam(Number(b.dataset.team));
+    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#pickWrap,#notesWrap,#next,#pickBar") ? "view" : "edit");
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
     else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
