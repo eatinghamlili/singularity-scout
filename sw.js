@@ -4,7 +4,7 @@
 // rarely change, so they come from the saved copy first. FTCScout's public data is saved as it's
 // read, so the last schedule and stats still show offline. Database requests are left alone:
 // platform.js keeps its own copy of the data and an outbox for changes.
-const VERSION = "ss51-v1";
+const VERSION = "ss51-v2";
 const SHELL = ["./", "index.html", "platform.js", "supabase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png",
   "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"];
 
@@ -16,10 +16,12 @@ self.addEventListener("activate", (e) => {
 });
 
 const timeout = (ms) => new Promise((_, no) => setTimeout(() => no(new Error("slow")), ms));
-async function networkFirst(req, ms) {
+async function networkFirst(req, ms, fresh) {
   const cache = await caches.open(VERSION);
   try {
-    const res = await Promise.race([fetch(req), timeout(ms)]);
+    // the site's own files always ask GitHub whether there's a newer version (cheap when nothing changed)
+    // (a page navigation can't be re-sent with options, so fetch its address instead)
+    const res = await Promise.race([fresh ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req), timeout(ms)]);
     if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
     return res;
   } catch (e) {
@@ -40,7 +42,7 @@ self.addEventListener("fetch", (e) => {
   if (req.method !== "GET") return;
   const url = new URL(req.url);
   if (url.hostname.endsWith("supabase.co")) return;                       // the database: handled by platform.js
-  if (url.origin === self.location.origin) { e.respondWith(networkFirst(req, 4000)); return; }
+  if (url.origin === self.location.origin) { e.respondWith(networkFirst(req, 4000, true)); return; }
   if (url.hostname === "api.ftcscout.org") { e.respondWith(networkFirst(req, 6000)); return; }
   if (/(^|\.)fonts\.(googleapis|gstatic)\.com$|^cdn\.jsdelivr\.net$/.test(url.hostname)) { e.respondWith(cacheFirst(req)); return; }
 });

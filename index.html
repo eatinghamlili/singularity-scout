@@ -2319,6 +2319,14 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     if (blob && blob.type === "image/webp") return blob;
     return await new Promise(ok => cv.toBlob(ok, "image/jpeg", 0.82));   // Safari can't make WebP
   }
+  // shrink if the browser can read it; otherwise send the original when it's already a small JPEG/PNG/WebP
+  async function preparePhoto(f) {
+    try { const b = await shrinkPhoto(f); if (b && b.size > 100) return b; } catch (e) {}
+    if (/^image\/(jpeg|png|webp)$/.test(f.type) && f.size <= 1900000) return f;
+    throw new Error(/hei[cf]/i.test(f.type + f.name)
+      ? "This browser can't open HEIC photos. Take the photo with the site's camera button, or save it as JPEG first."
+      : "That picture couldn't be read. Try a different photo.");
+  }
   // the hexagon, or the team's photo (tap it to change it)
   const photoMode = new Map();
   function hexOrPhoto(t, key, hexHtml) {
@@ -2802,7 +2810,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (inp.matches && inp.matches("[data-addphoto]")) {
       // photos for the note being written: shrink now, upload when the note is saved
       const files = [...(inp.files || [])].slice(0, 6 - pendingPhotos.length); inp.value = "";
-      for (const f of files) { try { const blob = await shrinkPhoto(f); pendingPhotos.push({ blob, preview: URL.createObjectURL(blob) }); } catch { toast("That picture couldn't be read."); } }
+      for (const f of files) { try { const blob = await preparePhoto(f); pendingPhotos.push({ blob, preview: URL.createObjectURL(blob) }); } catch (err) { toast(err.message); } }
       dlgDirty = true; const el = $("dThumbs"); if (el) el.innerHTML = pendingThumbs();
       if (pendingPhotos.length >= 6) toast("6 photos is the most for one note.");
     } else if (inp.matches && inp.matches("[data-newphoto]")) {
@@ -2810,7 +2818,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const num = Number(inp.dataset.newphoto), f = inp.files && inp.files[0]; inp.value = ""; if (!f) return;
       const form = $("photoForm"); form.querySelectorAll("label.btn").forEach(l => l.classList.add("busy"));
       try {
-        const [url] = await uploadPhotos(num, [await shrinkPhoto(f)]);
+        const [url] = await uploadPhotos(num, [await preparePhoto(f)]);
         patchTeam(num, { photo: { url, by: uid, at: Date.now() } });
         $("photoDlg").close(); toast(`Photo added for ${num}`); if ($("teamDlg").open) renderTeamDlg();
       } catch (err) {
