@@ -1691,6 +1691,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
   }
   const aiTried = new Set();   // teams whose overview this page already asked for (no repeat asks after an error)
   function recapBox(t) {
+    if (window.SITE && !window.SITE.recap) return "";   // AI overview switched off on the website
     const r = t.aiRecap, inputs = scoutInputs(t);
     const stale = r && r.inputs !== recapSig(t) && r.inputs !== inputs;
     const can = db && !readOnly && uid && inputs > 0;

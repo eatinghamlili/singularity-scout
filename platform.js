@@ -86,7 +86,10 @@
 
     // AI overview of a team's scouting: the server function builds the prompt from the
     // database and saves the result on the team, so this only names which team.
-    window.SITE.recap = async (event, team, force) => {
+    // Switched OFF for now (paid API). To turn it on: set AI_OVERVIEW = true, rebuild with
+    // AI_OVERVIEW in tools/build-site.py, and add ANTHROPIC_API_KEY in Supabase (README).
+    const AI_OVERVIEW = false;
+    if (AI_OVERVIEW) window.SITE.recap = async (event, team, force) => {
       const { data, error } = await sb.functions.invoke("team-recap", { body: { event, team, force: !!force } });
       if (!error) return data;
       try { const body = await error.context.json(); if (body && body.error) return body; } catch (e) {}

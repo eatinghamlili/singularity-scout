@@ -24,13 +24,13 @@ Hosting is free: GitHub Pages serves the page, Supabase stores the shared data.
 4. After a minute the site is live at `https://<github-username>.github.io/singularity-scout/`. Open it and sign in with your code.
 5. Send the link to the team. Leads add scouts in **Team roster** and give each one a code.
 
-## AI overview of a team's notes
+## AI overview of a team's notes (switched off for now)
 
 When someone opens a team, the board asks Claude for a short overview of every scout's notes and numbers (strengths, concerns, disagreements, a pick take) and saves it so everyone sees the same one. It's written again only when that team gets new notes or numbers.
 
 It runs in the Supabase function `team-recap` (`supabase/functions/team-recap/index.ts`), which builds the prompt from the database, so visitors can't use the key for anything else.
 
-**To switch it on (once):**
+**It's switched off for now.** To switch it on: in `platform.js` set `const AI_OVERVIEW = true`, upload it, then:
 1. Get an Anthropic API key at <https://console.anthropic.com> (a mentor or lead with billing set up). Usage is paid; each overview costs roughly a cent.
 2. In the Supabase dashboard, open **singularity-scout → Edge Functions → Secrets** (or Project Settings → Edge Functions), add a secret named `ANTHROPIC_API_KEY`, paste the key, and save.
 3. Open any team with notes. The overview appears within a few seconds.

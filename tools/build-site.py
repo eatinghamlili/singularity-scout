@@ -62,8 +62,10 @@ REPLACE = [
     ('"Open this board on claude.ai to load and save competitions."', '"The team database isn\'t connected yet. See README.md."'),
     ('"Notes save only when the board is open on claude.ai."', '"The team database isn\'t connected, so notes can\'t be saved."'),
     ('"View-only access can\'t add notes."', '"This device can\'t save notes right now."'),
-    # the website gets AI overviews from its own server function (supabase/functions/team-recap), not claude.ai
+    # the website gets AI overviews from its own server function (supabase/functions/team-recap), not claude.ai.
+    # Switched off for now: the section is hidden unless platform.js turns window.SITE.recap on.
     ('  getSample();\n', '  if (!window.SITE) getSample();\n'),
+    ('  function recapBox(t) {\n', '  function recapBox(t) {\n    if (window.SITE && !window.SITE.recap) return "";   // AI overview switched off on the website\n'),
 ]
 
 for old, new in REPLACE:
