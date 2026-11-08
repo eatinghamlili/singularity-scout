@@ -1331,7 +1331,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const color = PALETTE.find(c => !used.has(c)) || PALETTE[scouts.size % PALETTE.length];
     const doc = { name, hash: await hashCode(code), lead: !!lead, color, createdAt: Date.now() };
     scouts.set(id, doc);
-    await db.doc(`scouts/${id}`).set(doc);
+    try { await db.doc(`scouts/${id}`).set(doc); } catch (err) { scouts.delete(id); render(); throw err; }
     return { id, code, name };
   }
 
@@ -1370,7 +1370,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     e.preventDefault(); if (!canManage()) return;
     $("rErr").hidden = true;
     try { reveal = await addScout($("rName").value, $("rCode").value.trim(), false); $("rName").value = ""; $("rCode").value = ""; renderRoster(); }
-    catch (err) { $("rErr").textContent = typeof err === "string" ? err : "Couldn't save. Check your connection."; $("rErr").hidden = false; }
+    catch (err) { $("rErr").textContent = typeof err === "string" ? err : (err && err.message) || "Couldn't save. Check your connection."; $("rErr").hidden = false; }
   });
   $("rosterForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
@@ -1387,7 +1387,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         if (await confirmBox(`Remove ${s.name}?`, "Their code stops working. Ratings they already saved stay on the board, marked as a former scout.", "Remove")) { await db.doc(`scouts/${id}`).delete(); scouts.delete(id); render(); toast(`${s.name} removed`); }
         openRoster();
       }
-    } catch { $("rErr").textContent = "Couldn't save. Check your connection."; $("rErr").hidden = false; }
+    } catch (err) { $("rErr").textContent = (err && err.message) || "Couldn't save. Check your connection."; $("rErr").hidden = false; }
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "codeIn") { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4); if (e.target.value.length === 4) trySignIn(e.target.value); }
@@ -1397,7 +1397,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     if (e.target.id !== "setupForm") return;
     e.preventDefault();
     try { if (!/^\d{4}$/.test($("sCode").value.trim())) throw "Pick a 4-digit code for yourself."; const r = await addScout($("sName").value, $("sCode").value.trim(), true); setMe(r.id); toast(`Roster created. Your code is ${r.code}.`); }
-    catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : "Couldn't save. Check your connection."; el.hidden = false; } }
+    catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : (err && err.message) || "Couldn't save. Check your connection."; el.hidden = false; } }
   });
   $("meBtn").onclick = () => { gateMsg = ""; setMe(null); };
   $("rosterBtn").onclick = openRoster;
