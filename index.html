@@ -112,6 +112,12 @@ a { color: var(--accent-ink); }
 .crew div { display: flex; justify-content: space-between; gap: 8px; font-size: 14px; }
 .crew span.num { color: var(--muted); font-size: 12.5px; }
 .morebtn { align-self: flex-start; }
+.grouphead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.grouphead .hint { font-size: 13px; }
+.evgroup + .evgroup, .evgroup .evcards + .grouphead, .evgroup .morebtn + .grouphead { margin-top: 10px; }
+.notecount { align-self: flex-start; font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.notecount.some { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.notecount.lots { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .againbox { font-size: 14px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 10%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); }
 .againbox b { font-weight: 600; }
 .movebox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
@@ -1539,21 +1545,44 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       ${canManage() ? `<p class="hint" style="margin-top:10px">Give new scouts a code in Team roster.</p>` : ""}`;
   }
 
+  let noteCounts = {}, countsAt = 0, countsBusy = false;
+  async function loadNoteCounts() {
+    if (!db || countsBusy) return;
+    countsBusy = true;
+    try {
+      const out = {};
+      await Promise.all([...events.keys()].map(async (k) => {
+        const q = await db.collection(`events/${k}/teams`).get();
+        out[k] = q.docs.reduce((a, d) => a + allNotes(d.data() || {}).length, 0);
+      }));
+      noteCounts = out;
+    } catch {}
+    countsAt = Date.now(); countsBusy = false; render();
+  }
+
   function renderHome() {
     if (current) return;
+    if (loaded && events.size && Date.now() - countsAt > 60000) loadNoteCounts();
     const today = new Date().toISOString().slice(0, 10);
     const all = [...events.entries()];
-    // Team 51's competitions first, then soonest
-    const up = all.filter(([, e]) => String(e.end || e.start) >= today).sort((a, b) => (!!b[1].hasUs - !!a[1].hasUs) || String(a[1].start).localeCompare(String(b[1].start)));
-    const past = all.filter(([, e]) => String(e.end || e.start) < today).sort((a, b) => String(b[1].start).localeCompare(String(a[1].start)));
+    // within each group: upcoming first (Team 51's, then soonest), then past (most recent first)
+    const isPastEv = (e) => String(e.end || e.start) < today;
+    const byDate = (a, b) => { const pa = isPastEv(a[1]), pb = isPastEv(b[1]); if (pa !== pb) return pa - pb;
+      return pa ? String(b[1].start).localeCompare(String(a[1].start)) : ((!!b[1].hasUs - !!a[1].hasUs) || String(a[1].start).localeCompare(String(b[1].start))); };
+    const counted = countsAt > 0, cnt = (k) => noteCounts[k] || 0;
+    const scouted = all.filter(([k]) => cnt(k) >= 5).sort(byDate);
+    const started = all.filter(([k]) => cnt(k) >= 1 && cnt(k) < 5).sort(byDate);
+    const none = all.filter(([k]) => cnt(k) === 0).sort(byDate);
     const fmtDate = (s) => { if (!s) return ""; const d = new Date(s + "T12:00:00"); return isNaN(d) ? s : d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric", year: "numeric" }); };
-    const card = ([k, e], isPast) => {
+    const card = ([k, e]) => {
+      const isPast = isPastEv(e), n = cnt(k);
       const days = Math.round((new Date(e.start + "T12:00:00") - new Date(today + "T12:00:00")) / 864e5);
       const soon = !isPast ? (days <= 0 ? "Happening now" : days <= 7 ? `In ${days} day${days === 1 ? "" : "s"}` : "") : "";
       return `<button type="button" class="evcard ${isPast ? "past" : ""}" data-open="${esc(k)}">
         <span class="when">${esc(fmtDate(e.start))}${soon ? `<span class="soon">${soon}</span>` : ""}${e.hasUs ? `<span class="badge">Team ${esc(settings.us)}</span>` : ""}</span>
         <span class="nm">${esc(e.name)}</span>
         <span class="meta">${esc([e.city, e.teamCount ? e.teamCount + " teams" : "", e.code].filter(Boolean).join(" · "))}</span>
+        ${counted ? `<span class="notecount ${n >= 5 ? "lots" : n ? "some" : ""}">${n ? `${n} note${n === 1 ? "" : "s"}` : "No notes yet"}</span>` : ""}
         <span class="go">Scout this competition →</span></button>`;
     };
     // competitions scouts asked for that aren't loaded yet
@@ -1569,20 +1598,25 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
       $("evUpcoming").innerHTML = `<div class="homeempty"><b>${loaded ? "No competitions loaded yet" : "Getting your competitions…"}</b>${loaded ? (offline ? "The team database isn't connected yet. See README.md." : isOwner ? `Use Load from ${SOURCE.name} to add the tournament you're heading to. It shows up here for your whole team.` : "Use Request a competition to ask for the tournament you're heading to.") : ""}</div>`;
       $("evPast").innerHTML = ""; return;
     }
-    const group = (title, list, isPast, key) => {
+    const group = (title, sub, list, key) => {
       if (!list.length) return "";
       const open = expanded[key], shown = open ? list : list.slice(0, HOME_LIMIT), extra = list.length - HOME_LIMIT;
-      return `<h3>${title}</h3><div class="evcards">${shown.map(x => card(x, isPast)).join("")}</div>
-        ${extra > 0 ? `<button type="button" class="btn morebtn" data-more="${key}" aria-expanded="${!!open}">${open ? "Show fewer" : `Show ${extra} more scrimmage${extra === 1 ? "" : "s"}`}</button>` : ""}`;
+      return `<div class="grouphead"><h3>${title}</h3><span class="hint">${sub}</span></div><div class="evcards">${shown.map(card).join("")}</div>
+        ${extra > 0 ? `<button type="button" class="btn morebtn" data-more="${key}" aria-expanded="${!!open}">${open ? "Show fewer" : `Show ${extra} more competition${extra === 1 ? "" : "s"}`}</button>` : ""}`;
     };
-    $("evUpcoming").innerHTML = group("Upcoming", up, false, "up");
-    $("evPast").innerHTML = group("Past", past, true, "past");
+    if (!counted) {   // first load: show everything by date while the notes are counted
+      $("evUpcoming").innerHTML = group("Competitions", "Counting notes…", all.slice().sort(byDate), "all");
+      $("evPast").innerHTML = ""; return;
+    }
+    $("evUpcoming").innerHTML = group("Scouted", "5 or more notes", scouted, "scouted") + group("Started", "1 to 4 notes", started, "started");
+    $("evPast").innerHTML = group("No notes yet", "Nobody has scouted these", none, "none");
   }
 
   /* routing: no hash = competitions page, #<season>-<code> = that competition's board */
   function route() {
     const h = decodeURIComponent(location.hash.slice(1));
     current = /^\d{4}-[A-Za-z0-9]+$/.test(h) ? h : null;
+    if (!current) countsAt = Math.min(countsAt, Date.now() - 60001);
     if ($("teamDlg").open) $("teamDlg").close();
     subscribeEvent(current);
     window.scrollTo(0, 0);
