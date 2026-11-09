@@ -288,11 +288,14 @@
     profiles: async (ids) => Object.fromEntries(ids.map((i) => [i, { id: i, name: "", isMe: false }])),
   };
   const caps = { db, user, mcp: {} };
+  // everything loaded: clear the one-time "reload after a failed script" flag (set in index.html)
+  window.addEventListener("load", () => { try { if (window.supabase) sessionStorage.removeItem("ss51-retry"); } catch (e) {} });
   if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) {
     window.addEventListener("load", () => navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => reg.update()).catch(() => {}));
     // when a newer version of the site takes over, reload once so this page isn't left running old code
-    let reloaded = false;
-    navigator.serviceWorker.addEventListener("controllerchange", () => { if (reloaded || !navigator.serviceWorker.controller) return; reloaded = true; if (!document.querySelector("dialog[open]") && !(window.SITE.sync && window.SITE.sync.pending)) location.reload(); });
+    // (only when an older helper was already running: a phone's first visit doesn't need it)
+    let reloaded = false; const hadHelper = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => { if (reloaded || !hadHelper || !navigator.serviceWorker.controller) return; reloaded = true; if (!document.querySelector("dialog[open]") && !(window.SITE.sync && window.SITE.sync.pending)) location.reload(); });
   }
   window.claude = { use: (name) => Promise.resolve(caps[name] || null) };
 })();

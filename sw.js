@@ -22,8 +22,10 @@ async function networkFirst(req, ms, fresh) {
     // the site's own files always ask GitHub whether there's a newer version (cheap when nothing changed)
     // (a page navigation can't be re-sent with options, so fetch its address instead)
     const res = await Promise.race([fresh ? fetch(req.url, { cache: "no-cache", credentials: "same-origin" }) : fetch(req), timeout(ms)]);
-    if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone());
-    return res;
+    if (res && (res.ok || res.type === "opaque")) { cache.put(req, res.clone()); return res; }
+    // GitHub hiccups (503s while publishing, 404s mid-deploy): use the saved copy rather than a broken page
+    const kept = await cache.match(req, { ignoreSearch: req.mode === "navigate" }) || (req.mode === "navigate" ? await cache.match("index.html") : null);
+    return kept || res;
   } catch (e) {
     const hit = await cache.match(req, { ignoreSearch: req.mode === "navigate" }) || (req.mode === "navigate" ? await cache.match("index.html") : null);
     if (hit) return hit;
