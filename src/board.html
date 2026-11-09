@@ -432,6 +432,7 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .tag.dnp { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
 .tag.src { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
 .qual { white-space: nowrap; }
+.rec { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .qual small { display: block; color: var(--muted); font-size: 12px; }
 .fit { display: flex; align-items: center; gap: 8px; min-width: 110px; }
 .fit .track { flex: 1; height: 8px; background: var(--sunk); border-radius: 4px; overflow: hidden; }
@@ -727,6 +728,9 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   #pickWrap td[data-l]::before { font-size: 10px; letter-spacing: .04em; white-space: nowrap; }
   #pickWrap tr.us .c-fit, #pickWrap tr.us .c-st { display: none; }
   #pickWrap tr.us .c-rk::before { content: "Us"; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-ink); }
+  #pickWrap .c-stat[data-l="Qual"] { flex-grow: 1.7; }
+  #pickWrap .qual { display: flex; align-items: baseline; gap: 5px; }
+  #pickWrap .qual small { display: inline; font-size: 12px; }
   #pickWrap .c-fit { order: 4; flex: 1 1 0; min-width: 0; margin-top: 10px; }
   #pickWrap .c-st { order: 5; flex: 0 0 auto; margin-top: 10px; align-self: flex-end; }
   #pickWrap .fit { min-width: 0; }
@@ -1946,7 +1950,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
     $("qualSum").innerHTML = ours.length
-      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · ${w}-${l}-${tie} so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match${ours.filter(surOf).length === 1 ? "" : "es"} not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match${ours.filter(surOf).length === 1 ? "" : "es"} not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
@@ -1992,7 +1996,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     if (!t) return `<article class="mcard ${color}"><header><span class="nnum">${esc(n)}</span>${roleTag}<div class="nmeta"><small>Not in this competition's team list yet.</small></div></header></article>`;
     const sc = scoutAgg(t), c = compute();
     const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t)].join("");
-    const facts = [t.ev && t.ev.rank ? `qual rank #${t.ev.rank}` : "", t.ev ? `${t.ev.w}-${t.ev.l}-${t.ev.t}` : "", stats(t).src !== "none" ? `OPR ${fmt(stats(t).auto + stats(t).teleop + stats(t).endgame)}` : ""].filter(Boolean).join(" · ");
+    const facts = [t.ev && t.ev.rank ? `qual rank #${t.ev.rank}` : "", t.ev ? `<span class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</span>` : "", stats(t).src !== "none" ? `OPR ${fmt(stats(t).auto + stats(t).teleop + stats(t).endgame)}` : ""].filter(Boolean).join(" · ");
     return `<article class="mcard ${color}">
       <header><button type="button" class="nnum" data-team="${t.number}" title="Open ${esc(t.number)}'s page">${esc(t.number)}</button>
         <div class="nmeta"><b>${esc(t.name || "")}</b>${roleTag}<small>${facts || "No results yet"}</small></div>
@@ -2069,7 +2073,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       return `<tr class="${isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : ""}">
         <td class="rk">${ev.rank ? esc(ev.rank) : "–"}${ev.rank && ev.prevRank && ev.prevRank !== ev.rank ? `<span class="move ${ev.prevRank > ev.rank ? "up" : "down"}" title="Was #${ev.prevRank}">${ev.prevRank > ev.rank ? "▲" : "▼"}${Math.abs(ev.prevRank - ev.rank)}</span>` : ""}</td>
         <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small></div></td>
-        <td class="r num">${ev.played ? `${ev.w}-${ev.l}-${ev.t}` : "–"}</td>
+        <td class="r num"><span class="rec">${ev.played ? `${ev.w}-${ev.l}-${ev.t}` : "–"}</span></td>
         <td class="r num">${ev.played || 0}</td>
         <td class="r num">${ev.rp != null ? fmt(ev.rp) : "–"}</td>
         <td class="r num">${ev.played ? fmt(ev.total) : "–"}</td>
@@ -2197,7 +2201,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       const cls = isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : "";
       const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
         s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
-      const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small>${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
+      const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
       const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small></span>` : `<span class="scout"><span class="none">not rated</span></span>`;
       const fit = isUs ? "" : `<div class="fit"><div class="track"><span style="width:${c.fit.get(t.number)}%"></span></div><span class="num">${c.fit.get(t.number)}</span></div>`;
       const status = isUs ? `<span class="us">US</span>` :
@@ -2634,7 +2638,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function renderTeamView(t) {
     const sc = scoutAgg(t), s = stats(t);
     let cc = null; const c0 = () => cc || (cc = compute());
-    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd>${t.ev.w}-${t.ev.l}-${t.ev.t}</dd>` : "";
+    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd><span class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</span></dd>` : "";
     const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
     const prof = c0().skills.map.get(t.number) || {};
     const breakdown = CATS.map(([k, l]) => { const x = prof[k] || {}; return `<div class="hb"><span>${l}</span><b class="num">${x.value == null ? "–" : x.value.toFixed(1)}</b><small>${x.scout != null ? "scouts " + x.scout.toFixed(1) : "no scout rating"}${x.comp != null ? " · comp " + x.comp.toFixed(1) : k === "defense" ? "" : " · no comp data"}</small></div>`; }).join("");
@@ -2683,7 +2687,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const sc = scoutAgg(t);
     const canRate = !!(db && uid && !readOnly);
     const numsOn = canRate && draft.upd;
-    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd>${t.ev.w}-${t.ev.l}-${t.ev.t}</dd>` : "";
+    const evExtra = t.ev ? `<dt>Penalties given</dt><dd>${fmt(t.ev.pen)}</dd><dt>Qual rank</dt><dd>${t.ev.rank ? "#" + t.ev.rank : "–"}</dd><dt>Record</dt><dd><span class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</span></dd>` : "";
     const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
     const count = allNotes(t).length;
     $("teamForm").innerHTML = `
