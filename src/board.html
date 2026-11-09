@@ -265,11 +265,12 @@ a { color: var(--accent-ink); }
 .matchlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); gap: 10px; }
 .match { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; background: var(--surface); }
 .match.ours { border-color: var(--accent); box-shadow: inset 4px 0 0 var(--accent); }
-.mhead { display: flex; align-items: baseline; gap: 8px; }
+.mhead { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; }
 .mhead b { font-family: var(--f-display); font-weight: 800; font-size: 19px; }
-.mstate { font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+.msur { font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; font-weight: 700; white-space: nowrap; padding: 1px 7px; border-radius: 999px; color: var(--muted); border: 1px solid var(--line); align-self: center; }
+.mstate { white-space: nowrap; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
 .mstate.soon { color: var(--glow); }
-.mtime { margin-left: auto; font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
+.mtime { white-space: nowrap; margin-left: auto; font-family: var(--f-mono); font-size: 12.5px; color: var(--muted); }
 .alli { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 4px 6px 4px 8px; border-radius: 6px; border-left: 4px solid; }
 .alli.red { border-color: #dc2626; background: color-mix(in srgb, #dc2626 8%, transparent); }
 .alli.blue { border-color: #2563eb; background: color-mix(in srgb, #2563eb 8%, transparent); }
@@ -703,6 +704,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .sortphone[hidden] { display: none; }
   .sortphone select { min-height: 44px; }
   /* pick list: one card per team instead of an 11-column table */
+  .mtime .mdate { display: none; }   /* one event is usually one day: just the time */
   #pickWrap { overflow: visible; }
   #pickWrap table { min-width: 0; }
   #pickWrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -1961,7 +1963,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       const state = done ? "Played" : m === nextAll ? "Up next" : "Upcoming";
       const mk = matchKey(m), mn = matchNotes(mk).length;
       return `<div class="match ${has(m, us) ? "ours" : ""} ${done ? "done" : ""}" data-match="${esc(mk)}" role="button" tabindex="0" aria-label="Notes for ${label(m)}">
-        <div class="mhead"><b>${label(m)}</b>${[...m.red, ...m.blue].some(t => t.sur) ? `<span class="mstate" title="* marks a surrogate: that match doesn't count toward their record">has surrogate*</span>` : ""}<span class="mstate ${m === nextAll && !done ? "soon" : ""}">${state}</span><span class="mtime">${esc(fmtT(m.time))}</span></div>
+        <div class="mhead"><b>${label(m)}</b><span class="mstate ${m === nextAll && !done ? "soon" : ""}">${state}</span>${[...m.red, ...m.blue].some(t => t.sur) ? `<span class="msur" title="* marks a surrogate: that match doesn't count toward their record">Surrogate*</span>` : ""}<span class="mtime">${(() => { const [tm, ...rest] = String(fmtT(m.time)).split(" · "); return esc(tm) + (rest.length ? `<span class="mdate"> · ${esc(rest.join(" · "))}</span>` : ""); })()}</span></div>
         <div class="alli red ${win === "red" ? "won" : ""}"><div class="mteams">${m.red.map(chip).join("")}</div><span class="mscore">${done ? m.redScore : "–"}</span></div>
         <div class="alli blue ${win === "blue" ? "won" : ""}"><div class="mteams">${m.blue.map(chip).join("")}</div><span class="mscore">${done ? m.blueScore : "–"}</span></div>
         ${predStrip(P.out.get(mk), done && m.redScore !== m.blueScore ? !!P.out.get(mk).right : null)}
