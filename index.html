@@ -749,7 +749,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   .top .wrap { gap: 8px 10px; padding-block: 10px; }
   .top .mebox:not([hidden]) { display: contents; }
   .brand { flex: 1 1 0; min-width: 0; gap: 8px; order: 0; margin-right: 0; }
-  .brandlogo { width: 40px; height: auto; transform: translateY(3px); }   /* the dino sits high in its picture; line it up with the title */
+  .brandlogo { width: 40px; height: auto; }
   .brand h1 { font-size: 19px; }
   .brand small { display: none; }
   #meBtn { order: 1; max-width: 58%; overflow: hidden; text-overflow: ellipsis; }
@@ -779,7 +779,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   .tabs { flex-wrap: nowrap; gap: 0; width: 100%; margin-right: 0; justify-content: space-between; }
   .tabs button { font-size: 17px; padding: 10px 6px 8px; min-height: 26px; }
   .tabs .tlong { display: none; }
-  .tabs .phonetab { display: inline-flex; }
+  .tabs .phonetab { display: block; }   /* same layout as the other tabs, so its label sits on the same line */
   .tabs button { font-size: 15px; padding-inline: 4px; letter-spacing: .03em; }
   /* side panels live in the Team tab on phones instead of below every card */
   .grid:not(.teamtab) .rail { display: none; }
