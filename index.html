@@ -2559,8 +2559,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
     draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
+    $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
     renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
   }
+  // the Notes | Scouting switch at the top of a team's window (same idea as the match window)
+  const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Notes</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Scouting</button></div>`;
   function statBox(title, s, extra) {
     if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
     return `<div class="statbox"><h3>${title}</h3><dl>
@@ -2582,6 +2585,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
+      ${teamPages()}
       <div class="viewtop">
         <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
         ${(() => {
@@ -2609,7 +2613,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   function renderTeamDlg() {
     const t = teams.get(dlgTeam); if (!t) { $("teamDlg").close(); return; }
+    // keep what's been typed on the Notes page through redraws and trips to the Scouting page
+    if ($("dNote")) { draft.note = $("dNote").value; draft.tags = $("dTags").value; draft.dnp = $("dDnp").checked; }
     if (dlgMode === "view") return renderTeamView(t);
+    renderTeamEdit(t);
+    if (draft.note && $("dNote")) $("dNote").value = draft.note;
+  }
+  function renderTeamEdit(t) {
     const sc = scoutAgg(t);
     const canRate = !!(db && uid && !readOnly);
     const numsOn = canRate && draft.upd;
@@ -2619,6 +2629,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
+      ${teamPages()}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
       ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
@@ -2666,6 +2677,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("teamForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
+    if (b.dataset.tpage) { if (b.dataset.tpage === dlgMode) return; dlgMode = b.dataset.tpage; renderTeamDlg(); $("teamDlg").scrollTop = 0; $("teamForm").scrollTop = 0;
+      const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
     if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
     if (b.dataset.rate) { const k = b.dataset.rate, v = Number(b.dataset.v); draft[k] = draft[k] === v ? 0 : v; dlgDirty = true;
