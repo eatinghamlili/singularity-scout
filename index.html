@@ -221,6 +221,24 @@ a { color: var(--accent-ink); }
 .mopen { color: var(--accent-ink); font-weight: 600; }
 #matchDlg .dlg { min-height: min(560px, calc(100dvh - 32px)); }
 .malli { display: flex; flex-direction: column; gap: 6px; }
+.mpages { align-self: center; }
+.mscout { display: flex; flex-direction: column; gap: 10px; padding: 2px 0 8px; }
+.mside { margin: 6px 0 0; font-family: var(--f-display); font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .1em; }
+.mside.red { color: #dc2626; } .mside.blue { color: #3b82f6; }
+.mcard { border: 1px solid var(--line); border-left: 5px solid; border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; background: var(--surface); box-shadow: var(--shadow); min-width: 0; }
+.mcard.red { border-left-color: #dc2626; } .mcard.blue { border-left-color: #3b82f6; }
+.mcard header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
+.mcard .nnum { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
+.mcard button.nnum:hover { color: var(--accent-ink); text-decoration: underline; }
+.mcard button.nnum:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.mcard .nmeta { display: flex; flex-direction: column; min-width: 0; }
+.mcard .nmeta b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mcard .nmeta small { color: var(--muted); font-size: 12.5px; }
+.mcard .overall { text-align: right; } .mcard .overall b { font-family: var(--f-display); font-size: 22px; color: var(--accent-ink); display: block; line-height: 1; }
+.mcard .overall small { color: var(--muted); font-size: 11.5px; }
+.mrole { align-self: flex-start; font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 999px; margin: 2px 0; text-transform: uppercase; letter-spacing: .05em; }
+.mrole.us { background: var(--band); color: var(--band-ink); } .mrole.partner { background: color-mix(in srgb, #16a34a 18%, transparent); color: #15803d; }
+.mrole.opponent { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; }
 .mnotelist { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 160px; overflow-y: auto; padding: 4px 2px; }
 .mempty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 0; color: var(--muted); }
 .mempty img { width: 150px; height: auto; max-width: 60%; }
@@ -1839,6 +1857,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
 
   function renderQuals(c) {
     if ($("qualsWrap").hidden) return;
+    if ($("matchDlg").open && matchPage === "scout") renderMatchDlg();   // ratings, notes and photos change live
     $("qOurs").setAttribute("aria-pressed", String(qualOurs)); $("qAll").setAttribute("aria-pressed", String(!qualOurs));
     $("qRefresh").disabled = quals.loading;
     const us = settings.us, picks = new Set(c.field.filter(t => t.status === "partner").map(t => t.number));
@@ -1901,20 +1920,48 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     return Object.entries(d.notes || {}).filter(([, x]) => x && x.text).map(([id, x]) => ({ id, ...x })).sort((a, b) => (a.at || 0) - (b.at || 0));
   }
   let openMatchKey = null;
-  function openMatch(key) { openMatchKey = key; renderMatchDlg(); $("matchDlg").showModal(); const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight; }
+  function openMatch(key) { if (key !== openMatchKey) renderMatchDlg.draft = ""; openMatchKey = key; renderMatchDlg(); $("matchDlg").showModal(); const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight; }
+  // which page of the match window: "notes" (read and write match notes) or "scout" (the four teams at a glance)
+  let matchPage = (() => { try { return localStorage.getItem("ss51-mpage") === "scout" ? "scout" : "notes"; } catch { return "notes"; } })();
+  function matchScoutCard(n, color, m) {
+    const t = teams.get(n), us = settings.us;
+    const usRed = m.red.some(x => x.n === us), usBlue = m.blue.some(x => x.n === us);
+    const role = n === us ? "Us" : (usRed || usBlue) ? ((color === "red") === usRed ? "Partner" : "Opponent") : "";
+    const roleTag = role ? `<span class="mrole ${role.toLowerCase()}">${role}</span>` : "";
+    if (!t) return `<article class="mcard ${color}"><header><span class="nnum">${esc(n)}</span>${roleTag}<div class="nmeta"><small>Not in this competition's team list yet.</small></div></header></article>`;
+    const sc = scoutAgg(t), c = compute();
+    const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t)].join("");
+    const facts = [t.ev && t.ev.rank ? `qual rank #${t.ev.rank}` : "", t.ev ? `${t.ev.w}-${t.ev.l}-${t.ev.t}` : "", stats(t).src !== "none" ? `OPR ${fmt(stats(t).auto + stats(t).teleop + stats(t).endgame)}` : ""].filter(Boolean).join(" · ");
+    return `<article class="mcard ${color}">
+      <header><button type="button" class="nnum" data-team="${t.number}" title="Open ${esc(t.number)}'s page">${esc(t.number)}</button>
+        <div class="nmeta"><b>${esc(t.name || "")}</b>${roleTag}<small>${facts || "No results yet"}</small></div>
+        <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
+      ${tags ? `<div class="tags">${tags}</div>` : ""}
+      ${hexOrPhoto(t, "m" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
+      ${noteList(t, "mc" + t.number, 1)}
+    </article>`;
+  }
   function renderMatchDlg() {
     const key = openMatchKey; if (!key) return;
+    // a redraw (live updates) shouldn't jump the window back to the top
+    const scroller = $("matchForm"), keepScroll = scroller ? scroller.scrollTop : 0, keepDlg = $("matchDlg").scrollTop;
     const m = (quals.list || []).find(x => matchKey(x) === key);
     const notes = matchNotes(key);
     const canWrite = !!(db && uid && !readOnly);
     const us = settings.us;
     const side = (list, color) => list.length ? `<div class="alli ${color}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
-    const keep = $("mNote") ? $("mNote").value : "";
+    const keep = $("mNote") ? $("mNote").value : (renderMatchDlg.draft || "");
+    renderMatchDlg.draft = keep;
     $("matchForm").innerHTML = `
-      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))} notes</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}</small></div>
+      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}</small></div>
         <button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
+      <div class="pviewsw mpages" role="group" aria-label="Match window page"><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button><button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button></div>
+      ${matchPage === "scout" ? (m ? `<div class="mscout">
+          <h3 class="mside red">Red alliance</h3>${m.red.map(x => matchScoutCard(x.n, "red", m)).join("")}
+          <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
+        </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>` : `<p class="hint">This match isn't in the schedule anymore.</p>`) : `
       <div class="mnotelist" id="mNotesList">${notes.length ? notes.map((x, i) => `<div class="note ${i === notes.length - 1 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
           <div class="notetop">${who(x.by, x.by === uid ? "You" : null)} <small>${esc(when(x.at))}</small>${x.by === uid && canWrite ? `<button type="button" class="linkbtn" data-mdel="${esc(x.id)}">Delete</button>` : ""}</div>
           <div>${esc(x.text)}</div></div>`).join("")
@@ -1923,7 +1970,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         ${canWrite ? `<label class="fld">Add a note<textarea id="mNote" placeholder="What happened this match: who scored, who broke down, defense, penalties…">${esc(keep)}</textarea></label>
         <div class="dlgfoot"><button type="button" class="btn" data-mclose>Close</button><button type="submit" class="btn primary">Add note</button></div>`
         : `<p class="hint">${!db ? "Notes save only when the board is connected." : !uid ? "Enter your scout code to add notes." : "This device can't save notes right now."}</p><div class="dlgfoot"><button type="button" class="btn" data-mclose>Close</button></div>`}
-      </div>`;
+      </div>`}`;
+    if (scroller) scroller.scrollTop = keepScroll; $("matchDlg").scrollTop = keepDlg;
   }
   function saveMatch(key, patch) {
     const ref = db.doc(`events/${current}/matches/${key}`);
@@ -2686,8 +2734,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       renderTeamDlg(); if ($("dNote")) $("dNote").value = keep.note;
       const nb = $("dlgNotes"); if (nb) nb.scrollIntoView({ block: "nearest" });
     }
-    else if (b.dataset.notesmore) { const k = b.dataset.notesmore; expandedNotes.has(k) ? expandedNotes.delete(k) : expandedNotes.add(k); if (k.startsWith("dlg")) renderTeamDlg(); else render(); }
-    else if (b.dataset.delnote) { deleteNote(Number(b.dataset.teamOf), b.dataset.delnote); if ($("teamDlg").open && !dlgDirty) renderTeamDlg(); }
+    else if (b.dataset.notesmore) { const k = b.dataset.notesmore; expandedNotes.has(k) ? expandedNotes.delete(k) : expandedNotes.add(k); if (k.startsWith("dlg")) renderTeamDlg(); else if (k.startsWith("mc")) renderMatchDlg(); else render(); }
+    else if (b.dataset.delnote) { deleteNote(Number(b.dataset.teamOf), b.dataset.delnote); if ($("teamDlg").open && !dlgDirty) renderTeamDlg(); if ($("matchDlg").open) renderMatchDlg(); }
   });
 
   /* ---------- draft actions ---------- */
@@ -2712,7 +2760,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.open) goTo(b.dataset.open);
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
-    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs") ? "view" : "edit");
+    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
     else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
@@ -2789,8 +2837,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   const toastHome = new MutationObserver(() => { const el = $("toast"), d = el.parentElement; if (d && d.tagName === "DIALOG" && !d.open) document.body.appendChild(el); });
   document.querySelectorAll("dialog").forEach(d => toastHome.observe(d, { attributes: true, attributeFilter: ["open"] }));
   document.addEventListener("click", (e) => {
+    const mp = e.target.closest("[data-mpage]");
+    if (mp) { matchPage = mp.dataset.mpage; try { localStorage.setItem("ss51-mpage", matchPage); } catch {} renderMatchDlg(); return; }
     const sw = e.target.closest("[data-pview]");
-    if (sw) { photoMode.set(sw.dataset.pview, sw.dataset.v === "photo"); if ($("teamDlg").open && sw.closest("#teamDlg")) renderTeamDlg(); else render(); return; }
+    if (sw) { photoMode.set(sw.dataset.pview, sw.dataset.v === "photo"); if ($("teamDlg").open && sw.closest("#teamDlg")) renderTeamDlg(); else if (sw.closest("#matchDlg")) renderMatchDlg(); else render(); return; }
     const pick = e.target.closest("[data-photopick]");
     if (pick) { const num = Number(pick.dataset.photopick); photoDlgTeam = num; renderPhotoDlg(num); $("photoDlg").showModal(); return; }
     if (e.target.closest("[data-photoclose]")) { $("photoDlg").close(); return; }
@@ -2799,7 +2849,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const num = photoDlgTeam, url = choice.dataset.setphoto;
       if (!uid) { toast("Sign in with your scout code to change photos."); return; }
       patchTeam(num, { photo: { url, by: uid, at: Date.now() } }); $("photoDlg").close(); toast(`Main photo updated for ${num}`);
-      if ($("teamDlg").open) renderTeamDlg();
+      if ($("teamDlg").open) renderTeamDlg(); if ($("matchDlg").open) renderMatchDlg();
       return;
     }
     const un = e.target.closest("[data-unphoto]");
@@ -2821,7 +2871,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       try {
         const [url] = await uploadPhotos(num, [await preparePhoto(f)]);
         patchTeam(num, { photo: { url, by: uid, at: Date.now() } });
-        $("photoDlg").close(); toast(`Photo added for ${num}`); if ($("teamDlg").open) renderTeamDlg();
+        $("photoDlg").close(); toast(`Photo added for ${num}`); if ($("teamDlg").open) renderTeamDlg(); if ($("matchDlg").open) renderMatchDlg();
       } catch (err) {
         form.querySelectorAll("label.btn").forEach(l => l.classList.remove("busy"));
         toast(err && err.code === "offline" ? "Adding photos needs a connection. Try again when you have signal." : (err && err.message) || "The photo couldn't be uploaded. Try again.");
