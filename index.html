@@ -690,7 +690,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .evrow .hfield { flex: 1; }
 }
 @media (prefers-reduced-motion: no-preference) { .fit .track span, .stack span, .progress span { transition: width .25s ease; } }
-.sortphone, .liveopt { display: none; }
+.sortphone, .liveopt, .tabs .phonetab { display: none; }
+.colkey { padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
+.colkey summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; padding: 10px 0; min-height: 24px; list-style-position: inside; }
+.colkey dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0 0 12px; }
+.colkey dt { font-weight: 700; } .colkey dd { margin: 0; color: var(--muted); }
 /* ---------- phones: the scouting work comes first ---------- */
 @media (max-width: 560px) {
   /* header: brand and scout on one row, the competition on the next, the rest in one short row */
@@ -727,6 +731,16 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .tabs { flex-wrap: nowrap; gap: 0; width: 100%; margin-right: 0; justify-content: space-between; }
   .tabs button { font-size: 17px; padding: 10px 6px 8px; min-height: 26px; }
   .tabs .tlong { display: none; }
+  .tabs .phonetab { display: inline-flex; }
+  .tabs button { font-size: 15px; padding-inline: 4px; letter-spacing: .03em; }
+  /* side panels live in the Team tab on phones instead of below every card */
+  .grid:not(.teamtab) .rail { display: none; }
+  .grid.teamtab .rail { gap: 10px; }
+  .grid.teamtab .panel .toolbar > :not(.tabs) { display: none; }
+  .colkey { padding: 0 12px; }
+  .colkey summary { padding: 13px 0; }
+  .colkey dl { grid-template-columns: minmax(0, 1fr); gap: 2px; }
+  .colkey dd { margin-bottom: 8px; }
   .toolbar { padding: 8px 12px 12px; }
   .sortphone { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: auto; }
   .sortphone[hidden] { display: none; }
@@ -849,6 +863,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <button role="tab" id="tabRank" aria-selected="false">Rankings</button>
           <button role="tab" id="tabNotes" aria-selected="false"><span class="tlong">Scouting </span>notes</button>
           <button role="tab" id="tabQuals" aria-selected="false">Quals</button>
+          <button role="tab" id="tabTeam" class="phonetab" aria-selected="false" title="Scouting crew, our hexagon, weights and how to use it">Team</button>
         </div>
         <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team">
         <div class="seg" role="group" aria-label="Show" id="availSeg">
@@ -860,6 +875,17 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <option value="fit">Pick score</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
           <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option></select></label>
       </div>
+      <details class="colkey" id="colKey"><summary>What do these numbers mean?</summary>
+        <dl>
+          <dt>Qual</dt><dd>Qualification rank at this competition, then the win-loss-tie record.</dd>
+          <dt>Auto · TeleOp · Endgame</dt><dd>Points the team adds in each part of a match (OPR, worked out from every match it played here, or its season best until it has played 3).</dd>
+          <dt>OPR</dt><dd>Offensive power rating: the points a team adds to its alliance per match.</dd>
+          <dt>Penalties</dt><dd>Penalty points the team gives away per match. On phones it only shows when it's high.</dd>
+          <dt>Scouts</dt><dd>Our scouts' average rating out of 10, and how many scouts rated them.</dd>
+          <dt>Expected pts</dt><dd>Points we'd expect them to add to our alliance, scaled by how reliable our scouts rated them.</dd>
+          <dt>Pick score</dt><dd>How well they fit with us (from the Weights), blended with scout ratings and 25% qualification rank. The list is sorted by it.</dd>
+          <dt>Ranking pts</dt><dd>Ranking points from FIRST's standings; they decide the qualification rank.</dd>
+        </dl></details>
       <div class="tablewrap" id="rankWrap" hidden>
         <p class="hint ranknote" id="rankNote"></p>
         <table class="ranktable">
@@ -2929,7 +2955,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function setTab(tab) {
     view.tab = tab;
     $("tabPick").setAttribute("aria-selected", String(tab === "pick")); $("tabRank").setAttribute("aria-selected", String(tab === "rank")); $("tabNotes").setAttribute("aria-selected", String(tab === "notes"));
-    $("tabQuals").setAttribute("aria-selected", String(tab === "quals"));
+    $("tabQuals").setAttribute("aria-selected", String(tab === "quals")); $("tabTeam").setAttribute("aria-selected", String(tab === "team"));
+    document.querySelector(".grid").classList.toggle("teamtab", tab === "team");
+    $("colKey").hidden = tab !== "pick" && tab !== "rank";
     $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("qualsWrap").hidden = tab !== "quals"; $("availSeg").hidden = tab !== "pick";
     if (tab === "quals") loadQuals(false);
     render();
@@ -2978,6 +3006,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("tabRank").onclick = () => setTab("rank");
   $("tabNotes").onclick = () => setTab("notes");
   $("tabQuals").onclick = () => setTab("quals");
+  $("tabTeam").onclick = () => setTab("team");
+  // the Team tab only exists on phones; going wider puts the side panels back beside the list
+  const phoneMq = matchMedia("(max-width: 560px)");
+  phoneMq.addEventListener("change", () => { if (!phoneMq.matches && view.tab === "team") setTab("pick"); });
   $("qOurs").onclick = () => { qualOurs = true; render(); };
   $("qAll").onclick = () => { qualOurs = false; render(); };
   $("qRefresh").onclick = () => loadQuals(true);
