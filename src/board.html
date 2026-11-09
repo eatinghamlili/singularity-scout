@@ -69,6 +69,9 @@ a { color: var(--accent-ink); }
 .boardview { display: flex; flex-direction: column; gap: 18px; }
 /* start page */
 .home { display: flex; flex-direction: column; gap: 22px; }
+.loadmore { margin: 14px 0 0; }
+.loadmore .linkbtn { font-size: 14.5px; min-height: 44px; display: inline-flex; align-items: center; }
+.loadmore .linkbtn:disabled { opacity: .5; cursor: default; }
 .homehead { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between; }
 .hometitle { color: var(--ink); margin: 2px 0 4px; font-family: var(--f-display); font-weight: 800; font-size: clamp(30px, 5vw, 46px); line-height: 1; text-transform: uppercase; letter-spacing: .01em; text-wrap: balance; }
 .evgroup { display: flex; flex-direction: column; gap: 10px; }
@@ -201,6 +204,9 @@ a { color: var(--accent-ink); }
 #matchDlg .dlg { min-height: min(560px, calc(100dvh - 32px)); }
 .malli { display: flex; flex-direction: column; gap: 6px; }
 .mpages { align-self: center; }
+.mnav { display: flex; gap: 6px; margin-left: auto; align-self: center; }
+.mnav .btn { min-width: 64px; font-variant-numeric: tabular-nums; }
+.mnav .btn:disabled { opacity: .4; cursor: default; }
 .mscout { display: flex; flex-direction: column; gap: 10px; padding: 2px 0 8px; }
 .mside { margin: 6px 0 0; font-family: var(--f-display); font-weight: 800; font-size: 14px; text-transform: uppercase; letter-spacing: .1em; }
 .mside.red { color: #dc2626; } .mside.blue { color: #3b82f6; }
@@ -706,6 +712,26 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .sortphone select { min-height: 44px; }
   /* pick list: one card per team instead of an 11-column table */
   .mtime .mdate { display: none; }   /* one event is usually one day: just the time */
+  /* rankings: one card per team as well */
+  #rankWrap { overflow: visible; }
+  #rankWrap table { min-width: 0; }
+  #rankWrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #rankWrap tbody, #rankWrap td { display: block; }
+  #rankWrap tr { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; padding: 12px; border-bottom: 1px solid var(--line); }
+  #rankWrap tr::before { content: ""; flex-basis: 100%; height: 0; order: 2; }
+  #rankWrap td { border: 0; padding: 0; }
+  #rankWrap td[colspan] { flex: 1 1 100%; }
+  #rankWrap td.subhead { padding: 6px 8px; border-radius: 6px; }
+  #rankWrap .c-rk { flex: 0 0 auto; min-width: 30px; font-family: var(--f-display); font-weight: 800; font-size: 20px; display: flex; align-items: baseline; gap: 4px; }
+  #rankWrap .c-team { flex: 1 1 0; min-width: 0; }
+  #rankWrap .teamcell { min-width: 0; }
+  #rankWrap .teamcell button { font-size: 20px; min-height: 36px; display: inline-flex; align-items: center; align-self: flex-start; }
+  #rankWrap .c-tags { flex: 0 0 auto; order: 1; display: flex; flex-wrap: wrap; gap: 4px; justify-content: flex-end; max-width: 45%; }
+  #rankWrap .c-stat { order: 3; flex: 1 1 0; min-width: 0; margin-top: 8px; text-align: left; font-size: 14px; }
+  #rankWrap .c-stat[data-l="W-L-T"] { flex-grow: 1.2; }
+  #rankWrap .c-stat[data-l="Played"] { display: none; }   /* the record already says it */
+  #rankWrap .c-stat[data-l="Ranking pts"] { flex-grow: 1.4; }
+  #rankWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
   #pickWrap { overflow: visible; }
   #pickWrap table { min-width: 0; }
   #pickWrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -778,11 +804,11 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     <div class="homehead">
       <div><div class="eyebrow">Choose a competition</div><h2 class="hometitle">Which tournament are you scouting?</h2>
         <p class="hint">Every competition loaded here keeps its own ratings, notes and draft board.</p></div>
-      <button class="btn primary" id="loadBtn">Load from FTCScout</button>
     </div>
     <div class="evgroup" id="evRequests"></div>
     <div class="evgroup" id="evUpcoming"></div>
     <div class="evgroup" id="evPast"></div>
+    <p class="loadmore"><button type="button" class="linkbtn" id="loadBtn">Competition not listed? Load it from FTCScout</button></p>
     <p class="sharetip" id="shareTip" hidden><b>Bring in more scouts.</b> Add each teammate in <b>Team roster</b> to give them a 4-digit code, and share this board with them as <b>Contributor</b> from the Share menu. Contributors can rate teams, leave notes, mark picks and request competitions.</p>
   </section>
 
@@ -1955,6 +1981,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
     if (q) shown = shown.filter(m => [...m.red, ...m.blue].some(t => String(t.n).includes(q)));
+    quals.shownKeys = shown.map(matchKey);   // the match window's previous/next follow this list
     const nextAll = list.find(m => !m.played);
     $("qualNote").textContent = list.length
       ? `${list.filter(m => m.played).length} of ${list.length} matches played${quals.at ? ` · updated ${ago(quals.at)}` : ""}. From ${SOURCE.matchesFrom === "FIRST" ? "FIRST (official)" : SOURCE.name}. Tap a match for its notes, or a team number for that team's scouting.`
@@ -1985,7 +2012,15 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     return Object.entries(d.notes || {}).filter(([, x]) => x && x.text).map(([id, x]) => ({ id, ...x })).sort((a, b) => (a.at || 0) - (b.at || 0));
   }
   let openMatchKey = null;
-  function openMatch(key) { if (key !== openMatchKey) renderMatchDlg.draft = ""; openMatchKey = key; renderMatchDlg(); $("matchDlg").showModal(); const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight; }
+  const matchDrafts = new Map();
+  function openMatch(key) {
+    const wasOpen = $("matchDlg").open;
+    if (wasOpen && openMatchKey && key !== openMatchKey) matchDrafts.set(openMatchKey, $("mNote") ? $("mNote").value : (renderMatchDlg.draft || ""));
+    if (key !== openMatchKey) { renderMatchDlg.draft = matchDrafts.get(key) || ""; if ($("mNote")) $("mNote").value = renderMatchDlg.draft; }   // the redraw reads the box
+    openMatchKey = key; renderMatchDlg();
+    if (!wasOpen) $("matchDlg").showModal(); else { $("matchForm").scrollTop = 0; $("matchDlg").scrollTop = 0; }
+    const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
+  }
   // which page of the match window: "notes" (read and write match notes) or "scout" (the four teams at a glance)
   let matchPage = (() => { try { return localStorage.getItem("ss51-mpage") === "scout" ? "scout" : "notes"; } catch { return "notes"; } })();
   function matchScoutCard(n, color, m) {
@@ -2017,9 +2052,15 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const side = (list, color) => list.length ? `<div class="alli ${color}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
     const keep = $("mNote") ? $("mNote").value : (renderMatchDlg.draft || "");
     renderMatchDlg.draft = keep;
+    const order = (quals.shownKeys && quals.shownKeys.includes(key)) ? quals.shownKeys : (quals.list || []).map(matchKey);
+    const at = order.indexOf(key), prevK = at > 0 ? order[at - 1] : null, nextK = at >= 0 && at < order.length - 1 ? order[at + 1] : null;
+    const shortOf = (k) => { const x = (quals.list || []).find(y => matchKey(y) === k); return x ? (x.level === "Quals" ? "Q" : "") + x.id : matchLabelOf(k); };
+    const nav = order.length > 1 && at >= 0 ? `<div class="mnav" role="group" aria-label="Other matches">
+        <button type="button" class="btn" data-mnav="${esc(prevK || "")}" ${prevK ? "" : "disabled"} aria-label="${prevK ? "Previous match: " + esc(shortOf(prevK)) : "No earlier match"}">‹ ${prevK ? esc(shortOf(prevK)) : ""}</button>
+        <button type="button" class="btn" data-mnav="${esc(nextK || "")}" ${nextK ? "" : "disabled"} aria-label="${nextK ? "Next match: " + esc(shortOf(nextK)) : "No later match"}">${nextK ? esc(shortOf(nextK)) : ""} ›</button></div>` : "";
     $("matchForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}</small></div>
-        <button type="button" class="x" data-mclose aria-label="Close">×</button></div>
+        ${nav}<button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
       <div class="pviewsw mpages" role="group" aria-label="Match window page"><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button><button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button></div>
@@ -2071,14 +2112,14 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       const isUs = t === c.us, ev = t.ev || {};
       const status = (isUs ? `<span class="tag src">us</span>` : t.status === "taken" ? `<span class="tag">taken</span>` : t.status === "partner" ? `<span class="tag src">our pick</span>` : t.dnp ? `<span class="tag dnp">do not pick</span>` : "") + (isUs ? "" : moveTag(t));
       return `<tr class="${isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : ""}">
-        <td class="rk">${ev.rank ? esc(ev.rank) : "–"}${ev.rank && ev.prevRank && ev.prevRank !== ev.rank ? `<span class="move ${ev.prevRank > ev.rank ? "up" : "down"}" title="Was #${ev.prevRank}">${ev.prevRank > ev.rank ? "▲" : "▼"}${Math.abs(ev.prevRank - ev.rank)}</span>` : ""}</td>
-        <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small></div></td>
-        <td class="r num"><span class="rec">${ev.played ? `${ev.w}-${ev.l}-${ev.t}` : "–"}</span></td>
-        <td class="r num">${ev.played || 0}</td>
-        <td class="r num">${ev.rp != null ? fmt(ev.rp) : "–"}</td>
-        <td class="r num">${ev.played ? fmt(ev.total) : "–"}</td>
-        <td class="r num">${isUs ? "" : (pickPos.get(t.number) ? "#" + pickPos.get(t.number) : "–")}</td>
-        <td>${status}</td></tr>`;
+        <td class="rk c-rk">${ev.rank ? esc(ev.rank) : "–"}${ev.rank && ev.prevRank && ev.prevRank !== ev.rank ? `<span class="move ${ev.prevRank > ev.rank ? "up" : "down"}" title="Was #${ev.prevRank}">${ev.prevRank > ev.rank ? "▲" : "▼"}${Math.abs(ev.prevRank - ev.rank)}</span>` : ""}</td>
+        <td class="c-team"><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small></div></td>
+        <td class="r num c-stat" data-l="W-L-T"><span class="rec">${ev.played ? `${ev.w}-${ev.l}-${ev.t}` : "–"}</span></td>
+        <td class="r num c-stat" data-l="Played">${ev.played || 0}</td>
+        <td class="r num c-stat" data-l="Ranking pts">${ev.rp != null ? fmt(ev.rp) : "–"}</td>
+        <td class="r num c-stat" data-l="OPR">${ev.played ? fmt(ev.total) : "–"}</td>
+        <td class="r num c-stat" ${isUs ? "" : `data-l="Pick list"`}>${isUs ? "" : (pickPos.get(t.number) ? "#" + pickPos.get(t.number) : "–")}</td>
+        <td class="c-tags">${status}</td></tr>`;
     };
     const rows = [...has.filter(match).map(row), ...(not.filter(match).length ? [`<tr><td colspan="8" class="subhead">Not ranked yet</td></tr>`, ...not.filter(match).map(row)] : [])];
     $("rankNote").textContent = has.length
@@ -2239,7 +2280,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     $("ourTeam").textContent = settings.us;
     $("allianceSize").value = String(settings.size || 2);
     $("loadBtn").disabled = readOnly || offline;
-    $("loadBtn").textContent = isOwner ? `Load from ${SOURCE.name}` : "Request a competition";
+    $("loadBtn").textContent = isOwner ? `Competition not listed? Load it from ${SOURCE.name}` : "Competition not listed? Ask for it to be added";
     $("resetDraft").disabled = readOnly || !teams.size;
     const b = $("banner");
     if (offline) { b.hidden = false; b.innerHTML = `<b>Saving is off here.</b> Open this board on claude.ai so loaded competitions and ratings are shared with your team.`; }
@@ -2886,7 +2927,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
     toast("Note added");
   });
-  $("matchDlg").addEventListener("close", () => { openMatchKey = null; });
+  $("matchDlg").addEventListener("close", () => { openMatchKey = null; matchDrafts.clear(); });
   // star or unstar a competition for the whole team
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-star]"); if (!b || b.disabled || !db) return;
@@ -2914,6 +2955,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   const toastHome = new MutationObserver(() => { const el = $("toast"), d = el.parentElement; if (d && d.tagName === "DIALOG" && !d.open) document.body.appendChild(el); });
   document.querySelectorAll("dialog").forEach(d => toastHome.observe(d, { attributes: true, attributeFilter: ["open"] }));
   document.addEventListener("click", (e) => {
+    const mv = e.target.closest("[data-mnav]");
+    if (mv) { if (mv.dataset.mnav) openMatch(mv.dataset.mnav); return; }
     const mp = e.target.closest("[data-mpage]");
     if (mp) { matchPage = mp.dataset.mpage; try { localStorage.setItem("ss51-mpage", matchPage); } catch {} renderMatchDlg(); return; }
     const sw = e.target.closest("[data-pview]");
