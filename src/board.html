@@ -70,6 +70,13 @@ a { color: var(--accent-ink); }
 /* start page */
 .home { display: flex; flex-direction: column; gap: 22px; }
 .loadmore { margin: 14px 0 0; }
+.phonebtn { margin-top: 10px; }
+.phonedlg h3 { margin: 0 0 4px; font-family: var(--f-display); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 8px; }
+.phonesec { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+.phonesec .hint { margin: 0; }
+.phonesteps { margin: 0; padding-left: 22px; display: flex; flex-direction: column; gap: 8px; font-size: 14.5px; line-height: 1.45; }
+.phonesec details summary { cursor: pointer; color: var(--accent-ink); font-size: 14px; padding: 6px 0; }
+.phonesec .done { margin: 0; color: var(--good); font-weight: 600; }
 .loadmore .linkbtn { font-size: 14.5px; min-height: 44px; display: inline-flex; align-items: center; }
 .loadmore .linkbtn:disabled { opacity: .5; cursor: default; }
 .homehead { display: flex; flex-wrap: wrap; gap: 14px 24px; align-items: end; justify-content: space-between; }
@@ -817,7 +824,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   <section class="home" id="homeView">
     <div class="homehead">
       <div><h2 class="hometitle">Which tournament are you scouting?</h2>
-        <p class="hint">Every competition loaded here keeps its own ratings, notes and draft board.</p></div>
+        <p class="hint">Every competition loaded here keeps its own ratings, notes and draft board.</p>
+        <button type="button" class="btn phonebtn" data-phone hidden>Add to your phone</button></div>
     </div>
     <div class="evgroup" id="evRequests"></div>
     <div class="evgroup" id="evUpcoming"></div>
@@ -936,7 +944,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <li>To rate a team or add a note, tap its number on the <b>Pick list</b>, <b>Rankings</b> or <b>Quals</b>. Add a note each time you watch it, and rate it 1–10. Ratings from everyone are averaged. Scouting notes opens a read-only summary.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
-        <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button></div>
+        <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
       </section>
     </aside>
   </div>
@@ -945,6 +953,31 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
 <footer class="foot"><div class="wrap"><img class="footdino" id="footDino" alt="" width="64" height="66"><div><b>Singularity Scout</b><span>Made by Team 51 · NerdHerd Singularity. Rawr.</span></div></div></footer>
 
 <dialog id="teamDlg"><form class="dlg" id="teamForm" method="dialog"></form></dialog>
+
+<dialog id="phoneDlg" aria-labelledby="phoneTitle">
+  <div class="dlg phonedlg">
+    <div class="dlghead"><div><h2 id="phoneTitle">Add Scout 51 to your phone</h2><small>Open the board in one tap, and see our next match without opening anything.</small></div>
+      <button type="button" class="x" data-phoneclose aria-label="Close">×</button></div>
+    <section class="phonesec">
+      <h3>Home screen app</h3>
+      <p class="hint">Opens full screen with the dino icon, no browser bar, and still opens with no signal.</p>
+      <div id="installBody"></div>
+    </section>
+    <section class="phonesec">
+      <h3>Next-match widget <span class="tag">iPhone</span></h3>
+      <p class="hint">On match days it shows our next match, the time, our alliance color, partner and opponents. Between events it shows our next competition. Works on the home screen and the lock screen, and refreshes on its own.</p>
+      <ol class="phonesteps">
+        <li>Get <a href="https://apps.apple.com/app/scriptable/id1405459188" target="_blank" rel="noopener">Scriptable</a> from the App Store (free).</li>
+        <li><button type="button" class="btn primary" id="copyWidget">Copy widget script</button> <span class="hint" id="copyNote" aria-live="polite"></span></li>
+        <li>Open Scriptable, tap <b>+</b>, paste, then tap the title at the top and name it <b>Scout 51</b>. Tap <b>Done</b>.</li>
+        <li><b>Home screen:</b> press and hold an empty spot → <b>Edit</b> → <b>Add Widget</b> → <b>Scriptable</b> → Small or Medium → <b>Add Widget</b>. Then press and hold the new widget → <b>Edit Widget</b> → Script: <b>Scout 51</b>.</li>
+        <li><b>Lock screen (optional):</b> press and hold the lock screen → <b>Customize</b> → <b>Lock Screen</b> → tap the widget row → <b>Scriptable</b> → the wide one. Tap it → Script: <b>Scout 51</b>.</li>
+      </ol>
+      <p class="hint">Tapping the widget opens this board. It only reads public FTCScout data, so no scout code is needed. <a href="widget/scout-widget.js" target="_blank" rel="noopener">See the script</a>.</p>
+    </section>
+    <div class="dlgfoot"><button type="button" class="btn" data-phoneclose>Close</button></div>
+  </div>
+</dialog>
 
 <dialog id="loadDlg">
   <form class="dlg" id="loadForm" method="dialog">
@@ -2915,6 +2948,51 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   const codeTarget = () => parseCode($("lCode").value, $("lSeason").value);
   const submitCode = () => { const t = codeTarget(); if (!t) return showErr("Enter an event code or paste the event's link.", false); if (isOwner) loadOne(t.season, t.code); else requestEvent(t); };
   $("loadBtn").onclick = openLoad;
+
+  /* ---------- Add to your phone: home screen app + iPhone widget (website only) ---------- */
+  let installEvt = null;
+  window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); installEvt = e; if ($("phoneDlg").open) renderInstall(); });
+  window.addEventListener("appinstalled", () => { installEvt = null; if ($("phoneDlg").open) renderInstall(); toast("Scout 51 is on your home screen"); });
+  const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  function renderInstall() {
+    const box = $("installBody");
+    if (isStandalone()) { box.innerHTML = `<p class="done">You're using the home screen app already.</p>`; return; }
+    if (installEvt) { box.innerHTML = `<button type="button" class="btn primary" id="installNow">Install app</button>`; return; }
+    const ios = `<ol class="phonesteps"><li>Open this page in <b>Safari</b>.</li><li>Tap <b>Share</b> (the square with the arrow), then scroll down to <b>Add to Home Screen</b>.</li><li>Tap <b>Add</b>.</li></ol>`;
+    const android = `<ol class="phonesteps"><li>Open this page in <b>Chrome</b>.</li><li>Tap the <b>⋮</b> menu → <b>Add to Home screen</b> (or <b>Install app</b>).</li><li>Tap <b>Install</b>.</li></ol>`;
+    box.innerHTML = isIOS() ? ios + `<details><summary>On Android instead?</summary>${android}</details>`
+      : android + `<details><summary>On iPhone instead?</summary>${ios}</details>`;
+  }
+  let widgetSrc = null;
+  async function openPhone() {
+    renderInstall(); $("copyNote").textContent = ""; $("phoneDlg").showModal();
+    // fetch the script now, so the tap on Copy can write it straight away (iPhones only allow copying right after a tap)
+    if (!widgetSrc) try { const r = await fetch("widget/scout-widget.js", { cache: "no-cache" }); if (r.ok) widgetSrc = await r.text(); } catch {}
+  }
+  // the older copy route works in more places (and inside some in-app browsers); the newer one is the backup
+  function copyOld(t) {
+    const ta = document.createElement("textarea"); ta.value = t; ta.setAttribute("readonly", ""); ta.style.position = "fixed"; ta.style.top = "0"; ta.style.opacity = "0";
+    $("phoneDlg").appendChild(ta); ta.focus(); ta.select(); ta.setSelectionRange(0, t.length);
+    let ok = false; try { ok = document.execCommand("copy"); } catch {} ta.remove(); return ok;
+  }
+  function copyText(t) {
+    if (copyOld(t)) return Promise.resolve();
+    if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(t);
+    return Promise.reject(new Error("copy"));
+  }
+  document.addEventListener("click", (e) => {
+    if (e.target.closest("[data-phone]")) { openPhone(); return; }
+    if (e.target.closest("[data-phoneclose]")) { $("phoneDlg").close(); return; }
+    if (e.target.closest("#installNow") && installEvt) { const ev = installEvt; installEvt = null; ev.prompt(); ev.userChoice.finally(() => renderInstall()); return; }
+    if (e.target.closest("#copyWidget")) {
+      if (!widgetSrc) { $("copyNote").textContent = "Still loading. Try again in a second."; return; }
+      copyText(widgetSrc).then(() => { $("copyNote").textContent = "Copied. Now paste it in Scriptable."; },
+        () => { $("copyNote").innerHTML = `Couldn't copy. Open <a href="widget/scout-widget.js" target="_blank" rel="noopener">the script</a>, then select all and copy.`; });
+    }
+  });
+  // only the website can be installed; the claude.ai copy has no app to add
+  if (window.SITE) document.querySelectorAll("[data-phone]").forEach(b => b.hidden = false);
   $("loadClose").onclick = () => $("loadDlg").close();
   $("findBtn").onclick = findEvents;
   $("codeBtn").onclick = submitCode;
