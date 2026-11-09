@@ -213,8 +213,8 @@ a { color: var(--accent-ink); }
 .pbar i { display: block; height: 100%; background: #dc2626; }
 .pwin { font-weight: 700; white-space: nowrap; font-family: var(--f-mono); }
 .pwin.r { color: #dc2626; } .pwin.b { color: #3b82f6; }
-.pok, .pbad { font-weight: 800; width: 20px; text-align: center; }
-.pok { color: #16a34a; } .pbad { color: #dc2626; }
+.pok, .pbad { font-weight: 700; font-size: 12px; white-space: nowrap; padding: 1px 8px; border-radius: 999px; }
+.pok { color: #15803d; background: color-mix(in srgb, #16a34a 14%, transparent); } .pbad { color: #b91c1c; background: color-mix(in srgb, #dc2626 12%, transparent); }
 @media (max-width: 560px) { .trygrid { grid-template-columns: 1fr; } .mpred .ptitle { display: none; } }
 .mfoot { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); }
 .mnotes.has { color: var(--accent-ink); font-weight: 600; }
@@ -433,6 +433,9 @@ main.wrap { padding-block: 20px 48px; display: flex; flex-direction: column; gap
 table { border-collapse: collapse; width: 100%; min-width: 900px; font-size: 14px; }
 th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; padding: 9px 8px; border-bottom: 1px solid var(--line); white-space: nowrap; }
 th.r, td.r { text-align: right; }
+#pickWrap th { white-space: normal; vertical-align: bottom; line-height: 1.25; }
+#pickWrap th, #pickWrap td { padding-inline: 6px; }
+#pickWrap .teamcell { min-width: 150px; }
 th button.sort { all: unset; cursor: pointer; }
 th button.sort[aria-sort="active"] { color: var(--accent-ink); }
 th button.sort:focus-visible { outline: 2px solid var(--glow); }
@@ -548,7 +551,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .row2 { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px 12px; }
 .check { display: flex; align-items: center; gap: 8px; font-size: 14px; }
 .notes { display: flex; flex-direction: column; gap: 8px; }
-.ord { font-family: var(--f-display); font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; min-width: 34px; text-align: center; padding: 0 6px; border-radius: 5px; background: var(--band); color: var(--band-ink); line-height: 1.5; }
+.ord { font-family: var(--f-display); font-weight: 800; font-size: 13px; letter-spacing: .04em; text-transform: uppercase; white-space: nowrap; min-width: 34px; text-align: center; padding: 0 6px; border-radius: 5px; background: var(--band); color: var(--band-ink); line-height: 1.5; }
 .note.latest .ord { background: var(--accent); color: var(--on-accent); }
 .numsline { display: flex; flex-wrap: wrap; gap: 4px 10px; margin-top: 4px; font-size: 12px; color: var(--muted); }
 .numsline b { color: var(--ink); font-family: var(--f-mono); font-weight: 500; }
@@ -828,7 +831,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
       <div class="tablewrap" id="rankWrap" hidden>
         <p class="hint ranknote" id="rankNote"></p>
         <table class="ranktable">
-          <thead><tr><th>Rank</th><th>Team</th><th class="r">W-L-T</th><th class="r">Played</th><th class="r">RP</th><th class="r">OPR</th><th class="r">On pick list</th><th></th></tr></thead>
+          <thead><tr><th>Rank</th><th>Team</th><th class="r">W-L-T</th><th class="r">Played</th><th class="r" title="Ranking points">Ranking pts</th><th class="r" title="Offensive power rating: points this team adds to an alliance per match">OPR</th><th class="r">On pick list</th><th></th></tr></thead>
           <tbody id="rankRows"></tbody>
         </table>
       </div>
@@ -847,7 +850,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <div class="predhead" id="predHead">
           <div class="predtop"><b>Match predictor</b><span class="predacc" id="predAcc"></span>
             <button type="button" class="qhelp" id="predHelpBtn" aria-expanded="false" aria-controls="predHelp" aria-label="How the predictor works">?</button></div>
-          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches show ✓ or ✗ so you can see how often it's right.</p>
+          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches say "Called it" or "Missed" so you can see how often it's right.</p>
           <details class="trymatch"><summary>Try a matchup</summary>
             <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
               <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
@@ -865,13 +868,13 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <table>
           <thead><tr>
             <th>#</th><th>Team</th>
-            <th><button class="sort" data-sort="rank">Qual</button></th>
+            <th><button class="sort" data-sort="rank" title="Qualification rank and win-loss-tie record">Qual</button></th>
             <th class="r"><button class="sort" data-sort="auto">Auto</button></th>
             <th class="r"><button class="sort" data-sort="teleop">TeleOp</button></th>
-            <th class="r"><button class="sort" data-sort="endgame">End</button></th>
-            <th class="r"><button class="sort" data-sort="pen">Pen</button></th>
+            <th class="r"><button class="sort" data-sort="endgame">Endgame</button></th>
+            <th class="r"><button class="sort" data-sort="pen" title="Penalty points this team gives away per match">Penalties</button></th>
             <th><button class="sort" data-sort="scout">Scouts</button></th>
-            <th class="r"><button class="sort" data-sort="exp">Exp pts</button></th>
+            <th class="r"><button class="sort" data-sort="exp" title="Points we'd expect this team to add to our alliance, scaled by how reliable scouts rated them">Expected pts</button></th>
             <th><button class="sort" data-sort="fit" title="Fit for your robot, blended with scout ratings and 25% qualification rank">Pick score</button></th>
             <th class="r">Draft</th>
           </tr></thead>
@@ -1936,7 +1939,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const pct = Math.round(pr.pRed * 100), redFav = pr.pRed >= 0.5;
     return `<div class="mpred"><span class="ptitle">Predicted</span><span class="pscore num"><b class="r">${Math.round(pr.red)}</b> – <b class="b">${Math.round(pr.blue)}</b></span>
       <span class="pbar" aria-hidden="true"><i style="width:${pct}%"></i></span>
-      <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The prediction picked the winner">✓</span>` : `<span class="pbad" title="The prediction picked the wrong winner">✗</span>`}</div>`;
+      <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The predictor picked the winner of this match">Called it</span>` : `<span class="pbad" title="The predictor picked the wrong winner for this match">Missed</span>`}</div>`;
   }
 
   function renderQuals(c) {
@@ -2233,7 +2236,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <td class="r num c-stat" data-l="Auto">${fmt(s.auto)}</td><td class="r num c-stat" data-l="TeleOp">${fmt(s.teleop)}</td><td class="r num c-stat" data-l="Endgame">${fmt(s.endgame)}</td>
         <td class="r num c-stat ${s.pen > 8 ? "pen" : ""}" data-l="Penalties">${fmt(s.pen)}</td>
         <td class="c-scout">${scout}</td>
-        <td class="r num c-stat" data-l="Exp. pts">${fmt(expected(t))}</td>
+        <td class="r num c-stat" data-l="Expected">${fmt(expected(t))}</td>
         <td class="c-fit" ${isUs ? "" : `data-l="Pick score"`}>${fit}</td>
         <td class="c-st"><div class="status">${status}</div></td></tr>`;
     }).join("");
@@ -2492,13 +2495,13 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
   function noteList(t, key, shown, by) {
-    const list = allNotes(t).filter(x => !by || x.by === by);
+    const list = allNotes(t).filter(x => !by || x.by === by), total = allNotes(t).length;
     if (!list.length) return dinoEmpty("No notes yet", by ? "" : "Scouts' notes on this team will show up here.", "sm", "stations");
     // one person's notes are always shown in full
     const open = !!by || expandedNotes.has(key), vis = open ? list : list.slice(0, shown), more = by ? 0 : list.length - shown;
     const canDel = (x) => !readOnly && db && uid && x.by === uid;   // only the person who wrote a note can delete it
     return `<div class="notes">${vis.map((x, i) => `<div class="note ${i === 0 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
-        <div class="notetop"><span class="ord" title="${ordinal(x.n)} note on this team">${ordinal(x.n)}</span>${who(x.by, x.by === uid ? "You" : null)}
+        <div class="notetop"><span class="ord" title="The ${ordinal(x.n)} of ${total} notes on this team, oldest first">Note ${x.n} of ${total}</span>${who(x.by, x.by === uid ? "You" : null)}
         <small>${x.mine > 1 ? `${x.by === uid ? "your" : "their"} ${ordinal(x.mine)} note · ` : ""}${when(x.at)}${i === 0 ? " · latest" : ""}${x.changed ? " · updated numbers" : ""}</small>
         ${canDel(x) ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${t.number}">Delete</button>` : ""}</div>
         <div>${esc(x.text)}</div>${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
