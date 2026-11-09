@@ -658,6 +658,83 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .evrow .hfield { flex: 1; }
 }
 @media (prefers-reduced-motion: no-preference) { .fit .track span, .stack span, .progress span { transition: width .25s ease; } }
+.sortphone, .liveopt { display: none; }
+/* ---------- phones: the scouting work comes first ---------- */
+@media (max-width: 560px) {
+  /* header: brand and scout on one row, the competition on the next, the rest in one short row */
+  .top .wrap { gap: 8px 10px; padding-block: 10px; }
+  .top .mebox:not([hidden]) { display: contents; }
+  .brand { flex: 1 1 0; min-width: 0; gap: 8px; order: 0; margin-right: 0; }
+  .brandlogo { width: 40px; height: auto; }
+  .brand h1 { font-size: 19px; }
+  .brand small { display: none; }
+  #meBtn { order: 1; max-width: 58%; overflow: hidden; text-overflow: ellipsis; }
+  .top .wrap::after { content: ""; order: 2; flex: 0 0 100%; height: 0; margin-top: -8px; }   /* brand and scout always share the first row */
+  #meBtn .mesw { display: none; }
+  #evNav { order: 3; }
+  .hfield:has(#ourTeam) { display: none; }
+  label.hfield:has(#allianceSize) { order: 4; flex-direction: row; align-items: center; gap: 8px; }
+  #storePill { order: 5; }
+  #storePill.live { display: none; }   /* all good: say nothing; offline and errors still show */
+  #exportBtn { display: none; }
+  #rosterBtn { order: 6; margin-left: auto; }
+  .btn-band { min-height: 40px; }
+  .hfield select { min-height: 40px; }
+  /* live updates and alliance selection: one line each */
+  .boardview { gap: 10px; }
+  .livebar, .pickbar { padding: 8px 12px; }
+  .livestate { flex: 1 1 100%; font-size: 13.5px; }
+  .livestate > span:nth-child(2) { flex: 1; min-width: 0; }
+  .livemore { display: none; }
+  .liveopt { display: inline-flex; margin-left: auto; }
+  .livebar:not(.open) .livectl { display: none; }
+  .pickbar { flex-wrap: nowrap; }
+  .pickbarText > b { display: none; }
+  .pickbarText .hint { font-size: 13.5px; color: var(--ink); }
+  /* tabs on one line */
+  .tabs { flex-wrap: nowrap; gap: 0; width: 100%; margin-right: 0; justify-content: space-between; }
+  .tabs button { font-size: 17px; padding: 10px 6px 8px; min-height: 26px; }
+  .tabs .tlong { display: none; }
+  .toolbar { padding: 8px 12px 12px; }
+  .sortphone { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); margin-left: auto; }
+  .sortphone[hidden] { display: none; }
+  .sortphone select { min-height: 44px; }
+  /* pick list: one card per team instead of an 11-column table */
+  #pickWrap { overflow: visible; }
+  #pickWrap table { min-width: 0; }
+  #pickWrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  #pickWrap tbody, #pickWrap tr, #pickWrap td { display: block; }
+  #pickWrap tr { display: flex; flex-wrap: wrap; align-items: center; column-gap: 8px; padding: 12px 12px 10px; border-bottom: 1px solid var(--line); }
+  #pickWrap td { border: 0; padding: 0; }
+  #pickWrap td[colspan] { flex: 1 1 100%; }
+  #pickWrap .c-rk { flex: 0 0 22px; align-self: flex-start; padding-top: 2px; font-family: var(--f-display); font-weight: 800; font-size: 17px; color: var(--muted); }
+  #pickWrap .c-team { flex: 1 1 0; min-width: 0; }
+  #pickWrap .teamcell { min-width: 0; }
+  #pickWrap .teamcell button { font-size: 22px; padding: 4px 0; min-height: 36px; display: inline-flex; align-items: center; align-self: flex-start; }
+  #pickWrap .c-scout { flex: 0 0 auto; order: 1; align-self: flex-start; text-align: right; }
+  #pickWrap .scout b { display: block; font-size: 20px; line-height: 1.1; color: var(--accent-ink); }
+  #pickWrap .scout small { margin: 0; }
+  #pickWrap .c-stat { order: 2; flex: 1 1 0; min-width: 0; margin-top: 10px; text-align: left; font-size: 14px; }
+  #pickWrap tr::before, #pickWrap tr::after { content: ""; flex-basis: 100%; height: 0; }
+  #pickWrap tr::before { order: 2; } #pickWrap tr::after { order: 3; }
+  #pickWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
+  #pickWrap .c-stat[data-l="Penalties"]:not(.pen) { display: none; }   /* only when they're high */
+  #pickWrap td[data-l]::before { font-size: 10px; letter-spacing: .04em; white-space: nowrap; }
+  #pickWrap tr.us .c-fit, #pickWrap tr.us .c-st { display: none; }
+  #pickWrap tr.us .c-rk::before { content: "Us"; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-ink); }
+  #pickWrap .c-fit { order: 4; flex: 1 1 0; min-width: 0; margin-top: 10px; }
+  #pickWrap .c-st { order: 5; flex: 0 0 auto; margin-top: 10px; align-self: flex-end; }
+  #pickWrap .fit { min-width: 0; }
+  #pickWrap .status button { min-height: 44px; padding: 0 14px; font-size: 14px; }
+  #pickWrap .status .us { display: inline-flex; align-items: center; min-height: 44px; }
+  /* bigger targets for thumbs */
+  .btn, .seg button, .pviewsw button, .starbtn, .cmpbtn { min-height: 44px; }
+  .btn, .seg button { display: inline-flex; align-items: center; justify-content: center; }
+  .seg button { padding-inline: 14px; }
+  .pviewsw button { display: inline-flex; align-items: center; padding-inline: 16px; }
+  .starbtn { min-width: 44px; }
+  #search { min-height: 44px; }
+}
 </style>
 
 <header class="top">
@@ -714,7 +791,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         <div class="tabs" role="tablist" aria-label="List">
           <button role="tab" id="tabPick" aria-selected="true">Pick list</button>
           <button role="tab" id="tabRank" aria-selected="false">Rankings</button>
-          <button role="tab" id="tabNotes" aria-selected="false">Scouting notes</button>
+          <button role="tab" id="tabNotes" aria-selected="false"><span class="tlong">Scouting </span>notes</button>
           <button role="tab" id="tabQuals" aria-selected="false">Quals</button>
         </div>
         <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team">
@@ -723,6 +800,9 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
           <button id="showAll" aria-pressed="true">All</button>
         </div>
         <button class="btn" id="exportBtn">Copy CSV</button>
+        <label class="sortphone" id="sortPhoneBox">Sort <select id="sortPhone" aria-label="Sort the pick list by">
+          <option value="fit">Pick score</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
+          <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option></select></label>
       </div>
       <div class="tablewrap" id="rankWrap" hidden>
         <p class="hint ranknote" id="rankNote"></p>
@@ -1482,26 +1562,30 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   });
   setInterval(() => { if (current) renderLive(); }, 30000);
 
+  let liveOpen = false;   // phone only: the owner's live-update controls are folded away until asked for
   function renderLive() {
     const bar = $("liveBar"); if (!bar) return;
     const ev = current && events.get(current); if (!ev) { bar.innerHTML = ""; return; }
     const live = ev.live || null;
     const fresh = live && live.on && Date.now() - (live.at || 0) < (live.every || 3) * 60000 * 2.5;
-    let state, text;
+    let state, text, more = "";
     if (liveOn && liveBusy) { state = "busy"; text = `Checking ${SOURCE.name} for new results…`; }
-    else if (fresh) { state = "on"; text = `Live · standings updated ${ago(live.at)}, checking every ${live.every} min${live.changed ? ` · ${live.changed} team${live.changed === 1 ? "" : "s"} changed` : ""}`; }
+    else if (fresh) { state = "on"; text = `Live · standings updated ${ago(live.at)}`; more = `, checking every ${live.every} min${live.changed ? ` · ${live.changed} team${live.changed === 1 ? "" : "s"} changed` : ""}`; }
     else if (live && live.on) { state = "stale"; text = `Live updates paused · last update ${ago(live.at)}. They resume when the board owner's Claude desktop app has this competition open.`; }
     else { state = "off"; text = ev.loadedAt ? `Standings from ${ago(live?.at || ev.loadedAt)}.${isOwner ? "" : " Live updates aren't running."}` : ""; }
-    const ownerCtl = isOwner && !readOnly ? `<div class="livectl">
+    const ownerCtl = isOwner && !readOnly ? `<div class="livectl" id="liveCtl">
       <label class="livesel">Every <select id="liveEvery" aria-label="Update interval">${LIVE_CHOICES.map(m => `<option value="${m}" ${m === liveEvery ? "selected" : ""}>${m} min</option>`).join("")}</select></label>
       <button type="button" class="btn" id="liveNow" ${liveBusy ? "disabled" : ""}>Refresh now</button>
       <button type="button" class="btn ${liveOn ? "" : "primary"}" id="liveToggle">${liveOn ? "Stop live updates" : "Start live updates"}</button></div>` : "";
-    bar.innerHTML = `<div class="livestate ${state}"><span class="livedot" aria-hidden="true"></span><span>${esc(text)}</span></div>${ownerCtl}
+    bar.classList.toggle("open", liveOpen);
+    bar.innerHTML = `<div class="livestate ${state}"><span class="livedot" aria-hidden="true"></span><span>${esc(text)}<span class="livemore">${esc(more)}</span></span>
+      ${ownerCtl ? `<button type="button" class="btn liveopt" id="liveOpt" aria-expanded="${liveOpen}" aria-controls="liveCtl">Options</button>` : ""}</div>${ownerCtl}
       ${liveErr ? `<div class="err liveerr">${esc(liveErr)}</div>` : ""}`;
   }
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("#liveToggle,#liveNow"); if (!b) return;
+    const b = e.target.closest("#liveToggle,#liveNow,#liveOpt"); if (!b) return;
     if (b.id === "liveToggle") liveOn ? stopLive() : startLive();
+    if (b.id === "liveOpt") { liveOpen = !liveOpen; renderLive(); $("liveOpt")?.focus(); }
     else liveTick();
   });
   document.addEventListener("change", (e) => {
@@ -2115,15 +2199,15 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
         `<button type="button" data-taken="${t.number}" class="${t.status === "taken" ? "on-taken" : ""}" aria-pressed="${t.status === "taken"}" ${dis}>Taken</button>
          <button type="button" data-pick="${t.number}" class="${t.status === "partner" ? "on-pick" : ""}" aria-pressed="${t.status === "partner"}" ${dis}>${t.status === "partner" ? "Picked" : "Pick"}</button>`;
       return `<tr class="${cls}">
-        <td class="rk">${isUs || t.status === "taken" ? "" : (fitRank.get(t.number) ?? "")}</td>
-        <td><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}</div></td>
-        <td>${qual}</td>
-        <td class="r num">${fmt(s.auto)}</td><td class="r num">${fmt(s.teleop)}</td><td class="r num">${fmt(s.endgame)}</td>
-        <td class="r num ${s.pen > 8 ? "pen" : ""}">${fmt(s.pen)}</td>
-        <td>${scout}</td>
-        <td class="r num">${fmt(expected(t))}</td>
-        <td>${fit}</td>
-        <td><div class="status">${status}</div></td></tr>`;
+        <td class="rk c-rk">${isUs || t.status === "taken" ? "" : (fitRank.get(t.number) ?? "")}</td>
+        <td class="c-team"><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}</div></td>
+        <td class="c-stat" data-l="Qual">${qual}</td>
+        <td class="r num c-stat" data-l="Auto">${fmt(s.auto)}</td><td class="r num c-stat" data-l="TeleOp">${fmt(s.teleop)}</td><td class="r num c-stat" data-l="Endgame">${fmt(s.endgame)}</td>
+        <td class="r num c-stat ${s.pen > 8 ? "pen" : ""}" data-l="Penalties">${fmt(s.pen)}</td>
+        <td class="c-scout">${scout}</td>
+        <td class="r num c-stat" data-l="Exp. pts">${fmt(expected(t))}</td>
+        <td class="c-fit" ${isUs ? "" : `data-l="Pick score"`}>${fit}</td>
+        <td class="c-st"><div class="status">${status}</div></td></tr>`;
     }).join("");
   }
 
@@ -2139,7 +2223,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     $("meBox").hidden = gate || offline;
     $("ourTeam").parentElement.hidden = gate; $("allianceSize").parentElement.hidden = gate;   // nothing to set before signing in
     const ms = meScout();
-    if (ms) $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(ms.name)} · Switch`;
+    if (ms) { $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(ms.name)}<span class="mesw"> · Switch</span>`; $("meBtn").setAttribute("aria-label", `Scouting as ${ms.name}. Switch scout`); }
     $("rosterBtn").hidden = !canManage();
     const mode = !loaded ? "loading" : !scouts.size ? (!readOnly ? "setup" : "wait") : "code";
     if (gate && (!wasGate || mode !== gateMode)) { gateMode = mode; renderGate(); }
@@ -2294,6 +2378,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
+    $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick";
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
   }
 
@@ -2887,6 +2972,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("showAvail").onclick = () => { view.filter = "available"; $("showAvail").setAttribute("aria-pressed", "true"); $("showAll").setAttribute("aria-pressed", "false"); render(); };
   $("showAll").onclick = () => { view.filter = "all"; $("showAll").setAttribute("aria-pressed", "true"); $("showAvail").setAttribute("aria-pressed", "false"); render(); };
   document.querySelectorAll("th button.sort").forEach(b => b.onclick = () => { view.sort = view.sort === b.dataset.sort ? "fit" : b.dataset.sort; render(); });
+  $("sortPhone").onchange = (e) => { view.sort = e.target.value; render(); };
   $("sliders").addEventListener("input", (e) => {
     const k = e.target.dataset.w; if (!k) return;
     settings.weights[k] = parseFloat(e.target.value);
