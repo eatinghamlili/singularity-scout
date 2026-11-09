@@ -13,6 +13,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Scout 51">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>/* the light/dark choice saved on this device, applied before anything draws */try{var t=localStorage.getItem("ss51-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/* if a script fails to load (a GitHub or CDN hiccup), reload once instead of showing "Not connected" */window.ssRetry=function(){try{if(sessionStorage.getItem("ss51-retry"))return;sessionStorage.setItem("ss51-retry","1")}catch(e){return}setTimeout(function(){location.reload()},1500)};</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" onerror="ssRetry()"></script>
 <script src="supabase-config.js" onerror="ssRetry()"></script>
@@ -91,6 +92,8 @@ a { color: var(--accent-ink); }
 /* start page */
 .home { display: flex; flex-direction: column; gap: 22px; }
 .loadmore { margin: 14px 0 0; }
+.themebtn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; min-width: 40px; }
+.themebtn svg { display: block; }
 /* competition day: the one bold block on the home page */
 .today { max-width: 760px; margin: 18px 0 6px; padding: 16px 18px; border-radius: 16px; background: var(--band); color: var(--band-ink); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
 .today h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: .02em; }
@@ -761,7 +764,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   #storePill { order: 5; }
   #storePill.live { display: none; }   /* all good: say nothing; offline and errors still show */
   #exportBtn { display: none; }
-  #rosterBtn { order: 6; margin-left: auto; }
+  #rosterBtn { order: 6; }
+  #themeBtn { order: 6; margin-left: auto; min-height: 40px; }
   .btn-band { min-height: 40px; }
   .hfield select { min-height: 40px; }
   /* live updates and alliance selection: one line each */
@@ -866,6 +870,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     <div class="hfield"><span>Our team</span><b class="ourteam" id="ourTeam" title="This board is for Team 51 only for now">51</b></div>
     <label class="hfield"><span>Alliance</span><select id="allianceSize"><option value="2">2 teams</option><option value="3">3 teams</option></select></label>
     <span class="pill" id="storePill">Connecting…</span>
+    <button type="button" class="btn-band ghost themebtn" id="themeBtn" hidden></button>
     <div class="mebox" id="meBox" hidden>
       <button class="btn-band ghost" id="rosterBtn" hidden>Team roster</button>
       <button class="btn-band ghost" id="meBtn" title="Switch scout"></button>
@@ -3067,6 +3072,31 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   const codeTarget = () => parseCode($("lCode").value, $("lSeason").value);
   const submitCode = () => { const t = codeTarget(); if (!t) return showErr("Enter an event code or paste the event's link.", false); if (isOwner) loadOne(t.season, t.code); else requestEvent(t); };
   $("loadBtn").onclick = openLoad;
+
+  /* ---------- light / dark switch (website only; claude.ai sets its own theme) ----------
+     Auto follows the phone's setting. The choice is kept on this device. */
+  const THEME_ICON = {
+    auto: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg>`,
+    dark: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M20 14.5A8 8 0 0 1 9.5 4a8 8 0 1 0 10.5 10.5z" fill="currentColor"/></svg>`,
+    light: `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><circle cx="12" cy="12" r="4.5" fill="currentColor"/><g stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></g></svg>`,
+  };
+  const THEME_NAME = { auto: "Matches your phone", dark: "Dark mode", light: "Light mode" };
+  const themeNow = () => { try { const t = localStorage.getItem("ss51-theme"); return t === "dark" || t === "light" ? t : "auto"; } catch { return "auto"; } };
+  function applyTheme(t) {
+    if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+    const b = $("themeBtn"); if (!b) return;
+    b.innerHTML = THEME_ICON[t];
+    const label = `Theme: ${THEME_NAME[t]}. Tap to change`;
+    b.setAttribute("aria-label", label); b.title = label;
+  }
+  if (window.SITE) {
+    $("themeBtn").hidden = false; applyTheme(themeNow());
+    $("themeBtn").onclick = () => {
+      const next = { auto: "dark", dark: "light", light: "auto" }[themeNow()];
+      try { if (next === "auto") localStorage.removeItem("ss51-theme"); else localStorage.setItem("ss51-theme", next); } catch {}
+      applyTheme(next); toast(THEME_NAME[next]);
+    };
+  }
 
   /* ---------- Add to your phone: home screen app + iPhone widget (website only) ---------- */
   let installEvt = null;

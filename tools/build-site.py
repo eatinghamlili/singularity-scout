@@ -104,6 +104,7 @@ HEAD = """<!doctype html>
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Scout 51">
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
+<script>/* the light/dark choice saved on this device, applied before anything draws */try{var t=localStorage.getItem("ss51-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/* if a script fails to load (a GitHub or CDN hiccup), reload once instead of showing "Not connected" */window.ssRetry=function(){try{if(sessionStorage.getItem("ss51-retry"))return;sessionStorage.setItem("ss51-retry","1")}catch(e){return}setTimeout(function(){location.reload()},1500)};</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" onerror="ssRetry()"></script>
 <script src="supabase-config.js" onerror="ssRetry()"></script>
