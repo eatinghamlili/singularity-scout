@@ -70,6 +70,25 @@ a { color: var(--accent-ink); }
 /* start page */
 .home { display: flex; flex-direction: column; gap: 22px; }
 .loadmore { margin: 14px 0 0; }
+/* competition day: the one bold block on the home page */
+.today { max-width: 760px; margin: 18px 0 6px; padding: 16px 18px; border-radius: 16px; background: var(--band); color: var(--band-ink); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
+.today h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: .02em; }
+.tdhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
+.tdlive { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #86efac; font-weight: 600; }
+.tdlive .livedot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+.tdnext { display: flex; flex-direction: column; gap: 2px; }
+.tdlabel { font-size: 13px; color: var(--band-muted); font-weight: 600; }
+.tdmatch { font-family: var(--f-display); font-weight: 800; font-size: clamp(36px, 9vw, 52px); line-height: 1; }
+.tdmatch.tddone { font-size: clamp(24px, 6vw, 32px); }
+.today:first-child { margin-top: 0; }
+.tdtime { font-family: var(--f-mono); font-weight: 500; font-size: .5em; color: var(--band-muted); margin-left: 6px; }
+.tdside { margin: 0; font-size: 16px; line-height: 1.4; }
+.tdchip { display: inline-block; padding: 1px 10px; border-radius: 999px; font-weight: 700; font-size: 14px; }
+.tdchip.red { background: #dc2626; color: #fff; } .tdchip.blue { background: #2563eb; color: #fff; }
+.tdnote { margin: 0; font-size: 14px; color: var(--band-muted); }
+.tdbtns { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.today .btn:not(.primary) { background: transparent; color: var(--band-ink); border-color: rgb(255 255 255 / .3); }
+.today .btn.primary { background: #a78bfa; border-color: #a78bfa; color: #140b26; }
 .phonebtn { margin-top: 10px; }
 .phonedlg h3 { margin: 0 0 4px; font-family: var(--f-display); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: .04em; display: flex; align-items: center; gap: 8px; }
 .phonesec { border-top: 1px solid var(--line); padding-top: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -299,7 +318,7 @@ a { color: var(--accent-ink); }
 .mteam small { font-family: var(--f-body); font-size: 10px; font-weight: 600; color: var(--bad); }
 .move { font-family: var(--f-mono); font-size: 11px; font-weight: 500; margin-left: 4px; vertical-align: 2px; }
 .move.up { color: var(--good); } .move.down { color: var(--bad); }
-.livebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.livebar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; padding: 2px 4px; }
 .livebar:empty { display: none; }
 .livestate { display: flex; align-items: center; gap: 8px; font-size: 14px; min-width: 0; }
 .livedot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); flex: none; }
@@ -379,7 +398,7 @@ main.wrap { padding-block: 20px 48px; display: flex; flex-direction: column; gap
 .banner b { font-weight: 600; }
 
 /* next pick card */
-.pickbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; }
+.pickbar { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 16px; padding: 2px 4px; }
 .pickbarText { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; min-width: 0; }
 .pickbarText b { font-family: var(--f-display); font-weight: 800; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; }
 .pickbarText .hint { font-size: 13.5px; }
@@ -638,7 +657,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 main.wrap { width: 100%; flex: 1 0 auto; }
 .top { position: relative; box-shadow: 0 4px 14px -8px rgb(0 0 0 / .35); }
 .top::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 2px; background: linear-gradient(90deg, transparent, #7c3aed 20%, #e879f9 50%, #7c3aed 80%, transparent); opacity: .85; }
-.panel, .evcard, .notecard, .match, .livebar, .pickbar, .next, .predhead { box-shadow: var(--shadow); }
+.panel, .evcard, .notecard, .match, .next, .predhead { box-shadow: var(--shadow); }
 .evcard, .match, .notecard { transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease; }
 @media (hover: hover) { .evcard:hover, .match:hover { transform: translateY(-2px); box-shadow: var(--shadow-up); } }
 .btn, .btn-band, .chipbtn, .mteam, .status button { transition: border-color .15s ease, background-color .15s ease, filter .15s ease, transform .1s ease; }
@@ -677,6 +696,27 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .evrow .hfield { flex: 1; }
 }
 @media (prefers-reduced-motion: no-preference) { .fit .track span, .stack span, .progress span { transition: width .25s ease; } }
+/* purple means "you can do something here" or "this is selected"; plain information stays in ink */
+.evcard .when { color: var(--muted); }
+.evcard .go { color: var(--ink); }
+.evcard .badge, .evitem .badge { background: var(--ink); color: var(--surface); }
+.evsection.ours h3 { color: var(--ink); }
+.evsection.ours { background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
+.bigscore b, .overall b, .mcard .overall b { color: var(--ink); }
+.qualsum .nextm { color: var(--ink); font-weight: 600; }
+.tag.src { color: var(--ink); border-color: var(--line); }
+.notecount.some { color: var(--ink); border-color: var(--line); }
+.notecount.lots { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.note.latest .ord { background: var(--band); color: var(--band-ink); }
+.fillbtn .fvals { color: var(--muted); }
+.viewtop { background: var(--sunk); }
+body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb, var(--accent) 8%, transparent), transparent 70%) no-repeat, var(--bg); }
+/* small labels read faster in normal case; caps stay for headings and tabs */
+.hfield > span, .weak > b, .fills > b, .bigscore span, .mpred .ptitle, .mrole, .movebox .mlabel, .msur, .mstate, td.subhead, .redit .rlabel2, th, .fld, .ord {
+  text-transform: none; letter-spacing: .01em; }
+.hfield > span, .mstate, .msur, .mrole, th, td.subhead { font-size: 12px; }
+.fld, .movebox .mlabel, .redit .rlabel2, .weak > b, .fills > b, .bigscore span { font-size: 13px; }
+.ord { font-family: var(--f-body); font-weight: 700; font-size: 12px; }
 .sortphone, .liveopt, .tabs .phonetab { display: none; }
 .colkey { padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .colkey summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; padding: 10px 0; min-height: 24px; list-style-position: inside; }
@@ -705,7 +745,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .hfield select { min-height: 40px; }
   /* live updates and alliance selection: one line each */
   .boardview { gap: 10px; }
-  .livebar, .pickbar { padding: 8px 12px; }
+  .livebar, .pickbar { padding: 0 2px; }
   .livestate { flex: 1 1 100%; font-size: 13.5px; }
   .livestate > span:nth-child(2) { flex: 1; min-width: 0; }
   .livemore { display: none; }
@@ -753,7 +793,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   #rankWrap .c-stat[data-l="W-L-T"] { flex-grow: 1.2; }
   #rankWrap .c-stat[data-l="Played"] { display: none; }   /* the record already says it */
   #rankWrap .c-stat[data-l="Ranking pts"] { flex-grow: 1.4; }
-  #rankWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 10px; text-transform: uppercase; letter-spacing: .04em; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
+  #rankWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; letter-spacing: .01em; white-space: nowrap; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
   #pickWrap { overflow: visible; }
   #pickWrap table { min-width: 0; }
   #pickWrap thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
@@ -766,16 +806,16 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   #pickWrap .teamcell { min-width: 0; }
   #pickWrap .teamcell button { font-size: 22px; padding: 4px 0; min-height: 36px; display: inline-flex; align-items: center; align-self: flex-start; }
   #pickWrap .c-scout { flex: 0 0 auto; order: 1; align-self: flex-start; text-align: right; }
-  #pickWrap .scout b { display: block; font-size: 20px; line-height: 1.1; color: var(--accent-ink); }
+  #pickWrap .scout b { display: block; font-size: 20px; line-height: 1.1; color: var(--ink); }
   #pickWrap .scout small { margin: 0; }
   #pickWrap .c-stat { order: 2; flex: 1 1 0; min-width: 0; margin-top: 10px; text-align: left; font-size: 14px; }
   #pickWrap tr::before, #pickWrap tr::after { content: ""; flex-basis: 100%; height: 0; }
   #pickWrap tr::before { order: 2; } #pickWrap tr::after { order: 3; }
-  #pickWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 10.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
+  #pickWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; letter-spacing: .01em; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
   #pickWrap .c-stat[data-l="Penalties"]:not(.pen) { display: none; }   /* only when they're high */
-  #pickWrap td[data-l]::before { font-size: 10px; letter-spacing: .04em; white-space: nowrap; }
+  #pickWrap td[data-l]::before { font-size: 11.5px; letter-spacing: .01em; white-space: nowrap; }
   #pickWrap tr.us .c-fit, #pickWrap tr.us .c-st { display: none; }
-  #pickWrap tr.us .c-rk::before { content: "Us"; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--accent-ink); }
+  #pickWrap tr.us .c-rk::before { content: "Us"; font-size: 12px; font-family: var(--f-body); font-weight: 700; color: var(--muted); }
   #pickWrap .c-stat[data-l="Qual"] { flex-grow: 1.7; }
   #pickWrap .qual { display: flex; align-items: baseline; gap: 5px; }
   #pickWrap .qual small { display: inline; font-size: 12px; }
@@ -822,6 +862,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   </section>
 
   <section class="home" id="homeView">
+    <div id="evToday"></div>
     <div class="homehead">
       <div><h2 class="hometitle">Which tournament are you scouting?</h2>
         <p class="hint">Every competition loaded here keeps its own ratings, notes and draft board.</p>
@@ -2415,6 +2456,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     const byDate = (a, b) => { const pa = isPastEv(a[1]), pb = isPastEv(b[1]); if (pa !== pb) return pa - pb;
       return pa ? String(b[1].start).localeCompare(String(a[1].start)) : ((!!b[1].hasUs - !!a[1].hasUs) || String(a[1].start).localeCompare(String(b[1].start))); };
     const counted = countsAt > 0, cnt = (k) => noteCounts[k] || 0;
+    renderToday(today);
     // four groups by date. "We're competing": coming up or happening now, and Team 51 is registered (or a scout starred it)
     const isNow = (e) => String(e.start) <= today && today <= String(e.end || e.start);
     const ours = (e) => !isPastEv(e) && (e.hasUs || e.starred);
@@ -2464,6 +2506,51 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     $("evPast").innerHTML = group("Already happened", "Most recent first", past, "past");
   }
 
+  /* ---------- competition day: our next match, first thing on the home page ---------- */
+  let homeDay = { key: null, at: 0, list: null, loading: false, err: false }, pendingTab = null;
+  function renderToday(today) {
+    const box = $("evToday"); if (!box) return;
+    const live = [...events.entries()].filter(([, e]) => e.hasUs && String(e.start) <= today && today <= String(e.end || e.start))
+      .sort((a, b) => String(a[1].start).localeCompare(String(b[1].start)))[0];
+    if (!live) { box.innerHTML = ""; return; }
+    const [k, e] = live, season = k.slice(0, 4), code = k.slice(5), us = settings.us;
+    if ((homeDay.key !== k || Date.now() - homeDay.at > 60000) && !homeDay.loading) {
+      homeDay.loading = true;
+      SOURCE.eventMatches(season, code)
+        .then((list) => { homeDay = { key: k, at: Date.now(), list, loading: false, err: false }; })
+        .catch(() => { homeDay = { key: k, at: Date.now(), list: homeDay.key === k ? homeDay.list : null, loading: false, err: true }; })
+        .finally(() => { if (!current) renderHome(); });
+    }
+    const list = homeDay.key === k ? homeDay.list : null;
+    const label = (m) => (m.level === "Quals" ? "Q" : m.level === "DoubleElim" || m.level === "Playoff" ? "P" : m.level.slice(0, 1)) + (m.series ? m.series + "-" : "") + m.id;
+    const tm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+    let body;
+    if (!list) body = `<p class="tdnote">${homeDay.err ? "Couldn't get today's schedule. It will try again in a minute." : "Getting today's schedule…"}</p>`;
+    else {
+      const has = (m) => [...m.red, ...m.blue].some((t) => t.n === us);
+      const ours = list.filter(has), next = ours.find((m) => !m.played);
+      let w = 0, l = 0, t = 0;
+      for (const m of ours) if (m.played && m.redScore != null && ![...m.red, ...m.blue].some((x) => x.n === us && x.sur)) {
+        const red = m.red.some((x) => x.n === us), a = red ? m.redScore : m.blueScore, b = red ? m.blueScore : m.redScore; a > b ? w++ : a < b ? l++ : t++;
+      }
+      const rec = ours.some((m) => m.played) ? `<span class="rec">${w}-${l}-${t}</span> so far` : "";
+      if (next) {
+        const red = next.red.some((x) => x.n === us), mine = (red ? next.red : next.blue).filter((x) => x.n !== us).map((x) => x.n), opp = (red ? next.blue : next.red).map((x) => x.n);
+        const left = ours.filter((m) => !m.played).length;
+        body = `<div class="tdnext"><span class="tdlabel">Next match</span><b class="tdmatch">${esc(label(next))}${next.time ? ` <span class="tdtime">${esc(tm(next.time))}</span>` : ""}</b></div>
+          <p class="tdside"><span class="tdchip ${red ? "red" : "blue"}">${red ? "Red" : "Blue"}</span> with <b>${mine.map(esc).join(" & ") || "no partner"}</b> vs <b>${opp.map(esc).join(" & ")}</b></p>
+          <p class="tdnote">${left} match${left === 1 ? "" : "es"} left${rec ? " · " + rec : ""}</p>`;
+      } else if (ours.length) body = `<div class="tdnext"><b class="tdmatch tddone">All our matches are played</b></div><p class="tdnote">${rec || "Good luck in selection!"}</p>`;
+      else body = `<p class="tdnote">The match schedule isn't posted yet. It usually appears the morning of the event.</p>`;
+    }
+    box.innerHTML = `<section class="today" aria-label="Today's competition">
+      <div class="tdhead"><h3>Today · ${esc(e.name)}</h3><span class="tdlive"><span class="livedot" aria-hidden="true"></span>Competing</span></div>
+      ${body}
+      <div class="tdbtns"><button type="button" class="btn primary" data-today="${esc(k)}">Open our matches</button><button type="button" class="btn" data-open="${esc(k)}">Scout this competition</button></div>
+    </section>`;
+  }
+  setInterval(() => { if (!current && !document.hidden && $("evToday") && $("evToday").innerHTML) renderHome(); }, 60000);
+
   /* routing: no hash = competitions page, #<season>-<code> = that competition's board */
   function route() {
     const h = decodeURIComponent(location.hash.slice(1));
@@ -2473,6 +2560,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
     subscribeEvent(current);
     window.scrollTo(0, 0);
     render();
+    if (current && pendingTab) { const t = pendingTab; pendingTab = null; setTab(t); }
   }
   function goTo(key) { if (location.hash.slice(1) === (key || "")) route(); else location.hash = key || ""; }
 
@@ -2932,9 +3020,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
 
   /* ---------- wiring ---------- */
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
+    const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-today],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
     if (b.dataset.more) { expanded[b.dataset.more] = !expanded[b.dataset.more]; render(); }
     else if (b.dataset.open) goTo(b.dataset.open);
+    else if (b.dataset.today) { pendingTab = "quals"; qualOurs = true; goTo(b.dataset.today); }
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
     else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
