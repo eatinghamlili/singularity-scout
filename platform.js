@@ -52,7 +52,13 @@
       },
     };
     let outbox = []; try { outbox = JSON.parse(localStorage.getItem(OUTBOX) || "[]"); } catch (e) { outbox = []; }
-    const saveOutbox = () => { try { localStorage.setItem(OUTBOX, JSON.stringify(outbox)); } catch (e) {} status(); };
+    // waiting changes matter more than saved copies: if the phone's storage is full, clear the copies and try again
+    const saveOutbox = () => {
+      const txt = JSON.stringify(outbox);
+      try { localStorage.setItem(OUTBOX, txt); }
+      catch (e) { try { Object.keys(localStorage).filter((x) => x.startsWith(CK)).forEach((x) => localStorage.removeItem(x)); localStorage.setItem(OUTBOX, txt); } catch (e2) {} }
+      status();
+    };
     // same rule as the database's jsonb_deep_merge: objects merge key by key, anything else (null included) replaces
     const deepMerge = (a, b) => {
       if (!a || typeof a !== "object" || Array.isArray(a) || !b || typeof b !== "object" || Array.isArray(b)) return b;
@@ -117,8 +123,10 @@
       try { localStorage.removeItem(TOKEN); localStorage.removeItem(ME); } catch (e) {}
       // changes waiting in the outbox stay on this phone and upload after signing in again
       alertOnce = message || "Sign in again with your scout code. Your waiting changes are kept on this phone.";
-      status(); setTimeout(() => location.reload(), 1800);
+      status(); setTimeout(reloadWhenIdle, 1800);
     }
+    // reload to the sign-in screen, but never while someone has a window open (they may be mid-note)
+    function reloadWhenIdle() { if (document.querySelector("dialog[open]")) { setTimeout(reloadWhenIdle, 2000); return; } location.reload(); }
     let alertOnce = "";
     let syncing = false, refused = 0;
     async function flush() {

@@ -791,7 +791,11 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 .hfield > span, .mstate, .msur, .mrole, th, td.subhead { font-size: 12px; }
 .fld, .movebox .mlabel, .redit .rlabel2, .weak > b, .fills > b, .bigscore span { font-size: 13px; }
 .ord { font-family: var(--f-body); font-weight: 700; font-size: 12px; }
-.sortphone, .liveopt, .tabs .phonetab { display: none; }
+.liveopt, .tabs .phonetab { display: none; }
+/* the Sort menu shows everywhere (on a computer it's the only way to sort by Scouted OPR) */
+.sortphone { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
+.sortphone[hidden] { display: none; }
+.sortphone select { min-height: 36px; }
 .colkey { padding: 0 14px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .colkey summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; padding: 10px 0; min-height: 24px; list-style-position: inside; }
 .colkey dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0 0 12px; }
