@@ -89,11 +89,16 @@ for old, new in REPLACE:
         sys.exit(f"build-site: expected 1 match, found {n}:\n  {old[:90]}")
     page = page.replace(old, new)
 
+# The Content-Security-Policy line limits where the page may load code from and send data to: only this site,
+# our two Supabase projects (live and the test copy), FTCScout, the Supabase library's CDN and Google Fonts.
+# If a note ever smuggled in a script, it couldn't send anything to another site. Add a host here before using it.
 HEAD = """<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co; connect-src 'self' https://facgwsflliuhndhrfwmh.supabase.co wss://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co wss://bhfvbejkmubksoupiidg.supabase.co https://api.ftcscout.org; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="description" content="Team 51 NerdHerd Singularity's FTC scouting and alliance selection board.">
 <meta name="theme-color" content="#1b0f33">
 <link rel="manifest" href="manifest.webmanifest">

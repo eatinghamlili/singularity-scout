@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co; connect-src 'self' https://facgwsflliuhndhrfwmh.supabase.co wss://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co wss://bhfvbejkmubksoupiidg.supabase.co https://api.ftcscout.org; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
+<meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="description" content="Team 51 NerdHerd Singularity's FTC scouting and alliance selection board.">
 <meta name="theme-color" content="#1b0f33">
 <link rel="manifest" href="manifest.webmanifest">
@@ -1264,6 +1266,48 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     });
   }
 
+  /* ---------- incoming data ----------
+     Anyone signed in can save to the board, so what comes back is tidied before it's used:
+     numbers become real numbers, words become plain text, and anything unexpected is dropped. */
+  const isRec = (v) => !!v && typeof v === "object" && !Array.isArray(v);
+  const numOr = (v, d = null) => { const n = typeof v === "number" ? v : typeof v === "string" && v.trim() !== "" ? Number(v) : NaN; return Number.isFinite(n) ? n : d; };
+  const numRec = (o) => isRec(o) ? Object.fromEntries(Object.entries(o).map(([k, v]) => [k, numOr(v)])) : null;
+  const txt = (v, max = 4000) => typeof v === "string" ? v.slice(0, max) : v == null ? "" : String(numOr(v, "")).slice(0, max);
+  function cleanCounts(c) {
+    if (!isRec(c)) return null;
+    const ph = (v, flags) => { v = isRec(v) ? v : {}; const o = {}; for (const [f] of CNT_SCORE) o[f] = Math.max(0, Math.min(99, Math.round(numOr(v[f], 0)))); for (const f of flags) o[f] = v[f] === true; return o; };
+    return { a: ph(c.a, ["leave", "park"]), t: ph(c.t, ["park"]) };
+  }
+  function cleanNote(x) {
+    if (!isRec(x)) return null;
+    const o = { by: txt(x.by, 60), text: txt(x.text, 2000), at: numOr(x.at, 0) };
+    if (x.changed) o.changed = true;
+    if (isRec(x.nums)) o.nums = numRec(x.nums);
+    if (x.ctx === "qual" || x.ctx === "pit") o.ctx = x.ctx;
+    if (typeof x.match === "string" && /^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(x.match)) o.match = x.match;
+    if (x.counts) { const c = cleanCounts(x.counts); if (c) o.counts = c; }
+    if (typeof x.state === "string") o.state = x.state;
+    if (Array.isArray(x.photos)) o.photos = x.photos.filter(u => typeof u === "string").slice(0, 6);
+    return o;
+  }
+  const cleanNotes = (n) => isRec(n) ? Object.fromEntries(Object.entries(n).map(([k, v]) => [k, cleanNote(v)])) : {};
+  function cleanTeam(d) {
+    const x = { ...(isRec(d) ? d : {}) };
+    x.number = Math.round(numOr(x.number, 0));
+    x.name = txt(x.name, 120); x.city = txt(x.city, 120);
+    x.ev = numRec(x.ev); x.season = numRec(x.season);
+    x.status = ["available", "taken", "partner"].includes(x.status) ? x.status : "available";
+    x.dnp = x.dnp === true;
+    x.tags = Array.isArray(x.tags) ? x.tags.map(v => txt(v, 40)).filter(Boolean).slice(0, 30) : [];
+    x.ratings = isRec(x.ratings) ? Object.fromEntries(Object.entries(x.ratings).filter(([, r]) => isRec(r)).map(([k, r]) => [k, { ...numRec(r), ...(typeof r.note === "string" ? { note: r.note.slice(0, 2000) } : {}) }])) : {};
+    x.notes = cleanNotes(x.notes);
+    x.mobility = isRec(x.mobility) ? { ok: x.mobility.ok === true, by: txt(x.mobility.by, 60), at: numOr(x.mobility.at, 0) } : null;
+    x.photo = isRec(x.photo) && typeof x.photo.url === "string" ? { url: x.photo.url, by: txt(x.photo.by, 60), at: numOr(x.photo.at, 0) } : null;
+    x.aiRecap = isRec(x.aiRecap) && typeof x.aiRecap.text === "string" ? { ...x.aiRecap, text: x.aiRecap.text.slice(0, 6000), at: numOr(x.aiRecap.at, 0) } : null;
+    return x;
+  }
+  const cleanMatchDoc = (d) => { d = isRec(d) ? d : {}; return { ...d, label: txt(d.label, 20), notes: cleanNotes(d.notes) }; };
+
   /* ---------- store ---------- */
   const chains = {};
   function queue(key, fn) { const p = (chains[key] || Promise.resolve()).catch(() => {}).then(fn); chains[key] = p.catch(() => {}); return p; }
@@ -1311,11 +1355,11 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     if (!db) subscribedKey = undefined;   // not connected yet: subscribe again once the database is ready
     if (!db || !key) { render(); return; }
     unsubMatches = db.collection(`events/${key}/matches`).onSnapshot(snap => {
-      matchDocs = new Map(snap.docs.map(d => [d.id, d.data()])); if (!snap.metadata?.fromCache) matchesReadyKey = key;
+      matchDocs = new Map(snap.docs.map(d => [d.id, cleanMatchDoc(d.data())])); if (!snap.metadata?.fromCache) matchesReadyKey = key;
       render(); if ($("matchDlg").open) renderMatchDlg(); refreshNames();
     }, () => {});
     unsubTeams = db.collection(`events/${key}/teams`).onSnapshot(snap => {
-      teams = new Map(snap.docs.map(d => { const x = { ...d.data() }; x.number = Number(x.number); return [x.number, x]; }));
+      teams = new Map(snap.docs.map(d => { const x = cleanTeam(d.data()); return [x.number, x]; }).filter(([n]) => Number.isInteger(n) && n > 0));
       if (!snap.metadata?.fromCache) teamsReadyKey = key;
       render(); refreshNames();
     }, () => toast("Lost connection to this competition's data. Reload to reconnect."));
@@ -1331,7 +1375,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       let gotE = false, gotS = false, gotR = false;
       const ready = () => { if (gotE && gotS && gotR && !loaded) { loaded = true; clearTimeout(timer); } render(); };
       db.collection("scouts").onSnapshot(snap => {
-        scouts = new Map(snap.docs.map(d => [d.id, d.data()]));
+        scouts = new Map(snap.docs.map(d => { const s = isRec(d.data()) ? d.data() : {}; return [d.id, { ...s, name: txt(s.name, 40) || "Scout", lead: s.lead === true, color: /^#[0-9a-fA-F]{6}$/.test(s.color || "") ? s.color : "" }]; }));
         if (!snap.metadata.fromCache) { gotR = true; if (me && !scouts.has(me)) { me = null; uid = null; try { localStorage.removeItem(ME_KEY); } catch {} } }
         ready();
       }, () => {});
@@ -2893,7 +2937,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       <div class="sopr"><span class="sbig num">${n1(s.pts.total)}</span><span><b>Scouted OPR</b> points per match from our scouts' counts<small class="hint">${n1(s.pts.auto)} auto · ${n1(s.pts.tele)} teleop · ${n1(s.pts.end)} end park · hive tips (20) aren't counted</small></span></div>
       <div class="scols">${col("a", "Auto")}${col("t", "TeleOp")}</div></div>`;
   }
-  const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
+  const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => numOr(nums[k]) ? `<span>${l.split(" ")[0]} <b>${esc(numOr(nums[k]))}</b></span>` : "").join("")}</div>` : "";
   function noteList(t, key, shown, by) {
     const list = allNotes(t).filter(x => !by || x.by === by), total = allNotes(t).length;
     if (!list.length) return dinoEmpty("No notes yet", by ? "" : "Scouts' notes on this team will show up here.", "sm", "stations");
