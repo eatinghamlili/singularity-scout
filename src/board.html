@@ -44,6 +44,10 @@
 body { background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45; }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--band); }
 button, input, select, textarea { font: inherit; color: inherit; }
+/* iPhone: no double-tap zoom on fast taps (counters), no grey tap flash, no text blow-up on rotate, no zoom-on-focus on touch screens */
+html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+button, a, select, label, summary, [role="button"], [data-team], [data-match] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+@media (pointer: coarse) { input, select, textarea { font-size: max(16px, 1em); } }
 a { color: var(--accent-ink); }
 .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
 .wrap { max-width: 1260px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -85,6 +89,8 @@ a { color: var(--accent-ink); }
 .cntbtn { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); font-size: 22px; font-weight: 700; cursor: pointer; color: var(--ink); }
 .cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
 .cntbtn:active { transform: translateY(1px); }
+.cnttotal { margin: 8px 0 0; font-size: 15px; }
+.cnttotal small { color: var(--muted); }
 .cntval { text-align: center; font-size: 22px; }
 .cntflags { display: flex; flex-wrap: wrap; gap: 6px; }
 .cntflag { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--ink); }
@@ -111,6 +117,17 @@ a { color: var(--accent-ink); }
 .scoutedbox h3 { margin: 0 0 8px; font-family: var(--f-display); font-weight: 800; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; }
 .scoutedbox h3 .hint { font-family: var(--f-body); font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; }
 .scoutedbox.empty p { margin: 0; }
+.sopr { display: flex; align-items: center; gap: 12px; margin: 0 0 10px; }
+.sopr .sbig { font-family: var(--f-display); font-size: 34px; font-weight: 800; line-height: 1; }
+.sopr > span:last-child { display: flex; flex-direction: column; font-size: 14px; }
+.sopr small { font-size: 12px; }
+.sopr1 { display: block; color: var(--muted); font-size: 12px; }
+.formbox { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.formbox .mlabel { font-weight: 700; }
+.formbox small { color: var(--muted); }
+.kpill { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); }
+.kpill.steady { border-color: #2e9d5b; }
+.kpill.streaky { border-color: #d08a1a; }
 .scols { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 18px; }
 .scol h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
 .scol dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin: 0; font-size: 14px; }
@@ -950,11 +967,12 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         <button class="btn" id="exportBtn">Copy CSV</button>
         <label class="sortphone" id="sortPhoneBox">Sort <select id="sortPhone" aria-label="Sort the pick list by">
           <option value="fit">Pick score</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
-          <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option></select></label>
+          <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option><option value="scouted">Scouted OPR</option></select></label>
       </div>
       <details class="colkey" id="colKey"><summary>What do these numbers mean?</summary>
         <dl>
           <dt>Qual</dt><dd>Qualification rank at this competition, then the win-loss-tie record.</dd>
+          <dt>Scouted</dt><dd>Scouted OPR: points per match counted by our own scouts in quals (hive and flower 2 each, leave 3, park 5). Hive tips aren't counted, so it runs a little low. Sort by it with the Sort menu on a phone.</dd>
           <dt>Auto · TeleOp · Endgame</dt><dd>Points the team adds in each part of a match (OPR, worked out from every match it played here, or its season best until it has played 3).</dd>
           <dt>OPR</dt><dd>Offensive power rating: the points a team adds to its alliance per match.</dd>
           <dt>Penalties</dt><dd>Penalty points the team gives away per match. On phones it only shows when it's high.</dd>
@@ -985,7 +1003,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         <div class="predhead" id="predHead">
           <div class="predtop"><b>Match predictor</b><span class="predacc" id="predAcc"></span>
             <button type="button" class="qhelp" id="predHelpBtn" aria-expanded="false" aria-controls="predHelp" aria-label="How the predictor works">?</button></div>
-          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Played matches say "Called it" or "Missed" so you can see how often it's right.</p>
+          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Each team also gets a K factor for consistency: how much its scoring swings from match to match (from results and our scouts' qual counts) and how often it has an off game. Streaky teams make a call less sure; steady teams make it surer. Played matches say "Called it" or "Missed" so you can see how often it's right.</p>
           <details class="trymatch"><summary>Try a matchup</summary>
             <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
               <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
@@ -2018,7 +2036,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const nudge = (n) => base * PRED.lastSeason * lastSeasonZ(n) * PRED.fade / (PRED.fade + seen(n));
     const strength = (n) => Math.max(0, get(n) + nudge(n));
     const sideScore = (side, time) => side.reduce((a, x) => a + (x.noShow ? 0 : strength(x.n) * mult(x.n, time)), 0);
-    const out = new Map(), res = [], hist = [];
+    const out = new Map(), res = [], hist = [], form = new Map();   // form: each team's match-to-match swings
     const hasFouls = (m) => m.redFoul != null && m.blueFoul != null;
     // solve (A'A + lam I) x = A'(y - A prior), the usual shrunk OPR; n is a few dozen teams at most
     const solve = (M, b) => { const n = b.length, a = M.map((r, i) => [...r, b[i]]);
@@ -2057,6 +2075,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       res.push(m.redScore - red, m.blueScore - blue);
       for (const [side, actual, pred, opp] of [[m.red, m.redScore, red, m.blueScore], [m.blue, m.blueScore, blue, m.redScore]]) {
         const err = actual - pred, live = side.filter(x => !x.noShow);
+        for (const x of live) { const share = err / live.length, exp = strength(x.n) * mult(x.n, time), f = form.get(x.n) || { v: [], poor: 0 };
+          f.v.push(share * share * live.length); if (share < -0.4 * Math.max(exp, base * 0.5)) f.poor++; form.set(x.n, f); }
         for (const x of live) { const c = cnt.get(x.n) || 0, k = c === 0 ? 0.5 : c < 3 ? 0.4 : 0.3;
           epa.set(x.n, Math.max(0, get(x.n) + k * err / Math.max(1, live.length))); cnt.set(x.n, c + 1); }
         for (const x of side) if (!x.sur) { const r = rec.get(x.n) || { w: 0, l: 0, g: 0 }; r.g++; if (actual > opp) r.w++; else if (actual < opp) r.l++; rec.set(x.n, r); }
@@ -2064,18 +2084,32 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     }
     // widened a little: a handful of matches understates how much scores really swing
     const sd = res.length >= 6 ? PRED.spread * Math.sqrt(res.reduce((a, b) => a + b * b, 0) / res.length) : Math.max(8, 0.35 * (meanAlli ?? base * size));
+    // K factor: each team's own spread vs a typical robot here, shrunk toward 1 until it has a few matches.
+    // Scouted quals add direct per-robot points; an "off game" is well under the team's own usual.
+    const sd0sq = sd * sd / size, shrink = 4;
+    let poorAll = 0, obsAll = 0; for (const f of form.values()) { poorAll += f.poor; obsAll += f.v.length; }
+    const p0 = obsAll >= 8 ? poorAll / obsAll : 0.15, kOut = new Map();
+    for (const n of new Set([...allNums, ...form.keys()])) {
+      const f = form.get(n) || { v: [], poor: 0 }, t = teams.get(n), sc = t ? scoutedCounts(t) : null, tot = sc && sc.totals.length >= 2 ? sc.totals : [];
+      let ss = shrink * sd0sq + f.v.reduce((a, b) => a + b * PRED.spread * PRED.spread, 0), w = shrink + f.v.length, poor = f.poor;
+      if (tot.length) { const mu = tot.reduce((a, b) => a + b, 0) / tot.length; ss += tot.reduce((a, b) => a + (b - mu) ** 2, 0); w += tot.length - 1; poor += tot.filter(v => v < 0.6 * mu).length; }
+      kOut.set(n, { k: Math.max(0.6, Math.min(2, Math.sqrt(ss / w / sd0sq))), poor: (poor + 3 * p0) / (f.v.length + tot.length + 3), n: f.v.length, scouted: tot.length });
+    }
+    // how much wider (or tighter) one match's outcome is than average, from the teams in it
+    const kScale = (ns) => { const ks = ns.map(n => (kOut.get(n) || { k: 1 }).k); return ks.length ? Math.max(0.7, Math.min(1.6, Math.sqrt(ks.reduce((a, k) => a + k * k, 0) / ks.length))) : 1; };
     let right = 0, total = 0;
-    for (const m of list) { const pr = out.get(matchKey(m));
-      const pE = normCdf((pr.red - pr.blue) / (sd * Math.SQRT2)), pR = normCdf((pr.rRed - pr.rBlue) / ((pr.rSd || sd) * Math.SQRT2));
+    for (const m of list) { const pr = out.get(matchKey(m)), ks = kScale([...m.red, ...m.blue].filter(x => !x.noShow).map(x => x.n));
+      const pE = normCdf((pr.red - pr.blue) / (sd * ks * Math.SQRT2)), pR = normCdf((pr.rRed - pr.rBlue) / ((pr.rSd || sd) * ks * Math.SQRT2));
       pr.pRed = (pE + pR) / 2; pr.red = (pr.red + pr.rRed) / 2; pr.blue = (pr.blue + pr.rBlue) / 2;
       if (isPlayed(m) && m.redScore !== m.blueScore) { total++; if ((pr.pRed >= 0.5) === (m.redScore > m.blueScore)) right++; pr.right = (pr.pRed >= 0.5) === (m.redScore > m.blueScore); } }
     const finalFit = fitNow();
     const matchup = (redNums, blueNums) => {
       const sc = (ns) => ns.reduce((a, n) => a + strength(n) * mult(n, null), 0), sr = (ns, opp) => ns.reduce((a, n) => a + finalFit.at(n) * mult(n, null), 0) + foulsFor(opp.map(n => ({ n })));
       const r = sc(redNums), b = sc(blueNums), rr = sr(redNums, blueNums), rb = sr(blueNums, redNums);
-      const pRed = (normCdf((r - b) / (sd * Math.SQRT2)) + normCdf((rr - rb) / ((finalFit.sd || sd) * Math.SQRT2))) / 2;
+      const ks = kScale([...redNums, ...blueNums]);
+      const pRed = (normCdf((r - b) / (sd * ks * Math.SQRT2)) + normCdf((rr - rb) / ((finalFit.sd || sd) * ks * Math.SQRT2))) / 2;
       return { red: (r + rr) / 2, blue: (b + rb) / 2, pRed }; };
-    return { out, right, total, matchup };
+    return { out, right, total, matchup, form: kOut, key: current, list };
   }
   const nums = (txt) => [...new Set(String(txt || "").split(/[^0-9]+/).filter(Boolean).map(Number))];
   function renderTry() {
@@ -2180,7 +2214,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     if (!t) return `<article class="mcard ${color}"><header><span class="nnum">${esc(n)}</span>${roleTag}<div class="nmeta"><small>Not in this competition's team list yet.</small></div></header></article>`;
     const sc = scoutAgg(t), c = compute();
     const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t)].join("");
-    const facts = [t.ev && t.ev.rank ? `qual rank #${t.ev.rank}` : "", t.ev ? `<span class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</span>` : "", stats(t).src !== "none" ? `OPR ${fmt(stats(t).auto + stats(t).teleop + stats(t).endgame)}` : ""].filter(Boolean).join(" · ");
+    const facts = [t.ev && t.ev.rank ? `qual rank #${t.ev.rank}` : "", t.ev ? `<span class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</span>` : "", stats(t).src !== "none" ? `OPR ${fmt(stats(t).auto + stats(t).teleop + stats(t).endgame)}` : "",
+      scoutedOpr(t) != null ? `scouted ${fmt(scoutedOpr(t))}` : "", formOf(n) && (formOf(n).n || formOf(n).scouted) ? `K ${formOf(n).k.toFixed(2)} ${kWord(formOf(n).k)}` : ""].filter(Boolean).join(" · ");
     return `<article class="mcard ${color}">
       <header><button type="button" class="nnum" data-team="${t.number}" title="Open ${esc(t.number)}'s page">${esc(t.number)}</button>
         <div class="nmeta"><b>${esc(t.name || "")}</b>${roleTag}<small>${facts || "No results yet"}</small></div>
@@ -2379,7 +2414,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     if (q) list = list.filter(t => String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q) || (t.tags || []).join(" ").toLowerCase().includes(q));
     if (view.sort !== "fit") {
       const k = view.sort;
-      const val = (t) => k === "exp" ? expected(t) : k === "rank" ? (t.ev?.rank || 999) : k === "scout" ? (scoutAgg(t).overall ?? 0) : stats(t)[k];
+      const val = (t) => k === "exp" ? expected(t) : k === "rank" ? (t.ev?.rank || 999) : k === "scout" ? (scoutAgg(t).overall ?? 0) : k === "scouted" ? (scoutedOpr(t) ?? -1) : stats(t)[k];
       const dir = (k === "rank" || k === "pen") ? 1 : -1;
       list.sort((a, b) => (a === c.us ? -1 : b === c.us ? 1 : 0) || (val(a) - val(b)) * dir);
     }
@@ -2392,7 +2427,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
         s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
       const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
-      const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small></span>` : `<span class="scout"><span class="none">not rated</span></span>`;
+      const so = scoutedOpr(t), soTxt = so != null ? `<small class="sopr1" title="Scouted OPR: points per match from our scouts' qual counts">scouted ${fmt(so)} pts</small>` : "";
+      const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>${soTxt}</span>` : `<span class="scout"><span class="none">not rated</span>${soTxt}</span>`;
       const fit = isUs ? "" : `<div class="fit"><div class="track"><span style="width:${c.fit.get(t.number)}%"></span></div><span class="num">${c.fit.get(t.number)}</span></div>`;
       const status = isUs ? `<span class="us">US</span>` :
         `<button type="button" data-taken="${t.number}" class="${t.status === "taken" ? "on-taken" : ""}" aria-pressed="${t.status === "taken"}" ${dis}>Taken</button>
@@ -2745,7 +2781,28 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const perQual = [...byMatch.values()].map(list => ({ a: phase(list, "a", one), t: phase(list, "t", one) }));
     function one(list, k, f, kind) { return kind === "n" ? list.reduce((a, c) => a + (Number((c[k] || {})[f]) || 0), 0) / list.length : list.filter(c => (c[k] || {})[f]).length / list.length; }
     const mean = (_, k, f) => perQual.reduce((a, q) => a + q[k][f], 0) / perQual.length;
-    return { n: perQual.length, a: phase(null, "a", mean), t: phase(null, "t", mean) };
+    // scouted OPR: points this robot scored, one number per qual (several scouts averaged), then the mean
+    const quals = [...byMatch.values()].map(list => { const p = list.map(countPts); return Object.fromEntries(["auto", "tele", "end", "total"].map(k => [k, p.reduce((a, x) => a + x[k], 0) / p.length])); });
+    const pts = Object.fromEntries(["auto", "tele", "end", "total"].map(k => [k, quals.reduce((a, q) => a + q[k], 0) / quals.length]));
+    return { n: perQual.length, a: phase(null, "a", mean), t: phase(null, "t", mean), pts, totals: quals.map(q => q.total) };
+  }
+  // the game's points: hive and flower pollen/nectar 2 each, leave 3, park 5 (auto and end). Scouts don't track hive tips (20), so this runs a little low.
+  function countPts(c) {
+    const a = (c && c.a) || {}, t = (c && c.t) || {}, n = (v) => CNT_SCORE.reduce((s, [f]) => s + Math.max(0, Number(v[f]) || 0), 0);
+    const auto = n(a) * 2 + (a.leave ? 3 : 0) + (a.park ? 5 : 0), tele = n(t) * 2, end = t.park ? 5 : 0;
+    return { auto, tele, end, total: auto + tele + end };
+  }
+  const scoutedOpr = (t) => { const s = scoutedCounts(t); return s ? s.pts.total : null; };
+  // the predictor's consistency read on a team (K factor): 1 is a typical team here, higher swings more
+  const formOf = (n) => {
+    if ((!lastPred || lastPred.key !== current || lastPred.list !== quals.list) && quals.key === current && quals.list) lastPred = buildPredictor(quals.list);   // team page opened before the Quals tab
+    return (lastPred && lastPred.key === current && lastPred.form.get(n)) || null; };
+  const kWord = (k) => k < 0.85 ? "steady" : k > 1.2 ? "streaky" : "typical";
+  function formBox(t) {
+    const f = formOf(t.number); if (!f || !(f.n || f.scouted)) return "";
+    const pct = Math.round(f.poor * 100), oneIn = f.poor > 0.04 ? Math.max(2, Math.round(1 / f.poor)) : 0;
+    return `<div class="formbox"><span class="mlabel">Consistency</span><span class="kpill ${kWord(f.k)}" title="K factor: how much this team's scoring swings match to match, compared with a typical team here (1.00)">K ${f.k.toFixed(2)} · ${kWord(f.k)}</span>
+      <small>Off games: about ${pct}%${oneIn ? ` (1 in ${oneIn})` : ""} · from ${f.n} match${f.n === 1 ? "" : "es"}${f.scouted ? ` and ${f.scouted} scouted qual${f.scouted === 1 ? "" : "s"}` : ""}</small></div>`;
   }
   function pitCheck(t) {
     const x = allNotes(t).find(n => n.ctx === "pit" && n.state);   // newest first
@@ -2757,7 +2814,9 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const n1 = (v) => (Math.round(v * 10) / 10).toString(), pc = (v) => Math.round(v * 100) + "%";
     const col = (k, label) => `<div class="scol"><h4>${label}</h4><dl>${CNT_SCORE.map(([f, l, sub]) => `<dt>${l} ${sub}</dt><dd class="num">${n1(s[k][f])}</dd>`).join("")}
       ${CNT_FLAGS[k].map(([f, l]) => `<dt>${l}</dt><dd class="num">${pc(s[k][f])}</dd>`).join("")}</dl></div>`;
-    return `<div class="scoutedbox"><h3>Scouted in quals <span class="hint">average of ${s.n} qual${s.n === 1 ? "" : "s"}</span></h3><div class="scols">${col("a", "Auto")}${col("t", "TeleOp")}</div></div>`;
+    return `<div class="scoutedbox"><h3>Scouted in quals <span class="hint">average of ${s.n} qual${s.n === 1 ? "" : "s"}</span></h3>
+      <div class="sopr"><span class="sbig num">${n1(s.pts.total)}</span><span><b>Scouted OPR</b> points per match from our scouts' counts<small class="hint">${n1(s.pts.auto)} auto · ${n1(s.pts.tele)} teleop · ${n1(s.pts.end)} end park · hive tips (20) aren't counted</small></span></div>
+      <div class="scols">${col("a", "Auto")}${col("t", "TeleOp")}</div></div>`;
   }
   const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
   function noteList(t, key, shown, by) {
@@ -2959,7 +3018,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
-      ${pitCheck(t)}${scoutedBox(t)}
+      ${pitCheck(t)}${formBox(t)}${scoutedBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${t !== c.us ? `<div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>` : ""}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
@@ -2991,8 +3050,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="-1" aria-label="One less ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${f}" aria-live="polite">${c[k][f]}</b><button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="1" aria-label="One more ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">+</button></div>`;
     const flags = (k) => `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
     const phase = (k, label) => `<div class="cntphase"><h4>${label}</h4>${CNT_SCORE.map(([f, l, sub]) => row(k, f, l, sub)).join("")}${flags(k)}</div>`;
-    return `<div class="cntbox">${phase("a", "Auto")}${phase("t", "TeleOp")}</div>`;
+    return `<div class="cntbox">${phase("a", "Auto")}${phase("t", "TeleOp")}</div><p class="cnttotal" id="cntTotal" aria-live="polite">${cntTotalTxt()}</p>`;
   }
+  const cntTotalTxt = () => { const p = countPts(draft.counts); return `This qual: <b class="num">${p.total}</b> pts <small>(${p.auto} auto · ${p.tele} teleop · ${p.end} end park)</small>`; };
   function ctxHtml(t, canRate) {
     return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
@@ -3064,10 +3124,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
     if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true; renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
     if (b.dataset.cnt) { const [k, f] = b.dataset.cnt.split("."); draft.counts[k][f] = Math.max(0, Math.min(99, (draft.counts[k][f] || 0) + Number(b.dataset.d))); dlgDirty = true;
-      const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; return; }
+      const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.state) { draft.state = draft.state === b.dataset.state ? "" : b.dataset.state; dlgDirty = true; $("ctxBox")?.classList.remove("need");
       b.parentElement.querySelectorAll("[data-state]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.state === draft.state))); return; }
-    if (b.dataset.flag) { const [k, f] = b.dataset.flag.split("."); draft.counts[k][f] = !draft.counts[k][f]; dlgDirty = true; b.setAttribute("aria-pressed", String(draft.counts[k][f])); return; }
+    if (b.dataset.flag) { const [k, f] = b.dataset.flag.split("."); draft.counts[k][f] = !draft.counts[k][f]; dlgDirty = true; b.setAttribute("aria-pressed", String(draft.counts[k][f])); if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
     if (b.dataset.rate) { const k = b.dataset.rate, v = Number(b.dataset.v); draft[k] = draft[k] === v ? 0 : v; dlgDirty = true;
