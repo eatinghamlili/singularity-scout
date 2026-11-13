@@ -90,6 +90,7 @@ a { color: var(--accent-ink); }
 .cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
 .cntbtn:active { transform: translateY(1px); }
 .cnttotal { margin: 8px 0 0; font-size: 15px; }
+.countsline .csep { color: var(--muted); margin: 0 8px; }
 .cnttotal small { color: var(--muted); }
 .cntval { text-align: center; font-size: 22px; }
 .cntflags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -2756,12 +2757,12 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   const blankCounts = () => { const z = Object.fromEntries(CNT_SCORE.map(([f]) => [f, 0])); return { a: { ...z, leave: false, park: false }, t: { ...z, park: false } }; };
   const qualTag = (x) => x.ctx === "qual" && x.match ? `<span class="ctxtag qual" title="Notes from this qual">${esc(matchLabelOf(x.match))}</span>`
     : x.ctx === "pit" ? `<span class="ctxtag pit" title="Notes from the pits">Pits</span>${x.state ? `<span class="ctxtag state ${esc(x.state)}">${esc(pitStateName(x.state))}</span>` : ""}` : "";
+  // a note's counts, kept short: balls in the hive and the flower per phase (pollen + nectar together)
   function countsLine(c) {
     if (!c) return "";
-    const ph = (k, label) => { const v = c[k] || {}; const parts = CNT_SCORE.map(([f, l, sub]) => `${l} ${sub} <b>${Number(v[f]) || 0}</b>`);
-      for (const [f, l, no] of CNT_FLAGS[k]) parts.push(v[f] ? `<span class="cyes">${l}</span>` : `<span class="cno">${no}</span>`);
-      return `<div class="cline"><span class="cph">${label}</span>${parts.join(" · ")}</div>`; };
-    return `<div class="countsline">${ph("a", "Auto")}${ph("t", "TeleOp")}</div>`;
+    const sum = (k, where) => CNT_SCORE.filter(([, l]) => l === where).reduce((a, [f]) => a + (Number((c[k] || {})[f]) || 0), 0);
+    const ph = (k, label) => `<span class="cph">${label}</span> Hive <b>${sum(k, "Hive")}</b> · Flower <b>${sum(k, "Flower")}</b>`;
+    return `<div class="countsline"><div class="cline">${ph("a", "Auto")}<span class="csep">|</span>${ph("t", "TeleOp")}</div></div>`;
   }
   // a team's quals from the schedule (only matches this team plays in)
   const teamQuals = (num) => (quals.key === current && quals.list ? quals.list : []).filter(m => m.level === "Quals" && [...m.red, ...m.blue].some(x => x.n === num));
