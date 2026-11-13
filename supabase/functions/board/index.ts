@@ -92,8 +92,10 @@ const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "obj
 const PHOTO_BASE = Deno.env.get("SUPABASE_URL")!.replace(/\/$/, "") + "/storage/v1/object/public/photos/";
 const PHOTO_TAIL = /^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}\/[a-z0-9]{8,24}\.(webp|jpg|png)$/;
 const PHOTO_URL = { test: (u: string) => u.startsWith(PHOTO_BASE) && PHOTO_TAIL.test(u.slice(PHOTO_BASE.length)) };
-// a qual note's counts: Auto and TeleOp, each a few whole numbers (0-99) and yes/no flags
-const COUNT_KEYS: Record<string, { n: string[]; b: string[] }> = { a: { n: ["hive", "flower", "garden"], b: ["leave", "park"] }, t: { n: ["hive", "flower", "garden"], b: ["park"] } };
+// a qual note's counts: hive and flower, pollen and nectar each, for Auto and TeleOp (0-99), plus yes/no flags
+const SCORED = ["hivePollen", "hiveNectar", "flowerPollen", "flowerNectar"];
+const COUNT_KEYS: Record<string, { n: string[]; b: string[] }> = { a: { n: SCORED, b: ["leave", "park"] }, t: { n: SCORED, b: ["park"] } };
+const PIT_STATES = ["good", "minor", "major", "down"];   // a pit visit's quick read on the robot
 function badCounts(c: unknown) {
   if (!isObj(c) || Object.keys(c).some((k) => !(k in COUNT_KEYS))) return true;
   for (const [k, spec] of Object.entries(COUNT_KEYS)) {
@@ -126,6 +128,7 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     if (v.ctx !== undefined && v.ctx !== "qual" && v.ctx !== "pit") return "Pick where the note is from: a qual or the pits.";
     if (v.match !== undefined && (typeof v.match !== "string" || !/^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(v.match))) return "That qual isn't on the schedule.";
     if (v.counts !== undefined && badCounts(v.counts)) return "Those counts couldn't be saved.";
+    if (v.state !== undefined && !PIT_STATES.includes(v.state)) return "Pick the robot's condition.";
     if (old && old.by !== me) return "You can only edit your own notes.";
     if (!old && v.by !== me) return "Notes are saved under your own name.";
     if (old && v.by !== undefined && v.by !== me) return "Notes are saved under your own name.";

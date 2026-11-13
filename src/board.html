@@ -91,6 +91,16 @@ a { color: var(--accent-ink); }
 .cntflag[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: #062a13; }
 .ctxtag { font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
 .ctxtag.qual { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.ctxtag.state { border: 0; color: #fff; }
+.ctxtag.state.good { background: #15803d; } .ctxtag.state.minor { background: #a16207; } .ctxtag.state.major { background: #c2410c; } .ctxtag.state.down { background: #b91c1c; }
+.statepick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.stbtn { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; cursor: pointer; }
+.stbtn[aria-pressed="true"] { color: #fff; border-color: transparent; }
+.stbtn.good[aria-pressed="true"] { background: #15803d; } .stbtn.minor[aria-pressed="true"] { background: #a16207; }
+.stbtn.major[aria-pressed="true"] { background: #c2410c; } .stbtn.down[aria-pressed="true"] { background: #b91c1c; }
+.pitcheck { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.pitcheck .mlabel { font-weight: 700; }
+.pitcheck small { color: var(--muted); }
 .ctxtag.team { cursor: pointer; background: var(--surface); color: var(--ink); font-family: var(--f-display); font-size: 13px; }
 .countsline { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 13px; color: var(--muted); }
 .countsline b { color: var(--ink); font-family: var(--f-mono); font-weight: 600; }
@@ -2629,7 +2639,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   function allNotes(t) {
     const out = [];
     for (const [nid, x] of Object.entries(t.notes || {})) if (x && (x.text || x.counts)) out.push({ id: nid, by: x.by, text: x.text || "", at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [],
-      ctx: x.ctx === "qual" || x.ctx === "pit" ? x.ctx : "", match: typeof x.match === "string" ? x.match : "", counts: x.counts && typeof x.counts === "object" ? x.counts : null });
+      ctx: x.ctx === "qual" || x.ctx === "pit" ? x.ctx : "", match: typeof x.match === "string" ? x.match : "", counts: x.counts && typeof x.counts === "object" ? x.counts : null,
+      state: PIT_STATES.some(([k]) => k === x.state) ? x.state : "" });
     for (const [id, r] of Object.entries(t.ratings || {})) if (r && r.note) out.push({ id: "legacy:" + id, by: id, text: r.note, at: r.at || 0 });   // notes saved before history existed
     // number them oldest-first: n = order on this team, mine = order among this scout's notes
     out.sort((a, b) => a.at - b.at);
@@ -2699,15 +2710,19 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
   /* ---------- qual scouting: what a robot scored in one match ----------
-     Pollen/nectar into the hive and garden, pollen into a flower, leaving in auto, and parking.
+     Pollen and nectar into the hive and into a flower, leaving in auto, and parking.
      Counted separately for Auto and TeleOp. Saved on the team's note, tagged with the qual. */
-  const CNT_SCORE = [["hive", "Hive", "pollen / nectar"], ["flower", "Flower", "pollen"], ["garden", "Garden", "pollen / nectar"]];
+  const CNT_SCORE = [["hivePollen", "Hive", "pollen"], ["hiveNectar", "Hive", "nectar"], ["flowerPollen", "Flower", "pollen"], ["flowerNectar", "Flower", "nectar"]];
+  // a pit visit's quick read on the robot
+  const PIT_STATES = [["good", "Working well"], ["minor", "Minor issues"], ["major", "Major repairs"], ["down", "Not running"]];
+  const pitStateName = (v) => (PIT_STATES.find(([k]) => k === v) || [])[1] || "";
   const CNT_FLAGS = { a: [["leave", "Left start", "didn't leave"], ["park", "Parked", "didn't park"]], t: [["park", "Parked at end", "didn't park at end"]] };
-  const blankCounts = () => ({ a: { hive: 0, flower: 0, garden: 0, leave: false, park: false }, t: { hive: 0, flower: 0, garden: 0, park: false } });
-  const qualTag = (x) => x.ctx === "qual" && x.match ? `<span class="ctxtag qual" title="Notes from this qual">${esc(matchLabelOf(x.match))}</span>` : x.ctx === "pit" ? `<span class="ctxtag pit" title="Notes from the pits">Pits</span>` : "";
+  const blankCounts = () => { const z = Object.fromEntries(CNT_SCORE.map(([f]) => [f, 0])); return { a: { ...z, leave: false, park: false }, t: { ...z, park: false } }; };
+  const qualTag = (x) => x.ctx === "qual" && x.match ? `<span class="ctxtag qual" title="Notes from this qual">${esc(matchLabelOf(x.match))}</span>`
+    : x.ctx === "pit" ? `<span class="ctxtag pit" title="Notes from the pits">Pits</span>${x.state ? `<span class="ctxtag state ${esc(x.state)}">${esc(pitStateName(x.state))}</span>` : ""}` : "";
   function countsLine(c) {
     if (!c) return "";
-    const ph = (k, label) => { const v = c[k] || {}; const parts = CNT_SCORE.map(([f, l]) => `${l} <b>${Number(v[f]) || 0}</b>`);
+    const ph = (k, label) => { const v = c[k] || {}; const parts = CNT_SCORE.map(([f, l, sub]) => `${l} ${sub} <b>${Number(v[f]) || 0}</b>`);
       for (const [f, l, no] of CNT_FLAGS[k]) parts.push(v[f] ? `<span class="cyes">${l}</span>` : `<span class="cno">${no}</span>`);
       return `<div class="cline"><span class="cph">${label}</span>${parts.join(" · ")}</div>`; };
     return `<div class="countsline">${ph("a", "Auto")}${ph("t", "TeleOp")}</div>`;
@@ -2725,21 +2740,22 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const byMatch = new Map();
     for (const x of allNotes(t)) if (x.ctx === "qual" && x.counts && x.match) { if (!byMatch.has(x.match)) byMatch.set(x.match, []); byMatch.get(x.match).push(x.counts); }
     if (!byMatch.size) return null;
-    const per = [...byMatch.values()].map(list => {
-      const avg = (k, f) => list.reduce((a, c) => a + (Number((c[k] || {})[f]) || 0), 0) / list.length;
-      const yes = (k, f) => list.filter(c => (c[k] || {})[f]).length / list.length;
-      return { a: { hive: avg("a", "hive"), flower: avg("a", "flower"), garden: avg("a", "garden"), leave: yes("a", "leave"), park: yes("a", "park") },
-               t: { hive: avg("t", "hive"), flower: avg("t", "flower"), garden: avg("t", "garden"), park: yes("t", "park") } };
-    });
-    const mean = (k, f) => per.reduce((a, p) => a + p[k][f], 0) / per.length;
-    return { n: per.length, a: { hive: mean("a", "hive"), flower: mean("a", "flower"), garden: mean("a", "garden"), leave: mean("a", "leave"), park: mean("a", "park") },
-             t: { hive: mean("t", "hive"), flower: mean("t", "flower"), garden: mean("t", "garden"), park: mean("t", "park") } };
+    const phase = (list, k, how) => Object.fromEntries([...CNT_SCORE.map(([f]) => [f, "n"]), ...CNT_FLAGS[k].map(([f]) => [f, "y"])].map(([f, kind]) => [f, how(list, k, f, kind)]));
+    // one value per scouted qual first (several scouts on one qual are averaged), then the mean over quals
+    const perQual = [...byMatch.values()].map(list => ({ a: phase(list, "a", one), t: phase(list, "t", one) }));
+    function one(list, k, f, kind) { return kind === "n" ? list.reduce((a, c) => a + (Number((c[k] || {})[f]) || 0), 0) / list.length : list.filter(c => (c[k] || {})[f]).length / list.length; }
+    const mean = (_, k, f) => perQual.reduce((a, q) => a + q[k][f], 0) / perQual.length;
+    return { n: perQual.length, a: phase(null, "a", mean), t: phase(null, "t", mean) };
+  }
+  function pitCheck(t) {
+    const x = allNotes(t).find(n => n.ctx === "pit" && n.state);   // newest first
+    return x ? `<div class="pitcheck"><span class="mlabel">Latest pit check</span><span class="ctxtag state ${esc(x.state)}">${esc(pitStateName(x.state))}</span><small>${esc(x.by === uid ? "you" : nameOf(x.by))} · ${esc(when(x.at))}</small></div>` : "";
   }
   function scoutedBox(t) {
     const s = scoutedCounts(t);
     if (!s) return `<div class="scoutedbox empty"><h3>Scouted in quals</h3><p class="hint">No qual counts yet. When a scout picks "A qual match" on the Notes page, what this robot scored shows up here.</p></div>`;
     const n1 = (v) => (Math.round(v * 10) / 10).toString(), pc = (v) => Math.round(v * 100) + "%";
-    const col = (k, label) => `<div class="scol"><h4>${label}</h4><dl>${CNT_SCORE.map(([f, l]) => `<dt>${l}</dt><dd class="num">${n1(s[k][f])}</dd>`).join("")}
+    const col = (k, label) => `<div class="scol"><h4>${label}</h4><dl>${CNT_SCORE.map(([f, l, sub]) => `<dt>${l} ${sub}</dt><dd class="num">${n1(s[k][f])}</dd>`).join("")}
       ${CNT_FLAGS[k].map(([f, l]) => `<dt>${l}</dt><dd class="num">${pc(s[k][f])}</dd>`).join("")}</dl></div>`;
     return `<div class="scoutedbox"><h3>Scouted in quals <span class="hint">average of ${s.n} qual${s.n === 1 ? "" : "s"}</span></h3><div class="scols">${col("a", "Auto")}${col("t", "TeleOp")}</div></div>`;
   }
@@ -2895,7 +2911,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
-    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts() };
+    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts(), state: "" };
     if (current && (quals.key !== current || !quals.list)) loadQuals(false).then(refreshQualPick, () => {});   // the qual list needs the schedule
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
     renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
@@ -2943,7 +2959,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
-      ${scoutedBox(t)}
+      ${pitCheck(t)}${scoutedBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${t !== c.us ? `<div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>` : ""}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
@@ -2972,7 +2988,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function countsHtml() {
     const c = draft.counts;
     const row = (k, f, l, sub) => `<div class="cntrow"><span class="cntname">${l}<small>${sub}</small></span>
-      <button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="-1" aria-label="One less ${l} ${k === "a" ? "in auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${f}" aria-live="polite">${c[k][f]}</b><button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="1" aria-label="One more ${l} ${k === "a" ? "in auto" : "in TeleOp"}">+</button></div>`;
+      <button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="-1" aria-label="One less ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${f}" aria-live="polite">${c[k][f]}</b><button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="1" aria-label="One more ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">+</button></div>`;
     const flags = (k) => `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
     const phase = (k, label) => `<div class="cntphase"><h4>${label}</h4>${CNT_SCORE.map(([f, l, sub]) => row(k, f, l, sub)).join("")}${flags(k)}</div>`;
     return `<div class="cntbox">${phase("a", "Auto")}${phase("t", "TeleOp")}</div>`;
@@ -2981,7 +2997,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
         `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
-      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}<p class="hint">These notes also show up in that qual's match notes.</p>` : ""}</div>`;
+      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}<p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
+      ${draft.ctx === "pit" ? `<span class="mlabel">Robot's condition <span class="req">Required</span></span>
+        <div class="statepick" role="group" aria-label="Robot's condition">${PIT_STATES.map(([v, l]) => `<button type="button" class="stbtn ${v}" data-state="${v}" aria-pressed="${draft.state === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>` : ""}</div>`;
   }
   function renderTeamEdit(t) {
     const sc = scoutAgg(t);
@@ -2999,7 +3017,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
       ${ctxHtml(t, canRate)}
-      <label class="fld">${draft.ctx === "qual" ? "Notes from this qual (optional)" : draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      <label class="fld">${draft.ctx === "qual" ? "Notes from this qual (optional)" : draft.ctx === "pit" ? "The robot's general state" : draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="${draft.ctx === "pit" ? "Drivetrain, intake, scoring mechanism, what's broken or being fixed, what the team told you…" : "What you saw this time: auto path, cycle speed, what broke, how the drive team talks…"}" ${canRate ? "" : "disabled"}></textarea></label>
       ${PHOTOS_ON() && canRate ? `<div class="photorow"><span class="rlabel2">Photos</span>
         <label class="btn photobtn">Take photo<input type="file" accept="image/*" capture="environment" id="dPhotoCam" data-addphoto hidden></label>
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
@@ -3047,6 +3065,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true; renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
     if (b.dataset.cnt) { const [k, f] = b.dataset.cnt.split("."); draft.counts[k][f] = Math.max(0, Math.min(99, (draft.counts[k][f] || 0) + Number(b.dataset.d))); dlgDirty = true;
       const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; return; }
+    if (b.dataset.state) { draft.state = draft.state === b.dataset.state ? "" : b.dataset.state; dlgDirty = true; $("ctxBox")?.classList.remove("need");
+      b.parentElement.querySelectorAll("[data-state]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.state === draft.state))); return; }
     if (b.dataset.flag) { const [k, f] = b.dataset.flag.split("."); draft.counts[k][f] = !draft.counts[k][f]; dlgDirty = true; b.setAttribute("aria-pressed", String(draft.counts[k][f])); return; }
     if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
@@ -3076,9 +3096,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const movesNow = t.mobility ? (t.mobility.ok ? "yes" : "no") : "", movesChanged = draft.moves !== movesNow;
     const photos = photoUrlsForSave ? [] : pendingPhotos.slice();
     const isQual = draft.ctx === "qual";
-    const writesNote = !!(text || photos.length || (photoUrlsForSave && photoUrlsForSave.length) || isQual);
+    const writesNote = !!(text || photos.length || (photoUrlsForSave && photoUrlsForSave.length) || isQual || draft.ctx === "pit");
     if (writesNote && !draft.ctx) { toast("Pick where this note is from first: a qual match or the pits."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
     if (isQual && !draft.match) { toast("Pick which qual these notes are from."); $("ctxBox")?.classList.add("need"); $("dMatch")?.focus(); return; }
+    const isPit = draft.ctx === "pit";
+    if (isPit && !draft.state) { toast("Pick the robot's condition."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
     if (!writesNote && !numsChanged && !tagsChanged && !movesChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
     if (photos.length) { savePhotoNote(t, text, photos); return; }
     const now = Date.now(), patch = { tags, dnp };
@@ -3086,12 +3108,12 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
     const withPhotos = photoUrlsForSave || []; photoUrlsForSave = null;
     if (text || withPhotos.length || isQual) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || (withPhotos.length ? "Photo" : ""), at: now, changed: numsChanged, ctx: draft.ctx,
-      ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}),
+      ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}), ...(isPit ? { state: draft.state } : {}),
       ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
     if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
     patchTeam(dlgTeam, patch);
     dlgDirty = false; $("teamDlg").close();
-    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
+    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
   });
   $("teamDlg").addEventListener("close", () => { dlgDirty = false; });
   // a note with photos: upload them (shrunk), then save everything in one go
