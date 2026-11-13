@@ -90,7 +90,11 @@ a { color: var(--accent-ink); }
 .cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
 .cntbtn:active { transform: translateY(1px); }
 .cnttotal { margin: 8px 0 0; font-size: 15px; }
-.countsline .csep { color: var(--muted); margin: 0 8px; }
+.cgrp { white-space: nowrap; }
+.cgrp .cph { display: inline-block; margin-right: 4px; }
+.ntext.long:not(.open) { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
+.nmore { font-size: 13px; margin-top: 2px; }
+.ctxtag.qual { font-family: var(--f-body); letter-spacing: .02em; }
 .cnttotal small { color: var(--muted); }
 .cntval { text-align: center; font-size: 22px; }
 .cntflags { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -427,7 +431,12 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .gate { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding-block: 28px 12px; }
 .gate .hole.big { width: 84px; height: 84px; margin-bottom: 8px; }
 .gate .hint { max-width: 46ch; }
-.codebox { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px; }
+.gate { width: 100%; }
+.codebox { display: flex; flex-direction: column; align-items: center; gap: 10px; margin-top: 14px; width: 100%; min-height: 128px; }
+.gateerr { max-width: 36ch; margin: 0; }
+.codein.shake { animation: codeshake .35s; border-color: var(--bad); }
+@keyframes codeshake { 20%, 60% { transform: translateX(-6px); } 40%, 80% { transform: translateX(6px); } }
+@media (prefers-reduced-motion: reduce) { .codein.shake { animation: none; } }
 .codein { font-family: var(--f-mono); font-size: 40px; letter-spacing: .45em; text-indent: .45em; width: 230px; max-width: 100%; text-align: center; padding: 10px 8px;
   background: var(--surface); border: 2px solid var(--line); border-radius: 12px; color: var(--ink); }
 .codein:focus { border-color: var(--accent); outline: none; box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
@@ -898,6 +907,33 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   .starbtn { min-width: 44px; }
   #search { min-height: 44px; }
 }
+
+/* ---- polish pass: note screens ---- */
+/* notes: a calm card with the scout's color as a side stripe, not a tint over the whole note */
+.note { background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--c, var(--accent)); border-radius: 10px; padding: 10px 12px; }
+.note.latest { border-color: var(--line); border-left-color: var(--c, var(--accent)); box-shadow: 0 1px 0 color-mix(in srgb, var(--ink) 6%, transparent); }
+.note + .note { margin-top: 8px; }
+.notes { display: flex; flex-direction: column; gap: 8px; }
+.notes .note + .note { margin-top: 0; }
+.ntext { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; }
+.ord { background: var(--sunk); color: var(--muted); border-radius: 999px; padding: 1px 8px; }
+.note.latest .ord { background: color-mix(in srgb, var(--accent) 18%, var(--sunk)); color: var(--ink); }
+.countsline { margin-top: 4px; font-size: 13px; color: var(--muted); }
+.countsline b { color: var(--ink); }
+/* page switches and either/or choices: equal halves across the window */
+.mpages { display: grid; grid-template-columns: 1fr 1fr; width: min(100%, 360px); }
+.mpages button { justify-content: center; text-align: center; }
+.ctxseg { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.ctxseg button { text-align: center; }
+#dNote { min-height: 104px; }
+.numshead h3 small { display: block; font-family: var(--f-body); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--muted); margin-top: 2px; }
+.cmpbtn b { margin-left: .3em; }
+.photorow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.photorow .rlabel2 { flex: 1 0 100%; font-size: 13px; font-weight: 600; color: var(--muted); }
+.hexwrap + .pviewsw, .pviewsw.hexsw { font-size: 13px; }
+.photobtn { flex: 1 1 0; justify-content: center; text-align: center; }
+.photobtn:focus-within { outline: 2px solid var(--glow); outline-offset: 2px; }
+.photothumbs { flex: 1 0 100%; }
 </style>
 
 <header class="top">
@@ -1146,7 +1182,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
-  const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  // also drops invisible text-direction controls, so nobody can make a note or name read backwards
+  const esc = (s) => String(s ?? "").replace(/[\u202A-\u202E\u2066-\u2069]/g, "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const n = (v) => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
   const r2 = (v) => Math.round(n(v) * 100) / 100;
   const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1);
@@ -1615,7 +1652,14 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const h = await hashCode(code);
     const hit = [...scouts.entries()].find(([, s]) => s.hash === h);
     if (hit) { gateMsg = ""; setMe(hit[0]); toast(`Welcome, ${hit[1].name}`); }
-    else { gateMsg = "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours."; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } }
+    else gateErr("That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.");
+  }
+  // a wrong code updates the message in place: redrawing the box would close the phone keyboard and make the page jump
+  function gateErr(msg) {
+    gateMsg = msg; const el = $("codeIn"), box = $("gateErr");
+    if (!el || !box) { renderGate(); return; }
+    box.textContent = msg; box.hidden = !msg; el.value = "";
+    el.classList.remove("shake"); void el.offsetWidth; el.classList.add("shake"); el.focus();
   }
   async function freeCode(wanted) {
     const taken = new Set([...scouts.values()].map(s => s.hash));
@@ -1650,7 +1694,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     }
     body.innerHTML = `<img class="gatedino" src="${BARNEY.sit}" alt=""><p class="hint">Enter your 4-digit scout code. Everything you rate or note is saved under your name.</p>
       <div class="codebox"><input id="codeIn" class="codein" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Scout code" placeholder="••••">
-      ${gateMsg ? `<div class="err">${esc(gateMsg)}</div>` : ""}</div>`;
+      <div class="err gateerr" id="gateErr" role="alert" ${gateMsg ? "" : "hidden"}>${esc(gateMsg)}</div></div>`;
     const el = $("codeIn"); setTimeout(() => el && el.focus(), 0);
   }
 
@@ -2255,7 +2299,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>` : `<p class="hint">This match isn't in the schedule anymore.</p>`) : `
       <div class="mnotelist" id="mNotesList">${notes.length ? notes.map((x, i) => `<div class="note ${i === notes.length - 1 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
           <div class="notetop">${x.team ? `<button type="button" class="ctxtag team" data-team="${x.team}" title="Open ${esc(x.team)}'s page">${esc(x.team)}</button>` : ""}${who(x.by, x.by === uid ? "You" : null)} <small>${esc(when(x.at))}</small>${x.by === uid && canWrite ? (x.team ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${x.team}">Delete</button>` : `<button type="button" class="linkbtn" data-mdel="${esc(x.id)}">Delete</button>`) : ""}</div>
-          ${x.text ? `<div>${esc(x.text)}</div>` : ""}${x.team ? countsLine(x.counts) : ""}</div>`).join("")
+          ${x.text ? `<div class="ntext ${isLong(x.text) ? "long" : ""}">${esc(x.text)}</div>${isLong(x.text) ? `<button type="button" class="linkbtn nmore" data-nmore aria-expanded="false">Show the whole note</button>` : ""}` : ""}${x.team ? countsLine(x.counts) : ""}</div>`).join("")
         : dinoEmpty("No notes yet", "Be the first to say what happened in this match.", "", "console")}</div>
       <div class="mcompose">
         ${canWrite ? `<label class="fld">Add a note<textarea id="mNote" maxlength="2000" placeholder="What happened this match: who scored, who broke down, defense, penalties…">${esc(keep)}</textarea></label>
@@ -2761,8 +2805,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   function countsLine(c) {
     if (!c) return "";
     const sum = (k, where) => CNT_SCORE.filter(([, l]) => l === where).reduce((a, [f]) => a + (Number((c[k] || {})[f]) || 0), 0);
-    const ph = (k, label) => `<span class="cph">${label}</span> Hive <b>${sum(k, "Hive")}</b> · Flower <b>${sum(k, "Flower")}</b>`;
-    return `<div class="countsline"><div class="cline">${ph("a", "Auto")}<span class="csep">|</span>${ph("t", "TeleOp")}</div></div>`;
+    const ph = (k, label) => `<span class="cgrp"><span class="cph">${label}</span> Hive <b>${sum(k, "Hive")}</b> · Flower <b>${sum(k, "Flower")}</b></span>`;
+    return `<div class="countsline">${ph("a", "Auto")}${ph("t", "TeleOp")}</div>`;
   }
   // a team's quals from the schedule (only matches this team plays in)
   const teamQuals = (num) => (quals.key === current && quals.list ? quals.list : []).filter(m => m.level === "Quals" && [...m.red, ...m.blue].some(x => x.n === num));
@@ -2830,7 +2874,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         <div class="notetop"><span class="ord" title="The ${ordinal(x.n)} of ${total} notes on this team, oldest first">Note ${x.n} of ${total}</span>${qualTag(x)}${who(x.by, x.by === uid ? "You" : null)}
         <small>${x.mine > 1 ? `${x.by === uid ? "your" : "their"} ${ordinal(x.mine)} note · ` : ""}${when(x.at)}${i === 0 ? " · latest" : ""}${x.changed ? " · updated numbers" : ""}</small>
         ${canDel(x) ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${t.number}">Delete</button>` : ""}</div>
-        ${x.text ? `<div>${esc(x.text)}</div>` : ""}${countsLine(x.counts)}${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
+        ${x.text ? `<div class="ntext ${isLong(x.text) ? "long" : ""}">${esc(x.text)}</div>${isLong(x.text) ? `<button type="button" class="linkbtn nmore" data-nmore aria-expanded="false">Show the whole note</button>` : ""}` : ""}${countsLine(x.counts)}${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
       ${more > 0 ? `<button type="button" class="linkbtn morenotes" data-notesmore="${esc(key)}">${open ? "Show fewer notes" : `Show ${more} earlier note${more === 1 ? "" : "s"}`}</button>` : ""}`;
   }
 
@@ -2974,8 +3018,24 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts(), state: "" };
     if (current && (quals.key !== current || !quals.list)) loadQuals(false).then(refreshQualPick, () => {});   // the qual list needs the schedule
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
+    const saved = uid ? takeDraft(num) : null; if (saved) dlgMode = "edit";
+    if (saved) { draft = { ...draft, ...saved.draft, counts: { ...blankCounts(), ...(saved.draft.counts || {}) } }; dlgDirty = true; }
     renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
+    if (saved) { if ($("dNote")) $("dNote").value = saved.text || ""; toast("Picked up your unsaved note", { label: "Start over", run: () => { dlgDirty = false; if ($("teamDlg").open) $("teamDlg").close(); dropDraft(num); openTeam(num, "edit"); } }); }
   }
+  // a half-written note survives closing the window (or the page): kept on this phone for 12 hours, per competition and team
+  const DRAFTS = "ss51-drafts", draftKey = (num) => `${current}/${num}/${uid}`;
+  function readDrafts() { try { const o = JSON.parse(localStorage.getItem(DRAFTS) || "{}"), now = Date.now(); for (const k in o) if (!o[k] || now - o[k].at > 12 * 3600e3) delete o[k]; return o; } catch { return {}; } }
+  function writeDrafts(o) { try { localStorage.setItem(DRAFTS, JSON.stringify(o)); } catch {} }
+  function stashDraft() {
+    if (!dlgTeam || !uid || dlgMode !== "edit") return;
+    const text = $("dNote") ? $("dNote").value : "", o = readDrafts(), k = draftKey(dlgTeam);
+    const counted = draft.counts && ["a", "t"].some(ph => Object.values(draft.counts[ph] || {}).some(Boolean));
+    if (dlgDirty && (text.trim() || counted || draft.match || draft.state)) o[k] = { at: Date.now(), text: text.slice(0, 2000), draft: JSON.parse(JSON.stringify(draft)) }; else delete o[k];
+    writeDrafts(o);
+  }
+  function takeDraft(num) { const x = readDrafts()[draftKey(num)]; return x && x.draft ? x : null; }
+  function dropDraft(num) { const o = readDrafts(); delete o[draftKey(num)]; writeDrafts(o); }
   // the Notes | Scouting switch at the top of a team's window (same idea as the match window)
   const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Notes</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Scouting</button></div>`;
   function statBox(title, s, extra) {
@@ -3039,7 +3099,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (!list.length) return quals.loading || (quals.key !== current) ? `<p class="hint">Getting the match schedule…</p>`
       : `<p class="hint">${quals.list && quals.list.length ? `Team ${esc(t.number)} isn't in any qual on the schedule.` : "The match schedule isn't posted yet."} Pick "Pits" for now.</p>`;
     const tm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
-    return `<label class="fld">Which qual? <span class="req">Required</span><select id="dMatch">
+    return `<label class="fld"><span>Which qual? <span class="req">Required</span></span><select id="dMatch">
       <option value="" ${draft.match ? "" : "selected"} disabled>Pick a qual…</option>
       ${list.map(m => { const k = matchKey(m), red = m.red.some(x => x.n === t.number);
         return `<option value="${esc(k)}" ${draft.match === k ? "selected" : ""}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</option>`; }).join("")}</select></label>`;
@@ -3084,7 +3144,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
         <div class="photothumbs" id="dThumbs">${pendingThumbs()}</div></div>` : ""}
       <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
-        <div class="numshead"><h3>Your numbers (1–10)${sc.count ? ` · team avg from ${sc.count} scout${sc.count === 1 ? "" : "s"}` : ""}</h3>
+        <div class="numshead"><h3>Your numbers (1–10)${sc.count ? `<small>team average from ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : ""}</h3>
 </div>
         ${draft.hasNums ? `<p class="hint">Filled in from your last review. Change any that were different this match and leave the rest.</p>` : ""}
         <div class="rate">${CATS.map(([k, l]) => `<div class="raterow"><span class="rlabel">${l}</span><div class="dots" role="group" aria-label="${l}">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v =>
@@ -3144,7 +3204,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("numsBox").querySelectorAll(".dots button").forEach(x => x.disabled = !draft.upd);
     const hint = $("numsBox").querySelector("p.hint"); if (hint) hint.hidden = draft.upd;
   });
-  $("teamForm").addEventListener("input", () => { dlgDirty = true; });
+  $("teamForm").addEventListener("input", () => { dlgDirty = true; queueStash(); });
+  // keep the draft as it's written, so nothing is lost however the window goes away
+  let stashT = 0; const queueStash = () => { clearTimeout(stashT); if ($("teamDlg").open) stashT = setTimeout(() => { if ($("teamDlg").open) stashDraft(); }, 400); };
+  ["click", "change"].forEach(ev => $("teamForm").addEventListener(ev, () => { if (dlgDirty) queueStash(); }));
   $("teamForm").addEventListener("submit", (e) => {
     e.preventDefault(); if (!uid) return;
     const t = teams.get(dlgTeam); if (!t) return;
@@ -3173,10 +3236,12 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
     if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
     patchTeam(dlgTeam, patch);
+    clearTimeout(stashT); dropDraft(dlgTeam);
     dlgDirty = false; $("teamDlg").close();
     toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
   });
-  $("teamDlg").addEventListener("close", () => { dlgDirty = false; });
+  $("teamDlg").addEventListener("close", () => { if (dlgDirty) stashDraft(); dlgDirty = false; });
+  window.addEventListener("pagehide", () => { if ($("teamDlg").open) stashDraft(); });   // phone locks or the tab is swiped away
   // a note with photos: upload them (shrunk), then save everything in one go
   async function savePhotoNote(t, text, photos) {
     const num = t.number, btn = $("teamForm").querySelector('button[type="submit"]');
@@ -3195,6 +3260,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").requestSubmit();
   }
   let photoUrlsForSave = null;
+  // long notes start folded to 6 lines
+  function isLong(txt) { return txt.length > 300 || txt.split("\n").length > 6; }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-nmore]"); if (!b) return;
+    const box = b.previousElementSibling; if (!box) return;
+    const open = box.classList.toggle("open"); b.setAttribute("aria-expanded", String(open)); b.textContent = open ? "Show less" : "Show the whole note";
+  });
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-notesmore],[data-delnote],[data-notesby]"); if (!b) return;
     if (b.dataset.notesby !== undefined) {
@@ -3349,12 +3421,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const text = ($("mNote").value || "").trim();
     if (!text) { toast("Write a note first."); return; }
     const now = Date.now(), id = "n" + now.toString(36) + Math.random().toString(36).slice(2, 6);
-    $("mNote").value = "";
+    $("mNote").value = ""; matchDrafts.delete(openMatchKey);
     saveMatch(openMatchKey, { label: matchLabelOf(openMatchKey), notes: { [id]: { by: uid, text, at: now } } });
     const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
     toast("Note added");
   });
-  $("matchDlg").addEventListener("close", () => { openMatchKey = null; matchDrafts.clear(); });
+  // a half-typed match note waits for you if the window closes (until the page reloads)
+  $("matchDlg").addEventListener("close", () => { if (openMatchKey && $("mNote")) matchDrafts.set(openMatchKey, $("mNote").value); openMatchKey = null; });
+  $("matchForm").addEventListener("input", (e) => { if (e.target.id === "mNote" && openMatchKey) matchDrafts.set(openMatchKey, e.target.value); });
   // star or unstar a competition for the whole team
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-star]"); if (!b || b.disabled || !db) return;

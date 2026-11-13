@@ -71,7 +71,7 @@ REPLACE = [
     if (hit) { gateMsg = ""; setMe(hit[0]); toast(`Welcome, ${hit[1].name}`); }''',
      '''    const r = await window.SITE.signIn(code);
     if (r && r.id) { gateMsg = ""; setMe(r.id); toast(`Welcome, ${r.name}`); return; }
-    if (r && r.error && !/match anyone/.test(r.error)) { gateMsg = r.error; renderGate(); const el = $("codeIn"); if (el) { el.value = ""; el.focus(); } return; }
+    if (r && r.error && !/match anyone/.test(r.error)) { gateErr(r.error); return; }
     const hit = null;
     if (hit) { setMe(hit[0]); }'''),
     # the first lead signs in properly after creating the roster
