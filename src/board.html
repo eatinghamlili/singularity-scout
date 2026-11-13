@@ -70,6 +70,41 @@ a { color: var(--accent-ink); }
 /* start page */
 .home { display: flex; flex-direction: column; gap: 22px; }
 .loadmore { margin: 14px 0 0; }
+/* qual scouting */
+.ctxbox { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); }
+.ctxbox.need { border-color: var(--bad); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad) 25%, transparent); }
+.ctxbox .mlabel { font-size: 14px; font-weight: 700; color: var(--ink); }
+.req { font-size: 11.5px; font-weight: 700; color: var(--bad); margin-left: 4px; }
+.ctxseg button { min-height: 44px; }
+.cntbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cntphase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
+.cntphase h4 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: .04em; }
+.cntrow { display: grid; grid-template-columns: minmax(0, 1fr) 44px 40px 44px; align-items: center; gap: 6px; }
+.cntname { font-weight: 600; font-size: 15px; display: flex; flex-direction: column; line-height: 1.15; }
+.cntname small { font-weight: 500; font-size: 12px; color: var(--muted); }
+.cntbtn { min-height: 44px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); font-size: 22px; font-weight: 700; cursor: pointer; color: var(--ink); }
+.cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
+.cntbtn:active { transform: translateY(1px); }
+.cntval { text-align: center; font-size: 22px; }
+.cntflags { display: flex; flex-wrap: wrap; gap: 6px; }
+.cntflag { min-height: 40px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-weight: 600; color: var(--ink); }
+.cntflag[aria-pressed="true"] { background: var(--good); border-color: var(--good); color: #062a13; }
+.ctxtag { font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.ctxtag.qual { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.ctxtag.team { cursor: pointer; background: var(--surface); color: var(--ink); font-family: var(--f-display); font-size: 13px; }
+.countsline { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; font-size: 13px; color: var(--muted); }
+.countsline b { color: var(--ink); font-family: var(--f-mono); font-weight: 600; }
+.cline { display: flex; flex-wrap: wrap; gap: 2px 6px; align-items: baseline; }
+.cph { font-weight: 700; color: var(--ink); min-width: 52px; }
+.cyes { color: var(--good); font-weight: 600; } .cno { opacity: .75; }
+.scoutedbox { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; background: var(--surface); }
+.scoutedbox h3 { margin: 0 0 8px; font-family: var(--f-display); font-weight: 800; font-size: 17px; text-transform: uppercase; letter-spacing: .04em; }
+.scoutedbox h3 .hint { font-family: var(--f-body); font-size: 13px; text-transform: none; letter-spacing: 0; font-weight: 500; }
+.scoutedbox.empty p { margin: 0; }
+.scols { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px 18px; }
+.scol h4 { margin: 0 0 4px; font-size: 13px; font-weight: 700; color: var(--muted); }
+.scol dl { display: grid; grid-template-columns: 1fr auto; gap: 2px 10px; margin: 0; font-size: 14px; }
+.scol dd { margin: 0; text-align: right; font-weight: 600; }
 .themebtn { display: inline-flex; align-items: center; justify-content: center; padding: 6px 8px; min-width: 40px; }
 .themebtn svg { display: block; }
 /* competition day: the one bold block on the home page */
@@ -2096,7 +2131,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       const done = m.played && m.redScore != null;
       const win = done ? (m.redScore > m.blueScore ? "red" : m.blueScore > m.redScore ? "blue" : "tie") : "";
       const state = done ? "Played" : m === nextAll ? "Up next" : "Upcoming";
-      const mk = matchKey(m), mn = matchNotes(mk).length;
+      const mk = matchKey(m), mn = matchNotes(mk).length + qualTeamNotes(mk).length;
       return `<div class="match ${has(m, us) ? "ours" : ""} ${done ? "done" : ""}" data-match="${esc(mk)}" role="button" tabindex="0" aria-label="Notes for ${label(m)}">
         <div class="mhead"><b>${label(m)}</b><span class="mstate ${m === nextAll && !done ? "soon" : ""}">${state}</span>${[...m.red, ...m.blue].some(t => t.sur) ? `<span class="msur" title="* marks a surrogate: that match doesn't count toward their record">Surrogate*</span>` : ""}<span class="mtime">${(() => { const [tm, ...rest] = String(fmtT(m.time)).split(" · "); return esc(tm) + (rest.length ? `<span class="mdate"> · ${esc(rest.join(" · "))}</span>` : ""); })()}</span></div>
         <div class="alli red ${win === "red" ? "won" : ""}"><div class="mteams">${m.red.map(chip).join("")}</div><span class="mscore">${done ? m.redScore : "–"}</span></div>
@@ -2150,7 +2185,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     // a redraw (live updates) shouldn't jump the window back to the top
     const scroller = $("matchForm"), keepScroll = scroller ? scroller.scrollTop : 0, keepDlg = $("matchDlg").scrollTop;
     const m = (quals.list || []).find(x => matchKey(x) === key);
-    const notes = matchNotes(key);
+    const notes = [...matchNotes(key), ...qualTeamNotes(key)].sort((a, b) => (a.at || 0) - (b.at || 0));
     const canWrite = !!(db && uid && !readOnly);
     const us = settings.us;
     const side = (list, color) => list.length ? `<div class="alli ${color}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
@@ -2173,8 +2208,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
           <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
         </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>` : `<p class="hint">This match isn't in the schedule anymore.</p>`) : `
       <div class="mnotelist" id="mNotesList">${notes.length ? notes.map((x, i) => `<div class="note ${i === notes.length - 1 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
-          <div class="notetop">${who(x.by, x.by === uid ? "You" : null)} <small>${esc(when(x.at))}</small>${x.by === uid && canWrite ? `<button type="button" class="linkbtn" data-mdel="${esc(x.id)}">Delete</button>` : ""}</div>
-          <div>${esc(x.text)}</div></div>`).join("")
+          <div class="notetop">${x.team ? `<button type="button" class="ctxtag team" data-team="${x.team}" title="Open ${esc(x.team)}'s page">${esc(x.team)}</button>` : ""}${who(x.by, x.by === uid ? "You" : null)} <small>${esc(when(x.at))}</small>${x.by === uid && canWrite ? (x.team ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${x.team}">Delete</button>` : `<button type="button" class="linkbtn" data-mdel="${esc(x.id)}">Delete</button>`) : ""}</div>
+          ${x.text ? `<div>${esc(x.text)}</div>` : ""}${x.team ? countsLine(x.counts) : ""}</div>`).join("")
         : dinoEmpty("No notes yet", "Be the first to say what happened in this match.", "", "console")}</div>
       <div class="mcompose">
         ${canWrite ? `<label class="fld">Add a note<textarea id="mNote" maxlength="2000" placeholder="What happened this match: who scored, who broke down, defense, penalties…">${esc(keep)}</textarea></label>
@@ -2593,7 +2628,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   const when = (at) => at ? new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
   function allNotes(t) {
     const out = [];
-    for (const [nid, x] of Object.entries(t.notes || {})) if (x && x.text) out.push({ id: nid, by: x.by, text: x.text, at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [] });
+    for (const [nid, x] of Object.entries(t.notes || {})) if (x && (x.text || x.counts)) out.push({ id: nid, by: x.by, text: x.text || "", at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [],
+      ctx: x.ctx === "qual" || x.ctx === "pit" ? x.ctx : "", match: typeof x.match === "string" ? x.match : "", counts: x.counts && typeof x.counts === "object" ? x.counts : null });
     for (const [id, r] of Object.entries(t.ratings || {})) if (r && r.note) out.push({ id: "legacy:" + id, by: id, text: r.note, at: r.at || 0 });   // notes saved before history existed
     // number them oldest-first: n = order on this team, mine = order among this scout's notes
     out.sort((a, b) => a.at - b.at);
@@ -2662,6 +2698,51 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       <div class="dlgfoot"><button type="button" class="btn" data-photoclose>Close</button></div>`;
   }
   const ordinal = (n) => { const s = ["th", "st", "nd", "rd"], v = n % 100; return n + (s[(v - 20) % 10] || s[v] || s[0]); };
+  /* ---------- qual scouting: what a robot scored in one match ----------
+     Pollen/nectar into the hive and garden, pollen into a flower, leaving in auto, and parking.
+     Counted separately for Auto and TeleOp. Saved on the team's note, tagged with the qual. */
+  const CNT_SCORE = [["hive", "Hive", "pollen / nectar"], ["flower", "Flower", "pollen"], ["garden", "Garden", "pollen / nectar"]];
+  const CNT_FLAGS = { a: [["leave", "Left start", "didn't leave"], ["park", "Parked", "didn't park"]], t: [["park", "Parked at end", "didn't park at end"]] };
+  const blankCounts = () => ({ a: { hive: 0, flower: 0, garden: 0, leave: false, park: false }, t: { hive: 0, flower: 0, garden: 0, park: false } });
+  const qualTag = (x) => x.ctx === "qual" && x.match ? `<span class="ctxtag qual" title="Notes from this qual">${esc(matchLabelOf(x.match))}</span>` : x.ctx === "pit" ? `<span class="ctxtag pit" title="Notes from the pits">Pits</span>` : "";
+  function countsLine(c) {
+    if (!c) return "";
+    const ph = (k, label) => { const v = c[k] || {}; const parts = CNT_SCORE.map(([f, l]) => `${l} <b>${Number(v[f]) || 0}</b>`);
+      for (const [f, l, no] of CNT_FLAGS[k]) parts.push(v[f] ? `<span class="cyes">${l}</span>` : `<span class="cno">${no}</span>`);
+      return `<div class="cline"><span class="cph">${label}</span>${parts.join(" · ")}</div>`; };
+    return `<div class="countsline">${ph("a", "Auto")}${ph("t", "TeleOp")}</div>`;
+  }
+  // a team's quals from the schedule (only matches this team plays in)
+  const teamQuals = (num) => (quals.key === current && quals.list ? quals.list : []).filter(m => m.level === "Quals" && [...m.red, ...m.blue].some(x => x.n === num));
+  // every team note tagged with this qual, for the match window
+  function qualTeamNotes(key) {
+    const out = [];
+    for (const t of teams.values()) for (const x of allNotes(t)) if (x.ctx === "qual" && x.match === key) out.push({ ...x, team: t.number });
+    return out;
+  }
+  // averages per scouted qual (several scouts on one qual count as one match)
+  function scoutedCounts(t) {
+    const byMatch = new Map();
+    for (const x of allNotes(t)) if (x.ctx === "qual" && x.counts && x.match) { if (!byMatch.has(x.match)) byMatch.set(x.match, []); byMatch.get(x.match).push(x.counts); }
+    if (!byMatch.size) return null;
+    const per = [...byMatch.values()].map(list => {
+      const avg = (k, f) => list.reduce((a, c) => a + (Number((c[k] || {})[f]) || 0), 0) / list.length;
+      const yes = (k, f) => list.filter(c => (c[k] || {})[f]).length / list.length;
+      return { a: { hive: avg("a", "hive"), flower: avg("a", "flower"), garden: avg("a", "garden"), leave: yes("a", "leave"), park: yes("a", "park") },
+               t: { hive: avg("t", "hive"), flower: avg("t", "flower"), garden: avg("t", "garden"), park: yes("t", "park") } };
+    });
+    const mean = (k, f) => per.reduce((a, p) => a + p[k][f], 0) / per.length;
+    return { n: per.length, a: { hive: mean("a", "hive"), flower: mean("a", "flower"), garden: mean("a", "garden"), leave: mean("a", "leave"), park: mean("a", "park") },
+             t: { hive: mean("t", "hive"), flower: mean("t", "flower"), garden: mean("t", "garden"), park: mean("t", "park") } };
+  }
+  function scoutedBox(t) {
+    const s = scoutedCounts(t);
+    if (!s) return `<div class="scoutedbox empty"><h3>Scouted in quals</h3><p class="hint">No qual counts yet. When a scout picks "A qual match" on the Notes page, what this robot scored shows up here.</p></div>`;
+    const n1 = (v) => (Math.round(v * 10) / 10).toString(), pc = (v) => Math.round(v * 100) + "%";
+    const col = (k, label) => `<div class="scol"><h4>${label}</h4><dl>${CNT_SCORE.map(([f, l]) => `<dt>${l}</dt><dd class="num">${n1(s[k][f])}</dd>`).join("")}
+      ${CNT_FLAGS[k].map(([f, l]) => `<dt>${l}</dt><dd class="num">${pc(s[k][f])}</dd>`).join("")}</dl></div>`;
+    return `<div class="scoutedbox"><h3>Scouted in quals <span class="hint">average of ${s.n} qual${s.n === 1 ? "" : "s"}</span></h3><div class="scols">${col("a", "Auto")}${col("t", "TeleOp")}</div></div>`;
+  }
   const numsLine = (nums) => nums ? `<div class="numsline">${CATS.map(([k, l]) => nums[k] ? `<span>${l.split(" ")[0]} <b>${nums[k]}</b></span>` : "").join("")}</div>` : "";
   function noteList(t, key, shown, by) {
     const list = allNotes(t).filter(x => !by || x.by === by), total = allNotes(t).length;
@@ -2670,10 +2751,10 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const open = !!by || expandedNotes.has(key), vis = open ? list : list.slice(0, shown), more = by ? 0 : list.length - shown;
     const canDel = (x) => !readOnly && db && uid && x.by === uid;   // only the person who wrote a note can delete it
     return `<div class="notes">${vis.map((x, i) => `<div class="note ${i === 0 ? "latest" : ""}" style="--c:${colorOf(x.by)}">
-        <div class="notetop"><span class="ord" title="The ${ordinal(x.n)} of ${total} notes on this team, oldest first">Note ${x.n} of ${total}</span>${who(x.by, x.by === uid ? "You" : null)}
+        <div class="notetop"><span class="ord" title="The ${ordinal(x.n)} of ${total} notes on this team, oldest first">Note ${x.n} of ${total}</span>${qualTag(x)}${who(x.by, x.by === uid ? "You" : null)}
         <small>${x.mine > 1 ? `${x.by === uid ? "your" : "their"} ${ordinal(x.mine)} note · ` : ""}${when(x.at)}${i === 0 ? " · latest" : ""}${x.changed ? " · updated numbers" : ""}</small>
         ${canDel(x) ? `<button type="button" class="linkbtn" data-delnote="${esc(x.id)}" data-team-of="${t.number}">Delete</button>` : ""}</div>
-        <div>${esc(x.text)}</div>${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
+        ${x.text ? `<div>${esc(x.text)}</div>` : ""}${countsLine(x.counts)}${x.changed ? numsLine(x.nums) : ""}${photoStrip(x.photos, t.number)}</div>`).join("")}</div>
       ${more > 0 ? `<button type="button" class="linkbtn morenotes" data-notesmore="${esc(key)}">${open ? "Show fewer notes" : `Show ${more} earlier note${more === 1 ? "" : "s"}`}</button>` : ""}`;
   }
 
@@ -2814,7 +2895,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
-    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "" };
+    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts() };
+    if (current && (quals.key !== current || !quals.list)) loadQuals(false).then(refreshQualPick, () => {});   // the qual list needs the schedule
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
     renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
   }
@@ -2861,6 +2943,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
+      ${scoutedBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${t !== c.us ? `<div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>` : ""}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
@@ -2874,6 +2957,31 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (dlgMode === "view") return renderTeamView(t);
     renderTeamEdit(t);
     if (draft.note && $("dNote")) $("dNote").value = draft.note;
+  }
+  function qualPickInner(t) {
+    const list = teamQuals(t.number);
+    if (!list.length) return quals.loading || (quals.key !== current) ? `<p class="hint">Getting the match schedule…</p>`
+      : `<p class="hint">${quals.list && quals.list.length ? `Team ${esc(t.number)} isn't in any qual on the schedule.` : "The match schedule isn't posted yet."} Pick "Pits" for now.</p>`;
+    const tm = (iso) => iso ? new Date(iso).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "";
+    return `<label class="fld">Which qual? <span class="req">Required</span><select id="dMatch">
+      <option value="" ${draft.match ? "" : "selected"} disabled>Pick a qual…</option>
+      ${list.map(m => { const k = matchKey(m), red = m.red.some(x => x.n === t.number);
+        return `<option value="${esc(k)}" ${draft.match === k ? "selected" : ""}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</option>`; }).join("")}</select></label>`;
+  }
+  function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t); }
+  function countsHtml() {
+    const c = draft.counts;
+    const row = (k, f, l, sub) => `<div class="cntrow"><span class="cntname">${l}<small>${sub}</small></span>
+      <button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="-1" aria-label="One less ${l} ${k === "a" ? "in auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${f}" aria-live="polite">${c[k][f]}</b><button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="1" aria-label="One more ${l} ${k === "a" ? "in auto" : "in TeleOp"}">+</button></div>`;
+    const flags = (k) => `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
+    const phase = (k, label) => `<div class="cntphase"><h4>${label}</h4>${CNT_SCORE.map(([f, l, sub]) => row(k, f, l, sub)).join("")}${flags(k)}</div>`;
+    return `<div class="cntbox">${phase("a", "Auto")}${phase("t", "TeleOp")}</div>`;
+  }
+  function ctxHtml(t, canRate) {
+    return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
+      <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
+        `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
+      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}<p class="hint">These notes also show up in that qual's match notes.</p>` : ""}</div>`;
   }
   function renderTeamEdit(t) {
     const sc = scoutAgg(t);
@@ -2890,7 +2998,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${canRate ? "" : `<p class="hint">${!db ? "Notes save only when the board is open on claude.ai." : !uid ? "Enter your scout code to add notes and numbers." : "View-only access can't add notes."}</p>`}
       ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
-      <label class="fld">${draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note for this match" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      ${ctxHtml(t, canRate)}
+      <label class="fld">${draft.ctx === "qual" ? "Notes from this qual (optional)" : draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
       ${PHOTOS_ON() && canRate ? `<div class="photorow"><span class="rlabel2">Photos</span>
         <label class="btn photobtn">Take photo<input type="file" accept="image/*" capture="environment" id="dPhotoCam" data-addphoto hidden></label>
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
@@ -2935,6 +3044,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
     if (b.dataset.tpage) { if (b.dataset.tpage === dlgMode) return; dlgMode = b.dataset.tpage; renderTeamDlg(); $("teamDlg").scrollTop = 0; $("teamForm").scrollTop = 0;
       const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
+    if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true; renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
+    if (b.dataset.cnt) { const [k, f] = b.dataset.cnt.split("."); draft.counts[k][f] = Math.max(0, Math.min(99, (draft.counts[k][f] || 0) + Number(b.dataset.d))); dlgDirty = true;
+      const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; return; }
+    if (b.dataset.flag) { const [k, f] = b.dataset.flag.split("."); draft.counts[k][f] = !draft.counts[k][f]; dlgDirty = true; b.setAttribute("aria-pressed", String(draft.counts[k][f])); return; }
     if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
     if (b.dataset.rate) { const k = b.dataset.rate, v = Number(b.dataset.v); draft[k] = draft[k] === v ? 0 : v; dlgDirty = true;
@@ -2942,6 +3055,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
   });
   $("teamForm").addEventListener("change", (e) => {
+    if (e.target.id === "dMatch") { draft.match = e.target.value; dlgDirty = true; $("ctxBox")?.classList.remove("need"); return; }
     if (e.target.id !== "dUpd") return;
     draft.upd = e.target.checked;
     // keep what's typed; just switch the number buttons on or off
@@ -2961,17 +3075,23 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const tagsChanged = tags.join("|") !== (t.tags || []).join("|") || dnp !== !!t.dnp;
     const movesNow = t.mobility ? (t.mobility.ok ? "yes" : "no") : "", movesChanged = draft.moves !== movesNow;
     const photos = photoUrlsForSave ? [] : pendingPhotos.slice();
-    if (!text && !numsChanged && !tagsChanged && !movesChanged && !photos.length && !(photoUrlsForSave && photoUrlsForSave.length)) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    const isQual = draft.ctx === "qual";
+    const writesNote = !!(text || photos.length || (photoUrlsForSave && photoUrlsForSave.length) || isQual);
+    if (writesNote && !draft.ctx) { toast("Pick where this note is from first: a qual match or the pits."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
+    if (isQual && !draft.match) { toast("Pick which qual these notes are from."); $("ctxBox")?.classList.add("need"); $("dMatch")?.focus(); return; }
+    if (!writesNote && !numsChanged && !tagsChanged && !movesChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
     if (photos.length) { savePhotoNote(t, text, photos); return; }
     const now = Date.now(), patch = { tags, dnp };
     if (movesChanged) patch.mobility = draft.moves ? { ok: draft.moves === "yes", by: uid, at: now } : null;
     if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
     const withPhotos = photoUrlsForSave || []; photoUrlsForSave = null;
-    if (text || withPhotos.length) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || "Photo", at: now, changed: numsChanged, ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
+    if (text || withPhotos.length || isQual) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || (withPhotos.length ? "Photo" : ""), at: now, changed: numsChanged, ctx: draft.ctx,
+      ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}),
+      ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
     if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
     patchTeam(dlgTeam, patch);
     dlgDirty = false; $("teamDlg").close();
-    toast(withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
+    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
   });
   $("teamDlg").addEventListener("close", () => { dlgDirty = false; });
   // a note with photos: upload them (shrunk), then save everything in one go

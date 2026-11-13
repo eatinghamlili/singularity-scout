@@ -92,6 +92,18 @@ const isObj = (v: unknown): v is Record<string, any> => !!v && typeof v === "obj
 const PHOTO_BASE = Deno.env.get("SUPABASE_URL")!.replace(/\/$/, "") + "/storage/v1/object/public/photos/";
 const PHOTO_TAIL = /^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}\/[a-z0-9]{8,24}\.(webp|jpg|png)$/;
 const PHOTO_URL = { test: (u: string) => u.startsWith(PHOTO_BASE) && PHOTO_TAIL.test(u.slice(PHOTO_BASE.length)) };
+// a qual note's counts: Auto and TeleOp, each a few whole numbers (0-99) and yes/no flags
+const COUNT_KEYS: Record<string, { n: string[]; b: string[] }> = { a: { n: ["hive", "flower", "garden"], b: ["leave", "park"] }, t: { n: ["hive", "flower", "garden"], b: ["park"] } };
+function badCounts(c: unknown) {
+  if (!isObj(c) || Object.keys(c).some((k) => !(k in COUNT_KEYS))) return true;
+  for (const [k, spec] of Object.entries(COUNT_KEYS)) {
+    const v = c[k]; if (!isObj(v)) return true;
+    if (Object.keys(v).some((f) => !spec.n.includes(f) && !spec.b.includes(f))) return true;
+    if (spec.n.some((f) => !Number.isInteger(v[f]) || v[f] < 0 || v[f] > 99)) return true;
+    if (spec.b.some((f) => typeof v[f] !== "boolean")) return true;
+  }
+  return false;
+}
 const okPhotos = (v: unknown) => v === undefined || (Array.isArray(v) && v.length <= 6 && v.every((u) => typeof u === "string" && PHOTO_URL.test(u)));
 
 // ---- what a scout may change ----
@@ -111,6 +123,9 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     if (!isObj(v)) return "A note must be an object.";
     if (v.text !== undefined && (typeof v.text !== "string" || v.text.length > NOTE_MAX)) return `Notes are ${NOTE_MAX.toLocaleString("en-US")} characters at most.`;
     if (!okPhotos(v.photos)) return "Photos must be uploaded through the board.";
+    if (v.ctx !== undefined && v.ctx !== "qual" && v.ctx !== "pit") return "Pick where the note is from: a qual or the pits.";
+    if (v.match !== undefined && (typeof v.match !== "string" || !/^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(v.match))) return "That qual isn't on the schedule.";
+    if (v.counts !== undefined && badCounts(v.counts)) return "Those counts couldn't be saved.";
     if (old && old.by !== me) return "You can only edit your own notes.";
     if (!old && v.by !== me) return "Notes are saved under your own name.";
     if (old && v.by !== undefined && v.by !== me) return "Notes are saved under your own name.";
