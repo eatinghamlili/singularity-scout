@@ -90,17 +90,6 @@ a { color: var(--accent-ink); }
 .cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
 .cntbtn:active { transform: translateY(1px); }
 .cnttotal { margin: 8px 0 0; font-size: 15px; }
-.slime { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; width: 280px;
-  background: var(--band); border-radius: 14px; overflow: hidden; box-shadow: 0 10px 30px rgb(0 0 0 / .35); border: 1px solid color-mix(in srgb, var(--accent) 45%, transparent); }
-.slime[hidden], .slimepill[hidden] { display: none; }
-.slimebar { display: flex; align-items: center; justify-content: space-between; padding: 2px 4px 2px 12px; color: var(--band-ink); font-size: 13px; font-weight: 600; }
-.slimebar button { all: unset; cursor: pointer; width: 36px; height: 36px; display: grid; place-items: center; font-size: 22px; border-radius: 8px; touch-action: manipulation; }
-.slimebar button:focus-visible { outline: 2px solid var(--glow); }
-.slimevid { aspect-ratio: 16 / 9; background: #000; }
-.slimevid iframe { width: 100%; height: 100%; border: 0; display: block; }
-.slimepill { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 20; min-height: 40px; padding: 0 16px;
-  border-radius: 999px; border: 1px solid var(--accent); background: var(--band); color: var(--band-ink); font: inherit; font-weight: 600; cursor: pointer; }
-@media (max-width: 600px) { .slime { width: 168px; } .slimebar { font-size: 12px; } }
 .countsline .csep { color: var(--muted); margin: 0 8px; }
 .cnttotal small { color: var(--muted); }
 .cntval { text-align: center; font-size: 22px; }
@@ -1153,12 +1142,6 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 </dialog>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-<!-- just for fun: a slime ASMR video in the corner of the Scouting notes tab (muted; close it and it stays closed) -->
-<aside class="slime" id="slime" hidden aria-label="Slime ASMR video">
-  <div class="slimebar"><span>slime break</span><button type="button" id="slimeClose" aria-label="Close the slime video">×</button></div>
-  <div class="slimevid" id="slimeVid"></div>
-</aside>
-<button type="button" class="slimepill" id="slimeOpen" hidden aria-label="Show the slime video">slime</button>
 
 <script>
 (() => {
@@ -2678,7 +2661,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
-    $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick"; slimeSync();
+    $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick";
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
   }
 
@@ -3348,19 +3331,6 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (tab === "quals") loadQuals(false);
     render();
   }
-  // the slime video only loads while the Notes tab is open and it hasn't been closed
-  // (var, not let: render() can run before this line)
-  var slimeOff = (() => { try { return localStorage.getItem("ss51-slime") === "off"; } catch { return false; } })();
-  function slimeSync() {
-    const w = $("notesWrap"), on = !!window.SITE && !!current && view.tab === "notes" && !!w && w.offsetParent !== null;   // on screen, not the home page
-    $("slime").hidden = !on || slimeOff; $("slimeOpen").hidden = !on || !slimeOff;
-    const box = $("slimeVid");
-    if (on && !slimeOff) { if (!box.firstChild) box.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/PPiWhzyEbLE?autoplay=1&mute=1&loop=1&playlist=PPiWhzyEbLE&playsinline=1&rel=0" title="Slime ASMR" allow="autoplay; encrypted-media; picture-in-picture" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>`; }
-    else box.innerHTML = "";   // stop it (and its data use) when it's not showing
-  }
-  const slimeSet = (off) => { slimeOff = off; try { localStorage.setItem("ss51-slime", off ? "off" : "on"); } catch {} slimeSync(); };
-  $("slimeClose").onclick = () => slimeSet(true);
-  $("slimeOpen").onclick = () => slimeSet(false);
   // tapping the dark area outside a window closes it (handy on phones)
   document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
   $("matchForm").addEventListener("click", (e) => {
