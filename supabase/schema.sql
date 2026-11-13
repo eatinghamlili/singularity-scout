@@ -102,3 +102,8 @@ drop policy if exists "change records" on public.docs;
 drop policy if exists "remove scouts and requests" on public.docs;
 revoke insert, update, delete on public.docs from anon, authenticated;
 revoke execute on function public.merge_doc(text, jsonb) from anon, authenticated, public;
+
+-- 2026-11-12 security pass: the public roles only ever read the board. Remove the leftover
+-- table permissions they were given by default (they can't be used through the website's API,
+-- but there's no reason to have them).
+revoke truncate, trigger, references on public.docs from anon, authenticated;

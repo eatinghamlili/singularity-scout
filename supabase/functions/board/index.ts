@@ -4,6 +4,9 @@
 //   - notes are written as yourself, and only your own notes can be deleted
 //   - only your own ratings can be changed
 //   - the roster is for leads
+//   - our team stays Team 51
+// A sign-in only lasts while the scout's code stays the same: a new code signs every device out.
+// Wrong codes are limited per connection, every 10 minutes and every day, so codes can't be guessed.
 // The database refuses writes from anywhere else, so the page can't be bypassed.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -30,6 +33,8 @@ const KEYS: [RegExp, string[] | null][] = [
 ];
 const TOKEN_DAYS = 45;
 const LOCK_AFTER = 20, LOCK_MINUTES = 10;   // venue Wi-Fi puts the whole team behind one address
+const DAY_LIMIT = 60;                        // wrong codes per connection per day: guessing a 4-digit code would take weeks
+const US = 51;                               // the board is Team 51's
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -46,12 +51,22 @@ function hmacKey() {
 const b64u = (s: string) => btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 const unb64u = (s: string) => atob(s.replace(/-/g, "+").replace(/_/g, "/"));
 async function sign(body: string) { return hex(await crypto.subtle.sign("HMAC", await hmacKey(), enc.encode(body))); }
-async function makeToken(sid: string) { const body = b64u(JSON.stringify({ sid, exp: Date.now() + TOKEN_DAYS * 864e5 })); return body + "." + await sign(body); }
+// a sign-in remembers which code it came from (a short fingerprint, not the code); a new code ends it
+const codeMark = (hash: string) => hash.slice(0, 16);
+async function currentMark(sid: string) {
+  const { data } = await db.from("scout_keys").select("hash").eq("id", sid).maybeSingle();
+  return data?.hash ? codeMark(String(data.hash)) : null;
+}
+async function makeToken(sid: string, hash: string) { const body = b64u(JSON.stringify({ sid, v: codeMark(hash), exp: Date.now() + TOKEN_DAYS * 864e5 })); return body + "." + await sign(body); }
+function sameText(a: string, b: string) { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
 async function readToken(tok: string | null): Promise<string | null> {
   if (!tok || !tok.includes(".")) return null;
   const [body, sig] = tok.split(".");
-  if ((await sign(body)) !== sig) return null;
-  try { const { sid, exp } = JSON.parse(unb64u(body)); return typeof sid === "string" && exp > Date.now() ? sid : null; } catch { return null; }
+  if (!sameText(await sign(body), String(sig || ""))) return null;
+  let sid: unknown, v: unknown, exp: unknown;
+  try { ({ sid, v, exp } = JSON.parse(unb64u(body))); } catch { return null; }
+  if (typeof sid !== "string" || typeof v !== "string" || !(Number(exp) > Date.now())) return null;   // older sign-ins without a fingerprint sign in again
+  return (await currentMark(sid)) === v ? sid : null;
 }
 async function getDoc(path: string) {
   const { data } = await db.from("docs").select("data").eq("path", path).maybeSingle();
@@ -92,16 +107,19 @@ async function signIn(req: Request, body: any) {
   const since = new Date(Date.now() - LOCK_MINUTES * 60_000).toISOString();
   const { count } = await db.from("auth_attempts").select("*", { count: "exact", head: true }).eq("ip", ip).gte("at", since);
   if ((count ?? 0) >= LOCK_AFTER) return fail(429, "locked", `Too many wrong codes. Try again in ${LOCK_MINUTES} minutes.`);
+  const { count: today } = await db.from("auth_attempts").select("*", { count: "exact", head: true }).eq("ip", ip).gte("at", new Date(Date.now() - 864e5).toISOString());
+  if ((today ?? 0) >= DAY_LIMIT) return fail(429, "locked", "Too many wrong codes from this connection today. Ask a lead for your code, or try again tomorrow.");
   const code = String(body?.code || "");
   if (!/^\d{4,6}$/.test(code)) return fail(400, "bad_code", "Codes are 4 digits.");
-  const { data } = await db.from("scout_keys").select("id").eq("hash", await sha256("singularity51:" + code)).maybeSingle();
+  const hash = await sha256("singularity51:" + code);
+  const { data } = await db.from("scout_keys").select("id").eq("hash", hash).maybeSingle();
   const scout = data ? await getDoc(`scouts/${data.id}`) : null;
   if (!data || !scout) {
     await db.from("auth_attempts").insert({ ip });
     await db.from("auth_attempts").delete().lt("at", new Date(Date.now() - 864e5).toISOString());   // forget old attempts
     return fail(401, "wrong_code", "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.");
   }
-  return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id) });
+  return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id, hash) });
 }
 
 // a photo for a team or match: the page shrinks it first, so it arrives small (a few hundred KB)
@@ -144,6 +162,10 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
   }
 
   const shape = checkShape(path, data); if (shape) return shape;
+  if (path === "settings/main") {
+    if ("us" in data && Number(data.us) !== US) return `This board is for Team ${US}.`;
+    if (kind === "upsert") data = { ...data, us: US };
+  }
   if (path.startsWith("scouts/") && !lead && !firstLead) return "Only leads can change the roster.";
 
   if (path.startsWith("scouts/")) {
