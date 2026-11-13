@@ -372,8 +372,8 @@ a { color: var(--accent-ink); }
 .seg3 button:disabled { cursor: not-allowed; opacity: .6; }
 .who { display: inline-block; background: var(--c); color: var(--t); font-weight: 600; font-size: 12.5px; line-height: 1.5; padding: 0 8px; border-radius: 999px; white-space: nowrap; }
 .medot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
-.swatches { display: flex; gap: 4px; flex-wrap: wrap; }
-.sw { width: 20px; height: 20px; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
+.swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+.sw { width: 32px; height: 32px; touch-action: manipulation; border-radius: 50%; border: 2px solid transparent; cursor: pointer; padding: 0; }
 .sw[aria-pressed="true"] { border-color: var(--ink); box-shadow: 0 0 0 2px var(--surface) inset; }
 .tabs { display: inline-flex; gap: 4px; margin-right: auto; }
 .tabs button { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 20px; text-transform: uppercase; letter-spacing: .04em; padding: 2px 10px 4px; border-bottom: 3px solid transparent; color: var(--muted); }
@@ -1793,8 +1793,16 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const id = b.dataset.rlead || b.dataset.rreset || b.dataset.rdel || b.dataset.rcolor; const s = id && scouts.get(id); if (!s) return;
     try {
       if (b.dataset.rcolor) { s.color = b.dataset.c; renderRoster(); render(); await db.doc(`scouts/${id}`).update({ color: b.dataset.c }); }
-      else if (b.dataset.rlead) { await db.doc(`scouts/${id}`).update({ lead: !s.lead }); }
-      else if (b.dataset.rreset) { const code = await freeCode(""); await db.doc(`scouts/${id}`).update({ hash: await hashCode(code) }); reveal = { name: s.name, code }; renderRoster(); }
+      else if (b.dataset.rlead) {
+        // lead is a big switch (roster, codes, loading competitions), so it asks first
+        if (s.lead && ![...scouts.entries()].some(([k, x]) => k !== id && x.lead)) { toast("Make someone else a lead first, so the team always has one."); return; }
+        if (!(await confirmBox(s.lead ? `Remove ${s.name} as a lead?` : `Make ${s.name} a lead?`, s.lead ? "They keep scouting but can't change the roster or codes anymore." : "Leads can add and remove scouts, hand out new codes and load competitions.", s.lead ? "Remove lead" : "Make lead"))) return;
+        await db.doc(`scouts/${id}`).update({ lead: !s.lead });
+      }
+      else if (b.dataset.rreset) {
+        if (!(await confirmBox(`Give ${s.name} a new code?`, "Their old code stops working and every phone they're signed in on is signed out. Changes waiting on those phones upload after they sign in again.", "New code"))) return;
+        const code = await freeCode(""); await db.doc(`scouts/${id}`).update({ hash: await hashCode(code) }); reveal = { name: s.name, code }; renderRoster();
+      }
       else if (b.dataset.rdel) {
         $("rosterDlg").close();
         if (await confirmBox(`Remove ${s.name}?`, "Their code stops working. Ratings they already saved stay on the board, marked as a former scout.", "Remove")) { await db.doc(`scouts/${id}`).delete(); scouts.delete(id); render(); toast(`${s.name} removed`); }
