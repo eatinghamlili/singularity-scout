@@ -2177,7 +2177,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
           <div>${esc(x.text)}</div></div>`).join("")
         : dinoEmpty("No notes yet", "Be the first to say what happened in this match.", "", "console")}</div>
       <div class="mcompose">
-        ${canWrite ? `<label class="fld">Add a note<textarea id="mNote" placeholder="What happened this match: who scored, who broke down, defense, penalties…">${esc(keep)}</textarea></label>
+        ${canWrite ? `<label class="fld">Add a note<textarea id="mNote" maxlength="2000" placeholder="What happened this match: who scored, who broke down, defense, penalties…">${esc(keep)}</textarea></label>
         <div class="dlgfoot"><button type="button" class="btn" data-mclose>Close</button><button type="submit" class="btn primary">Add note</button></div>`
         : `<p class="hint">${!db ? "Notes save only when the board is connected." : !uid ? "Enter your scout code to add notes." : "This device can't save notes right now."}</p><div class="dlgfoot"><button type="button" class="btn" data-mclose>Close</button></div>`}
       </div>`}`;
@@ -2890,7 +2890,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${canRate ? "" : `<p class="hint">${!db ? "Notes save only when the board is open on claude.ai." : !uid ? "Enter your scout code to add notes and numbers." : "View-only access can't add notes."}</p>`}
       ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
-      <label class="fld">${draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note for this match" : "Add a note"}<textarea id="dNote" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
+      <label class="fld">${draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note for this match" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="What you saw this time: auto path, cycle speed, what broke, how the drive team talks…" ${canRate ? "" : "disabled"}></textarea></label>
       ${PHOTOS_ON() && canRate ? `<div class="photorow"><span class="rlabel2">Photos</span>
         <label class="btn photobtn">Take photo<input type="file" accept="image/*" capture="environment" id="dPhotoCam" data-addphoto hidden></label>
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>

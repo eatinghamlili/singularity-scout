@@ -7,6 +7,8 @@
 //   - our team stays Team 51
 // A sign-in only lasts while the scout's code stays the same: a new code signs every device out.
 // Wrong codes are limited per connection, every 10 minutes and every day, so codes can't be guessed.
+// Each scout can save up to 600 changes and 30 photos an hour (far more than a real event needs),
+// so a lost phone or a stolen sign-in can't flood the board or fill the photo storage.
 // The database refuses writes from anywhere else, so the page can't be bypassed.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -35,6 +37,8 @@ const TOKEN_DAYS = 45;
 const LOCK_AFTER = 20, LOCK_MINUTES = 10;   // venue Wi-Fi puts the whole team behind one address
 const DAY_LIMIT = 60;                        // wrong codes per connection per day: guessing a 4-digit code would take weeks
 const US = 51;                               // the board is Team 51's
+const HOURLY = { write: 600, upload: 30 };   // per scout
+const NOTE_MAX = 2000;                       // characters in one note
 
 const enc = new TextEncoder();
 const hex = (buf: ArrayBuffer) => [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, "0")).join("");
@@ -68,6 +72,17 @@ async function readToken(tok: string | null): Promise<string | null> {
   if (typeof sid !== "string" || typeof v !== "string" || !(Number(exp) > Date.now())) return null;   // older sign-ins without a fingerprint sign in again
   return (await currentMark(sid)) === v ? sid : null;
 }
+// per-scout hourly budget: false when this request would go over it (and then nothing is recorded)
+async function withinLimit(sid: string, kind: "write" | "upload", n: number) {
+  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  const { data } = await db.from("rate_log").select("n").eq("sid", sid).eq("kind", kind).gte("at", hourAgo);
+  const used = (data || []).reduce((a: number, r: { n: number }) => a + (r.n || 0), 0);
+  if (used + n > HOURLY[kind]) return false;
+  await db.from("rate_log").insert({ sid, kind, n });
+  await db.from("rate_log").delete().lt("at", new Date(Date.now() - 864e5).toISOString());   // forget yesterday
+  return true;
+}
+const slowDown = (msg: string) => fail(429, "slow_down", msg);
 async function getDoc(path: string) {
   const { data } = await db.from("docs").select("data").eq("path", path).maybeSingle();
   return (data?.data ?? null) as Record<string, any> | null;
@@ -94,6 +109,7 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     const old = existing?.[id];
     if (v === null) { if (old && old.by !== me) return "You can only delete your own notes."; continue; }
     if (!isObj(v)) return "A note must be an object.";
+    if (v.text !== undefined && (typeof v.text !== "string" || v.text.length > NOTE_MAX)) return `Notes are ${NOTE_MAX.toLocaleString("en-US")} characters at most.`;
     if (!okPhotos(v.photos)) return "Photos must be uploaded through the board.";
     if (old && old.by !== me) return "You can only edit your own notes.";
     if (!old && v.by !== me) return "Notes are saved under your own name.";
@@ -126,6 +142,7 @@ async function signIn(req: Request, body: any) {
 async function upload(req: Request, body: any) {
   const me = await readToken(req.headers.get("x-scout-token"));
   if (!me || !(await getDoc(`scouts/${me}`))) return fail(401, "signin", "Sign in with your scout code to add photos.");
+  if (!(await withinLimit(me, "upload", 1))) return slowDown("That's a lot of photos in one hour. Try again in a little while.");
   const doc = String(body?.path || "");
   if (!/^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}$/.test(doc)) return fail(400, "bad_path", "Photos go on a team or a match.");
   const type = String(body?.type || ""), ext = ({ "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" } as Record<string, string>)[type];
@@ -219,6 +236,7 @@ Deno.serve(async (req) => {
     const me = await readToken(req.headers.get("x-scout-token"));
     const meDoc = me ? await getDoc(`scouts/${me}`) : null;
     if (me && !meDoc) return fail(401, "signin", "Your scout code was removed. Sign in again.");
+    if (me && !(await withinLimit(me, "write", body.ops.length))) return slowDown("That's a lot of changes in one hour. They're kept on this phone and will go through shortly.");
     const { count } = await db.from("scout_keys").select("*", { count: "exact", head: true });
     const results: (string | null)[] = [];
     for (const op of body.ops) {

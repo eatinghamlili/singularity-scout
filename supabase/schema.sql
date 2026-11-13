@@ -107,3 +107,9 @@ revoke execute on function public.merge_doc(text, jsonb) from anon, authenticate
 -- table permissions they were given by default (they can't be used through the website's API,
 -- but there's no reason to have them).
 revoke truncate, trigger, references on public.docs from anon, authenticated;
+
+-- 2026-11-12: per-scout hourly limits on saving and photo uploads (used by the board function only).
+create table if not exists public.rate_log (sid text not null, kind text not null, n int not null default 1, at timestamptz not null default now());
+create index if not exists rate_log_sid_kind_at on public.rate_log (sid, kind, at);
+alter table public.rate_log enable row level security;
+revoke all on public.rate_log from anon, authenticated;

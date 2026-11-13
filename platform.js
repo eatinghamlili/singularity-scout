@@ -108,6 +108,7 @@
       const r = await callBoard({ action: "write", ops: [{ kind: op.kind, path: op.path, data: op.data }] }, op.token || true);
       if (r.status === 200) return;
       if (r.status === 401) throw { code: "signin", message: r.out.message || "Sign in again." };
+      if (r.status === 429) throw { code: "offline", message: r.out.message || "Slow down." };   // hourly limit: keep it and retry later
       if (r.status === 403) throw { code: "invalid_argument", message: r.out.message || "Not allowed." };
       if (r.status >= 500 || r.status === 0) throw { code: "offline", message: r.out.message || "Server busy." };
       throw { code: "invalid_argument", message: r.out.message || "Not allowed." };
