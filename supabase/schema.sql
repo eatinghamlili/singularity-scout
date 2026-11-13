@@ -113,3 +113,17 @@ create table if not exists public.rate_log (sid text not null, kind text not nul
 create index if not exists rate_log_sid_kind_at on public.rate_log (sid, kind, at);
 alter table public.rate_log enable row level security;
 revoke all on public.rate_log from anon, authenticated;
+
+-- ---- scout accounts (username + password), alongside the 4-digit codes ----
+-- Private like scout_keys: only the board function reads it. Passwords are stored as salted
+-- PBKDF2-SHA256 hashes (never the password). A new account waits for a lead to approve it.
+create table if not exists public.scout_logins (
+  id text primary key,                         -- the scout's id (scouts/<id>)
+  username text not null,                      -- lowercase, letters/numbers/._-
+  pass_hash text not null, salt text not null, iters int not null,
+  must_change boolean not null default false,  -- after a lead's reset: pick a new password at sign-in
+  created_ip text, created_at timestamptz not null default now(), updated_at timestamptz not null default now());
+create unique index if not exists scout_logins_username on public.scout_logins (lower(username));
+create index if not exists scout_logins_created on public.scout_logins (created_ip, created_at);
+alter table public.scout_logins enable row level security;
+revoke all on public.scout_logins from anon, authenticated;

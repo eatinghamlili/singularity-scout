@@ -10,6 +10,9 @@
 // Each scout can save up to 600 changes and 30 photos an hour (far more than a real event needs),
 // so a lost phone or a stolen sign-in can't flood the board or fill the photo storage.
 // The database refuses writes from anywhere else, so the page can't be bypassed.
+// Scouts can also make an account with a username and password (no email, nothing linked). Passwords are
+// stored only as salted PBKDF2 hashes in a private table, a new account can't do anything until a lead
+// approves it, and a lead can hand out a one-time temporary password if someone forgets theirs.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -27,7 +30,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const PATH = /^(settings\/main|scouts\/[A-Za-z0-9_-]{1,40}|requests\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/teams\/[0-9]{1,6}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/matches\/[A-Za-z0-9_-]{1,24})$/;
 const KEYS: [RegExp, string[] | null][] = [
   [/^settings\/main$/, ["us", "event", "size", "weights"]],
-  [/^scouts\//, ["name", "lead", "color", "createdAt", "hash"]],
+  [/^scouts\//, ["name", "lead", "color", "createdAt", "hash", "pending"]],
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
   [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo"]],
   [/\/matches\//, ["label", "notes"]],
@@ -59,9 +62,11 @@ async function sign(body: string) { return hex(await crypto.subtle.sign("HMAC", 
 const codeMark = (hash: string) => hash.slice(0, 16);
 async function currentMark(sid: string) {
   const { data } = await db.from("scout_keys").select("hash").eq("id", sid).maybeSingle();
-  return data?.hash ? codeMark(String(data.hash)) : null;
+  if (data?.hash) return codeMark(String(data.hash));
+  const { data: l } = await db.from("scout_logins").select("pass_hash").eq("id", sid).maybeSingle();
+  return l?.pass_hash ? "p" + String(l.pass_hash).slice(0, 15) : null;   // a new password signs other phones out
 }
-async function makeToken(sid: string, hash: string) { const body = b64u(JSON.stringify({ sid, v: codeMark(hash), exp: Date.now() + TOKEN_DAYS * 864e5 })); return body + "." + await sign(body); }
+async function makeToken(sid: string, mark: string) { const body = b64u(JSON.stringify({ sid, v: mark, exp: Date.now() + TOKEN_DAYS * 864e5 })); return body + "." + await sign(body); }
 function sameText(a: string, b: string) { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
 async function readToken(tok: string | null): Promise<string | null> {
   if (!tok || !tok.includes(".")) return null;
@@ -190,30 +195,146 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
   return null;
 }
 
-async function signIn(req: Request, body: any) {
-  const ip = (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+const ipOf = (req: Request) => (req.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+// wrong codes and wrong passwords count together, per connection
+async function lockedOut(ip: string) {
   const since = new Date(Date.now() - LOCK_MINUTES * 60_000).toISOString();
   const { count } = await db.from("auth_attempts").select("*", { count: "exact", head: true }).eq("ip", ip).gte("at", since);
-  if ((count ?? 0) >= LOCK_AFTER) return fail(429, "locked", `Too many wrong codes. Try again in ${LOCK_MINUTES} minutes.`);
+  if ((count ?? 0) >= LOCK_AFTER) return fail(429, "locked", `Too many wrong tries. Try again in ${LOCK_MINUTES} minutes.`);
   const { count: today } = await db.from("auth_attempts").select("*", { count: "exact", head: true }).eq("ip", ip).gte("at", new Date(Date.now() - 864e5).toISOString());
-  if ((today ?? 0) >= DAY_LIMIT) return fail(429, "locked", "Too many wrong codes from this connection today. Ask a lead for your code, or try again tomorrow.");
+  if ((today ?? 0) >= DAY_LIMIT) return fail(429, "locked", "Too many wrong tries from this connection today. Ask a lead for help, or try again tomorrow.");
+  return null;
+}
+async function recordFail(ip: string) {
+  await db.from("auth_attempts").insert({ ip });
+  await db.from("auth_attempts").delete().lt("at", new Date(Date.now() - 864e5).toISOString());   // forget old attempts
+}
+
+// ---- usernames and passwords ----
+const USERNAME = /^[a-z0-9][a-z0-9._-]{2,23}$/;
+const PW_MIN = 8, PW_MAX = 128, PBKDF2_ITERS = 150_000;
+const SIGNUPS_PER_HOUR = 5, PENDING_MAX = 25;
+const fromHex = (h: string) => new Uint8Array((h.match(/../g) || []).map((x) => parseInt(x, 16)));
+async function hashPassword(pw: string, saltHex?: string, iters = PBKDF2_ITERS) {
+  const salt = saltHex ? fromHex(saltHex) : crypto.getRandomValues(new Uint8Array(16));
+  const key = await crypto.subtle.importKey("raw", enc.encode(pw), "PBKDF2", false, ["deriveBits"]);
+  const bits = await crypto.subtle.deriveBits({ name: "PBKDF2", hash: "SHA-256", salt, iterations: iters }, key, 256);
+  return { hash: hex(bits), salt: hex(salt.buffer), iters };
+}
+const pwProblem = (pw: string) => pw.length < PW_MIN ? `Passwords are at least ${PW_MIN} characters.` : pw.length > PW_MAX ? "That password is too long." : null;
+const wrongLogin = () => fail(401, "wrong_login", "That username and password don't match. Ask a lead if you've forgotten your password.");
+async function signUp(req: Request, body: any) {
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
+  const username = String(body?.username || "").trim().toLowerCase(), pw = String(body?.password || ""), name = String(body?.name || "").trim();
+  if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
+  const bad = pwProblem(pw); if (bad) return fail(400, "bad_password", bad);
+  if (!name || name.length > 40) return fail(400, "bad_name", "Names are 1 to 40 letters.");
+  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
+  const { count: recent } = await db.from("scout_logins").select("*", { count: "exact", head: true }).eq("created_ip", ip).gte("created_at", hourAgo);
+  if ((recent ?? 0) >= SIGNUPS_PER_HOUR) return slowDown("That's a lot of new accounts from one connection. Try again in an hour.");
+  const { count: waiting } = await db.from("docs").select("*", { count: "exact", head: true }).like("path", "scouts/%").eq("data->>pending", "true");
+  if ((waiting ?? 0) >= PENDING_MAX) return slowDown("A lot of accounts are already waiting for a lead. Ask a lead to approve or clear them first.");
+  const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
+  if (taken) return fail(409, "taken", "That username is taken. Pick another.");
+  const id = "a" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
+  const h = await hashPassword(pw);
+  const { error } = await db.from("scout_logins").insert({ id, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ip });
+  if (error) return fail(409, "taken", "That username is taken. Pick another.");
+  const { error: e2 } = await db.from("docs").upsert({ path: `scouts/${id}`, data: { name, lead: false, pending: true, login: true, createdAt: Date.now() }, updated_at: new Date().toISOString() });
+  if (e2) { await db.from("scout_logins").delete().eq("id", id); return fail(500, "server", "The account couldn't be made. Try again."); }
+  return json({ ok: true, pending: true });
+}
+async function logIn(req: Request, body: any) {
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
+  const username = String(body?.username || "").trim().toLowerCase(), pw = String(body?.password || "");
+  if (!USERNAME.test(username) || !pw || pw.length > PW_MAX) { await recordFail(ip); return wrongLogin(); }
+  const { data: l } = await db.from("scout_logins").select("id, pass_hash, salt, iters, must_change").eq("username", username).maybeSingle();
+  const h = await hashPassword(pw, l?.salt || "00".repeat(16), l?.iters || PBKDF2_ITERS);   // same work either way, so timing doesn't tell
+  if (!l || !sameText(h.hash, String(l.pass_hash))) { await recordFail(ip); return wrongLogin(); }
+  const scout = await getDoc(`scouts/${l.id}`);
+  if (!scout) { await recordFail(ip); return wrongLogin(); }
+  if (scout.pending) return fail(403, "pending", "Your account is waiting for a lead to approve it in the Team roster.");
+  const mark = await currentMark(l.id);
+  if (!mark) return wrongLogin();
+  return json({ id: l.id, name: scout.name, lead: !!scout.lead, token: await makeToken(l.id, mark), mustChange: !!l.must_change });
+}
+// a signed-in scout picks a new password (or, signed in with a code, adds a username and password)
+async function changePassword(req: Request, body: any) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  const meDoc = me ? await getDoc(`scouts/${me}`) : null;
+  if (!me || !meDoc || meDoc.pending) return fail(401, "signin", "Sign in again first.");
+  const pw = String(body?.password || ""), cur = String(body?.current || "");
+  const bad = pwProblem(pw); if (bad) return fail(400, "bad_password", bad);
+  const { data: l } = await db.from("scout_logins").select("id, pass_hash, salt, iters, must_change").eq("id", me).maybeSingle();
+  if (l && !l.must_change) {
+    const ip = ipOf(req);
+    const locked = await lockedOut(ip); if (locked) return locked;
+    const h0 = await hashPassword(cur, l.salt, l.iters);
+    if (!sameText(h0.hash, String(l.pass_hash))) { await recordFail(ip); return fail(401, "wrong_password", "Your current password isn't right."); }
+  }
+  const h = await hashPassword(pw);
+  if (l) {
+    const { error } = await db.from("scout_logins").update({ pass_hash: h.hash, salt: h.salt, iters: h.iters, must_change: false, updated_at: new Date().toISOString() }).eq("id", me);
+    if (error) return fail(500, "server", "The password couldn't be saved. Try again.");
+  } else {
+    const username = String(body?.username || "").trim().toLowerCase();
+    if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
+    const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
+    if (taken) return fail(409, "taken", "That username is taken. Pick another.");
+    const { error } = await db.from("scout_logins").insert({ id: me, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ipOf(req) });
+    if (error) return fail(409, "taken", "That username is taken. Pick another.");
+    await db.rpc("merge_doc", { p_path: `scouts/${me}`, p_patch: { login: true } });
+  }
+  const mark = await currentMark(me);
+  return json({ ok: true, token: mark ? await makeToken(me, mark) : null });
+}
+// leads: see usernames, and hand out a one-time temporary password
+async function leadOnly(req: Request) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  const meDoc = me ? await getDoc(`scouts/${me}`) : null;
+  return me && meDoc && meDoc.lead && !meDoc.pending ? me : null;
+}
+async function listLogins(req: Request) {
+  if (!(await leadOnly(req))) return fail(403, "lead", "Only leads can see usernames.");
+  const { data } = await db.from("scout_logins").select("id, username, must_change");
+  return json({ logins: (data || []).map((r: any) => ({ id: r.id, username: r.username, mustChange: !!r.must_change })) });
+}
+async function resetPassword(req: Request, body: any) {
+  if (!(await leadOnly(req))) return fail(403, "lead", "Only leads can reset passwords.");
+  const id = String(body?.id || "");
+  if (!/^[A-Za-z0-9_-]{1,40}$/.test(id)) return fail(400, "bad_id", "Pick a scout.");
+  const { data: l } = await db.from("scout_logins").select("id, username").eq("id", id).maybeSingle();
+  if (!l) return fail(404, "no_login", "That scout signs in with a code, not a password.");
+  const abc = "abcdefghjkmnpqrstuvwxyz23456789", r = crypto.getRandomValues(new Uint8Array(10));
+  const temp = [...r].map((b) => abc[b % abc.length]).join("");
+  const h = await hashPassword(temp);
+  const { error } = await db.from("scout_logins").update({ pass_hash: h.hash, salt: h.salt, iters: h.iters, must_change: true, updated_at: new Date().toISOString() }).eq("id", id);
+  if (error) return fail(500, "server", "The password couldn't be reset. Try again.");
+  return json({ ok: true, username: l.username, temp });
+}
+
+async function signIn(req: Request, body: any) {
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
   const code = String(body?.code || "");
   if (!/^\d{4,6}$/.test(code)) return fail(400, "bad_code", "Codes are 4 digits.");
   const hash = await sha256("singularity51:" + code);
   const { data } = await db.from("scout_keys").select("id").eq("hash", hash).maybeSingle();
   const scout = data ? await getDoc(`scouts/${data.id}`) : null;
   if (!data || !scout) {
-    await db.from("auth_attempts").insert({ ip });
-    await db.from("auth_attempts").delete().lt("at", new Date(Date.now() - 864e5).toISOString());   // forget old attempts
+    await recordFail(ip);
     return fail(401, "wrong_code", "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.");
   }
-  return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id, hash) });
+  return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id, codeMark(hash)) });
 }
 
 // a photo for a team or match: the page shrinks it first, so it arrives small (a few hundred KB)
 async function upload(req: Request, body: any) {
   const me = await readToken(req.headers.get("x-scout-token"));
-  if (!me || !(await getDoc(`scouts/${me}`))) return fail(401, "signin", "Sign in with your scout code to add photos.");
+  const meDoc = me ? await getDoc(`scouts/${me}`) : null;
+  if (!me || !meDoc || meDoc.pending) return fail(401, "signin", "Sign in with your scout code to add photos.");
   if (!(await withinLimit(me, "upload", 1))) return slowDown("That's a lot of photos in one hour. Try again in a little while.");
   const doc = String(body?.path || "");
   if (!/^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}$/.test(doc)) return fail(400, "bad_path", "Photos go on a team or a match.");
@@ -249,6 +370,7 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
       if (!lead) return "Only leads can change the roster.";
       if (path === `scouts/${me}`) return "You can't remove yourself.";
       await db.from("scout_keys").delete().eq("id", path.slice(7));
+      await db.from("scout_logins").delete().eq("id", path.slice(7));
       await db.from("docs").delete().eq("path", path); return null;
     }
     return "Competitions, teams and matches can't be deleted.";
@@ -286,6 +408,7 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
     }
     if ("name" in data && !(typeof data.name === "string" && data.name.trim() && data.name.length <= 40)) return "Names are 1 to 40 letters.";
     if ("lead" in data && typeof data.lead !== "boolean") return "Lead is yes or no.";
+    if ("pending" in data && data.pending !== false) return "Leads approve accounts; they can't be un-approved.";
     if ("createdAt" in data && !isTime(data.createdAt)) return "That time isn't valid.";
     if (data.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(data.color))) return "That color isn't allowed.";
   }
@@ -324,12 +447,18 @@ Deno.serve(async (req) => {
   try {
     if (body?.action === "signin") return await signIn(req, body);
     if (body?.action === "upload") return await upload(req, body);
+    if (body?.action === "signup") return await signUp(req, body);
+    if (body?.action === "login") return await logIn(req, body);
+    if (body?.action === "password") return await changePassword(req, body);
+    if (body?.action === "logins") return await listLogins(req);
+    if (body?.action === "resetpw") return await resetPassword(req, body);
     if (body?.action !== "write" || !Array.isArray(body.ops) || !body.ops.length || body.ops.length > 50) return fail(400, "bad_request", "Unknown request.");
     const me = await readToken(req.headers.get("x-scout-token"));
     const meDoc = me ? await getDoc(`scouts/${me}`) : null;
     if (me && !meDoc) return fail(401, "signin", "Your scout code was removed. Sign in again.");
+    if (me && meDoc?.pending) return fail(401, "signin", "Your account is waiting for a lead to approve it.");
     if (me && !(await withinLimit(me, "write", body.ops.length))) return slowDown("That's a lot of changes in one hour. They're kept on this phone and will go through shortly.");
-    const { count } = await db.from("scout_keys").select("*", { count: "exact", head: true });
+    const { count } = await db.from("docs").select("*", { count: "exact", head: true }).like("path", "scouts/%");   // code and password scouts both count
     const results: (string | null)[] = [];
     for (const op of body.ops) {
       const err = await applyOp(op, meDoc ? me : null, meDoc, (count ?? 0) === 0);

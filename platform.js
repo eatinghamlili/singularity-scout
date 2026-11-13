@@ -100,6 +100,33 @@
       return { id: r.out.id, name: r.out.name };
     };
     window.SITE.signOut = () => { try { localStorage.removeItem(TOKEN); } catch (e) {} };
+    // accounts: a username and password (checked on the server; only a scrambled copy is stored there)
+    const NO_SIGNAL = "Can't reach the team database. Check the connection and try again.";
+    window.SITE.logIn = async (username, password) => {
+      let r; try { r = await callBoard({ action: "login", username, password }, false); } catch (e) { return { error: NO_SIGNAL }; }
+      if (r.status !== 200 || !r.out.token) return { error: r.out.message || "Couldn't sign in. Try again.", pending: r.out.error === "pending" };
+      try { localStorage.setItem(TOKEN, r.out.token); } catch (e) {}
+      if (!r.out.mustChange) setTimeout(flush, 0);
+      return { id: r.out.id, name: r.out.name, mustChange: !!r.out.mustChange };
+    };
+    window.SITE.signUp = async (username, password, name) => {
+      let r; try { r = await callBoard({ action: "signup", username, password, name }, false); } catch (e) { return { error: NO_SIGNAL }; }
+      return r.status === 200 ? { ok: true } : { error: r.out.message || "Couldn't make the account. Try again." };
+    };
+    window.SITE.changePassword = async (o) => {
+      let r; try { r = await callBoard({ action: "password", ...o }, true); } catch (e) { return { error: NO_SIGNAL }; }
+      if (r.status !== 200) return { error: r.out.message || "Couldn't save the password. Try again." };
+      if (r.out.token) { try { localStorage.setItem(TOKEN, r.out.token); } catch (e) {} setTimeout(flush, 0); }
+      return { ok: true };
+    };
+    window.SITE.logins = async () => {
+      const r = await callBoard({ action: "logins" }, true);
+      return r.status === 200 && Array.isArray(r.out.logins) ? r.out.logins : [];
+    };
+    window.SITE.resetPassword = async (id) => {
+      let r; try { r = await callBoard({ action: "resetpw", id }, true); } catch (e) { return { error: NO_SIGNAL }; }
+      return r.status === 200 && r.out.temp ? { temp: r.out.temp, username: r.out.username } : { error: r.out.message || "Couldn't reset the password. Try again." };
+    };
     // photos: sent (already shrunk by the page) to the board function, which stores them and returns the address
     window.SITE.uploadPhoto = async (path, blob) => {
       if (!navigator.onLine) throw { code: "offline", message: "No connection." };
