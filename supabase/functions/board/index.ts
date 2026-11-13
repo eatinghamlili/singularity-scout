@@ -31,7 +31,7 @@ const KEYS: [RegExp, string[] | null][] = [
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
   [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo"]],
   [/\/matches\//, ["label", "notes"]],
-  [/^events\/[^/]+$/, null],
+  [/^events\/[^/]+$/, ["season", "code", "name", "start", "end", "city", "regionCode", "type", "teamCount", "hasUs", "source", "loadedAt", "loadedBy", "live", "starred", "starredBy", "starredAt"]],
 ];
 const TOKEN_DAYS = 45;
 const LOCK_AFTER = 20, LOCK_MINUTES = 10;   // venue Wi-Fi puts the whole team behind one address
@@ -106,6 +106,56 @@ function badCounts(c: unknown) {
   }
   return false;
 }
+// every field the board saves has a type; anything else is refused, so nothing odd can reach teammates' screens
+const RATING_KEYS = ["auto", "teleop", "endgame", "driving", "reliability", "defense"];
+const NOTE_FIELDS = ["by", "text", "at", "changed", "ctx", "match", "counts", "state", "nums", "photos"];
+const isNum = (v: unknown) => typeof v === "number" && Number.isFinite(v);
+const isStr = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
+const numOrNull = (v: unknown) => v === null || isNum(v);
+const isTime = (v: unknown) => isNum(v) && (v as number) > 0 && (v as number) < 4102444800000;   // a date before 2100
+function badNums(v: unknown, max = 10) {
+  return !isObj(v) || Object.entries(v).some(([k, x]) => !RATING_KEYS.includes(k) || !Number.isInteger(x) || (x as number) < 0 || (x as number) > max);
+}
+function badStats(v: unknown) {   // a team's results from FTCScout/FIRST: a flat list of numbers
+  return v !== null && (!isObj(v) || Object.keys(v).length > 20 || Object.values(v).some((x) => !numOrNull(x)));
+}
+function checkTeamFields(d: Record<string, any>, uid: string) {
+  if ("number" in d && !(Number.isInteger(d.number) && d.number > 0 && d.number < 1e6)) return "That team number isn't valid.";
+  for (const f of ["name", "city"]) if (f in d && !isStr(d[f], 120)) return "Team names and cities are 120 letters at most.";
+  if ("status" in d && !["available", "taken", "partner"].includes(d.status)) return "That pick status isn't valid.";
+  if ("dnp" in d && typeof d.dnp !== "boolean") return "Do-not-pick is yes or no.";
+  if ("tags" in d && !(Array.isArray(d.tags) && d.tags.length <= 30 && d.tags.every((t: unknown) => isStr(t, 40)))) return "Tags are short words (30 at most).";
+  if ("ev" in d && badStats(d.ev)) return "Those results couldn't be saved.";
+  if ("season" in d && badStats(d.season)) return "Those results couldn't be saved.";
+  if ("loadedAt" in d && !isTime(d.loadedAt)) return "That time isn't valid.";
+  if ("mobility" in d && d.mobility !== null && !(isObj(d.mobility) && typeof d.mobility.ok === "boolean" && d.mobility.by === uid && isTime(d.mobility.at) && Object.keys(d.mobility).length === 3)) return "Can-it-move is saved under your own name.";
+  if ("aiRecap" in d && d.aiRecap !== null) return "AI overviews are switched off.";
+  if (d.ratings !== undefined && isObj(d.ratings)) {
+    for (const r of Object.values(d.ratings)) {
+      if (r === null) continue;
+      if (!isObj(r)) return "Ratings must be numbers.";
+      const { scale, at, ...cats } = r as Record<string, unknown>;
+      if (badNums(cats) || (scale !== undefined && scale !== 10) || (at !== undefined && !isTime(at))) return "Ratings are whole numbers from 1 to 10.";
+    }
+  }
+  return null;
+}
+function checkEventFields(d: Record<string, any>, uid: string) {
+  for (const f of ["code", "regionCode", "type", "source", "start", "end"]) if (f in d && d[f] !== null && !isStr(d[f], 40)) return "That competition detail isn't valid.";
+  for (const f of ["name", "city"]) if (f in d && d[f] !== null && !isStr(d[f], 160)) return "That competition detail isn't valid.";
+  for (const f of ["season", "teamCount"]) if (f in d && !(Number.isInteger(d[f]) && d[f] >= 0 && d[f] < 10000)) return "That competition detail isn't valid.";
+  for (const f of ["hasUs", "starred"]) if (f in d && typeof d[f] !== "boolean") return "That competition detail isn't valid.";
+  for (const f of ["loadedAt", "starredAt"]) if (f in d && !isTime(d[f])) return "That time isn't valid.";
+  for (const f of ["loadedBy", "starredBy"]) if (f in d && d[f] !== null && d[f] !== uid) return "Saved under your own name only.";
+  if ("live" in d) {
+    const l = d.live;
+    if (!isObj(l) || Object.keys(l).some((k) => !["on", "every", "at", "by", "changed", "added"].includes(k)) || typeof l.on !== "boolean"
+      || (l.every !== undefined && !(isNum(l.every) && l.every >= 0 && l.every <= 1440)) || (l.at !== undefined && !isTime(l.at))
+      || (l.by !== undefined && l.by !== null && l.by !== uid) || (l.changed !== undefined && !numOrNull(l.changed)) || (l.added !== undefined && !numOrNull(l.added)))
+      return "That live-update setting isn't valid.";
+  }
+  return null;
+}
 const okPhotos = (v: unknown) => v === undefined || (Array.isArray(v) && v.length <= 6 && v.every((u) => typeof u === "string" && PHOTO_URL.test(u)));
 
 // ---- what a scout may change ----
@@ -123,6 +173,10 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     const old = existing?.[id];
     if (v === null) { if (old && old.by !== me) return "You can only delete your own notes."; continue; }
     if (!isObj(v)) return "A note must be an object.";
+    if (Object.keys(v).some((k) => !NOTE_FIELDS.includes(k))) return "That note has a field the board doesn't use.";
+    if (v.at !== undefined && !isTime(v.at)) return "That note's time isn't valid.";
+    if (v.changed !== undefined && typeof v.changed !== "boolean") return "That note couldn't be saved.";
+    if (v.nums !== undefined && badNums(v.nums)) return "Numbers are whole numbers from 1 to 10.";
     if (v.text !== undefined && (typeof v.text !== "string" || v.text.length > NOTE_MAX)) return `Notes are ${NOTE_MAX.toLocaleString("en-US")} characters at most.`;
     if (!okPhotos(v.photos)) return "Photos must be uploaded through the board.";
     if (v.ctx !== undefined && v.ctx !== "qual" && v.ctx !== "pit") return "Pick where the note is from: a qual or the pits.";
@@ -186,7 +240,11 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
   const uid = me ? "s_" + me : "";
 
   if (kind === "delete") {
-    if (path.startsWith("requests/")) { await db.from("docs").delete().eq("path", path); return null; }
+    if (path.startsWith("requests/")) {
+      const cur = await getDoc(path);
+      if (cur && !lead && cur.by !== uid) return "Only the scout who asked, or a lead, can remove a request.";
+      await db.from("docs").delete().eq("path", path); return null;
+    }
     if (path.startsWith("scouts/")) {
       if (!lead) return "Only leads can change the roster.";
       if (path === `scouts/${me}`) return "You can't remove yourself.";
@@ -200,8 +258,20 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
   if (path === "settings/main") {
     if ("us" in data && Number(data.us) !== US) return `This board is for Team ${US}.`;
     if (kind === "upsert") data = { ...data, us: US };
+    if ("size" in data && ![2, 3].includes(data.size)) return "Alliances are 2 or 3 teams.";
+    if ("event" in data && data.event !== null && !(typeof data.event === "string" && /^[0-9]{4}-[A-Z0-9]{1,30}$/.test(data.event))) return "That competition isn't valid.";
+    if ("weights" in data && (!isObj(data.weights) || Object.entries(data.weights).some(([k, v]) => !["auto", "teleop", "endgame", "fouls", "scout"].includes(k) || !isNum(v) || (v as number) < 0 || (v as number) > 2))) return "Those weights couldn't be saved.";
   }
   if (path.startsWith("scouts/") && !lead && !firstLead) return "Only leads can change the roster.";
+  if (path.startsWith("requests/")) {
+    if ("by" in data && data.by !== null && data.by !== uid) return "Requests are saved under your own name.";
+    if ("season" in data && !(Number.isInteger(data.season) && data.season > 2000 && data.season < 2100)) return "That season isn't valid.";
+    if ("code" in data && !(typeof data.code === "string" && /^[A-Z0-9]{1,30}$/.test(data.code))) return "That competition code isn't valid.";
+    if ("status" in data && !["waiting", "failed"].includes(data.status)) return "That request status isn't valid.";
+    if ("error" in data && !isStr(data.error, 300)) return "That message is too long.";
+    if ("at" in data && !isTime(data.at)) return "That time isn't valid.";
+  }
+  if (/^events\/[^/]+$/.test(path)) { const e = checkEventFields(data, uid); if (e) return e; }
 
   if (path.startsWith("scouts/")) {
     // a code arrives already scrambled; keep it in the private table, never on the public record
@@ -214,13 +284,17 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
       if (error) return "That code couldn't be saved.";
       data = { ...data }; delete data.hash;
     }
-    if (typeof data.name === "string" && data.name.length > 40) return "Names are 40 letters at most.";
+    if ("name" in data && !(typeof data.name === "string" && data.name.trim() && data.name.length <= 40)) return "Names are 1 to 40 letters.";
+    if ("lead" in data && typeof data.lead !== "boolean") return "Lead is yes or no.";
+    if ("createdAt" in data && !isTime(data.createdAt)) return "That time isn't valid.";
     if (data.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(data.color))) return "That color isn't allowed.";
   }
 
   if (/\/(teams|matches)\//.test(path)) {
     const cur = await getDoc(path);
     const n = checkNotes(data.notes, cur?.notes, uid); if (n) return n;
+    if (path.includes("/teams/")) { const tf = checkTeamFields(data, uid); if (tf) return tf; }
+    if ("label" in data && !isStr(data.label, 20)) return "That match label isn't valid.";
     if (data.ratings !== undefined) {
       if (!isObj(data.ratings)) return "Ratings must be an object.";
       const others = Object.keys(data.ratings).filter((k) => k !== uid);
