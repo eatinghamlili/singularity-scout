@@ -114,6 +114,10 @@ a { color: var(--accent-ink); }
 .cntbtn[data-d="1"] { border-color: var(--accent); color: var(--accent-ink); }
 .cntbtn:active { transform: translateY(1px); }
 .cnttotal { margin: 8px 0 0; font-size: 15px; }
+.draftoffer { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding: 10px 12px; border-radius: 10px;
+  border: 1px dashed var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); font-size: 14px; }
+.draftoffer .btns { display: flex; align-items: center; gap: 12px; }
+.draftoffer .linkbtn { font-size: 14px; }
 .cgrp { white-space: nowrap; }
 .cgrp .cph { display: inline-block; margin-right: 4px; }
 .ntext.long:not(.open) { display: -webkit-box; -webkit-line-clamp: 6; -webkit-box-orient: vertical; overflow: hidden; }
@@ -2458,6 +2462,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const wasOpen = $("matchDlg").open;
     if (wasOpen && openMatchKey && key !== openMatchKey) matchDrafts.set(openMatchKey, $("mNote") ? $("mNote").value : (renderMatchDlg.draft || ""));
     if (key !== openMatchKey) { renderMatchDlg.draft = matchDrafts.get(key) || ""; if ($("mNote")) $("mNote").value = renderMatchDlg.draft; }   // the redraw reads the box
+    if (!wasOpen) matchPage = "notes";   // a fresh open starts on Notes; Previous/Next keep the page you're on
     openMatchKey = key; renderMatchDlg();
     if (!wasOpen) $("matchDlg").showModal(); else { $("matchForm").scrollTop = 0; $("matchDlg").scrollTop = 0; }
     const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
@@ -3234,10 +3239,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts(), state: "" };
     if (current && (quals.key !== current || !quals.list)) loadQuals(false).then(refreshQualPick, () => {});   // the qual list needs the schedule
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
-    const saved = uid ? takeDraft(num) : null; if (saved) dlgMode = "edit";
-    if (saved) { draft = { ...draft, ...saved.draft, counts: { ...blankCounts(), ...(saved.draft.counts || {}) } }; dlgDirty = true; }
+    // every visit starts fresh (no qual picked, nothing counted); an unsaved note from before is only offered
+    offeredDraft = uid ? takeDraft(num) : null;
     renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
-    if (saved) { if ($("dNote")) $("dNote").value = saved.text || ""; toast("Picked up your unsaved note", { label: "Start over", run: () => { dlgDirty = false; if ($("teamDlg").open) $("teamDlg").close(); dropDraft(num); openTeam(num, "edit"); } }); }
+  }
+  var offeredDraft = null;   // var: render() can run before this line
+  function draftOffer() {
+    const d = offeredDraft; if (!d || dlgMode !== "edit") return "";
+    const what = d.draft.ctx === "qual" ? `${d.draft.match ? esc(matchLabelOf(d.draft.match)) + " " : ""}qual note` : d.draft.ctx === "pit" ? "pit note" : "note";
+    return `<div class="draftoffer" role="status"><span>You didn't save a ${what} from ${esc(when(d.at))}.</span>
+      <span class="btns"><button type="button" class="btn" data-usedraft>Pick it up</button><button type="button" class="linkbtn" data-dropdraft>Discard</button></span></div>`;
   }
   // a half-written note survives closing the window (or the page): kept on this phone for 12 hours, per competition and team
   const DRAFTS = "ss51-drafts", draftKey = (num) => `${current}/${num}/${uid}`;
@@ -3351,7 +3362,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${teamPages()}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
-      ${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
+      ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
       ${ctxHtml(t, canRate)}
       <label class="fld">${draft.ctx === "qual" ? "Notes from this qual (optional)" : draft.ctx === "pit" ? "The robot's general state" : draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="${draft.ctx === "pit" ? "Drivetrain, intake, scoring mechanism, what's broken or being fixed, what the team told you…" : "What you saw this time: auto path, cycle speed, what broke, how the drive team talks…"}" ${canRate ? "" : "disabled"}></textarea></label>
@@ -3394,6 +3405,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       toast("Note deleted", orig ? { label: "Undo", run: () => { patchTeam(num, { notes: { [nid]: orig } }); refresh(); toast("Note restored"); } } : null);
     }
   }
+  $("teamForm").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-usedraft],[data-dropdraft]"); if (!b) return;
+    const d = offeredDraft; offeredDraft = null;
+    if (b.hasAttribute("data-dropdraft") || !d) { dropDraft(dlgTeam); renderTeamDlg(); return; }
+    draft = { ...draft, ...d.draft, counts: { ...blankCounts(), ...(d.draft.counts || {}) } }; dlgDirty = true;
+    renderTeamDlg(); if ($("dNote")) $("dNote").value = d.text || ""; $("ctxBox")?.scrollIntoView({ block: "nearest" });
+  });
   $("teamForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
