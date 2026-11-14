@@ -474,6 +474,11 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .acctlinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: 0; }
 .gatealt { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 6px 0 0; }
 .gatealt .linkbtn, .acctlinks .linkbtn { font-size: 14px; padding: 6px 0; }
+.showas { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
+.showas legend { font-size: 13px; font-weight: 600; color: var(--muted); padding: 0 4px; }
+.showas label { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 15px; }
+.showas input { width: 20px; height: 20px; accent-color: var(--accent); }
+.codein.sm { font-size: 28px; width: 170px; padding: 6px; }
 .waiting { font-size: 11px; padding: 0 6px; border-radius: 4px; background: #a16207; color: #fff; font-weight: 600; margin-left: 6px; }
 .uname { font-size: 12px; color: var(--muted); margin-left: 6px; font-family: var(--f-mono); }
 .waitbadge { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; background: #a16207; color: #fff; font-size: 12px; font-weight: 700; }
@@ -1394,7 +1399,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       let gotE = false, gotS = false, gotR = false;
       const ready = () => { if (gotE && gotS && gotR && !loaded) { loaded = true; clearTimeout(timer); } render(); };
       db.collection("scouts").onSnapshot(snap => {
-        scouts = new Map(snap.docs.map(d => { const s = isRec(d.data()) ? d.data() : {}; return [d.id, { ...s, name: txt(s.name, 40) || "Scout", lead: s.lead === true, color: /^#[0-9a-fA-F]{6}$/.test(s.color || "") ? s.color : "" }]; }));
+        scouts = new Map(snap.docs.map(d => { const s = isRec(d.data()) ? d.data() : {}; return [d.id, { ...s, name: txt(s.name, 40) || "Scout", lead: s.lead === true, color: /^#[0-9a-fA-F]{6}$/.test(s.color || "") ? s.color : "", display: s.display === "username" ? "username" : "name", handle: /^[a-z0-9][a-z0-9._-]{2,23}$/.test(s.handle || "") ? s.handle : "" }]; }));
         if (!snap.metadata.fromCache) { gotR = true; if (me && !scouts.has(me)) { me = null; uid = null; try { localStorage.removeItem(ME_KEY); } catch {} } }
         ready(); if ($("rosterDlg").open) renderRoster();   // approvals and new accounts show up right away
       }, () => {});
@@ -1720,7 +1725,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   }
   const who = (id, label) => { const c = colorOf(id); return `<span class="who" style="--c:${c};--t:${inkOn(c)}">${esc(label || nameOf(id))}</span>`; };
   function nameOf(id) {
-    if (String(id).startsWith("s_")) { const s = scouts.get(String(id).slice(2)); return s ? s.name : "Former scout"; }
+    if (String(id).startsWith("s_")) { const s = scouts.get(String(id).slice(2)); return s ? (s.display === "username" && s.handle ? s.handle : s.name) : "Former scout"; }
     return names[id] || "A scout";
   }
   const meScout = () => (me && scouts.get(me)) || null;
@@ -1783,7 +1788,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     body.innerHTML = `<img class="gatedino" src="${BARNEY.sit}" alt=""><p class="hint">Enter your 4-digit scout code. Everything you rate or note is saved under your name.</p>
       <div class="codebox"><input id="codeIn" class="codein" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Scout code" placeholder="••••">
       <div class="err gateerr" id="gateErr" role="alert" ${gateMsg ? "" : "hidden"}>${esc(gateMsg)}</div></div>
-      ${ACCOUNTS() ? `<p class="gatealt"><button type="button" class="btn" data-gview="login">Use a username and password</button><button type="button" class="linkbtn" data-gview="signup">New here? Make an account</button></p>` : ""}`;
+      ${ACCOUNTS() ? `<p class="gatealt"><button type="button" class="btn" data-gview="login">Use a username and password</button><button type="button" class="linkbtn" data-gview="signup">Got a code from a lead? Make an account</button></p>` : ""}`;
     const el = $("codeIn"); setTimeout(() => el && el.focus(), 0);
   }
   /* ---------- accounts: a username and password instead of a code (website only) ----------
@@ -1799,20 +1804,31 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       <label class="fld">Username<input id="aUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" required></label>
       <label class="fld">Password<input id="aPass" type="password" autocomplete="current-password" maxlength="128" required></label>
       ${err}<button type="submit" class="btn primary">Sign in</button>
-      <p class="acctlinks"><button type="button" class="linkbtn" data-gview="signup">Make an account</button>${backToCode}</p>
-      <p class="hint">Forgot your password? Ask a lead to reset it.</p></form>`;
+      <p class="acctlinks"><button type="button" class="linkbtn" data-gview="forgot">Forgot your password?</button><button type="button" class="linkbtn" data-gview="signup">Make an account</button></p>
+      <p class="acctlinks">${backToCode}</p></form>`;
+    const codeField = `<label class="fld">Your 4-digit code<input id="aCode" class="codein sm" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" required>
+        <small class="hint">The code a lead gave you. It proves the account is yours.</small></label>`;
+    const showAs = (pick) => `<fieldset class="showas"><legend>What should teammates see?</legend>
+        <label><input type="radio" name="aShow" value="name" ${pick === "username" ? "" : "checked"}> The name on the roster</label>
+        <label><input type="radio" name="aShow" value="username" ${pick === "username" ? "checked" : ""}> My username</label></fieldset>`;
     if (gateView === "signup") return `<form class="setup acct" id="signupForm" novalidate><h3>Make an account</h3>
-      <label class="fld">Your name<input id="aName" autocomplete="name" maxlength="40" placeholder="First name, as the team knows you" required></label>
+      <p class="hint">Use the code a lead gave you once, then sign in with your username and password from now on. Your code keeps working too.</p>
+      ${codeField}
       <label class="fld">Username<input id="aUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" required>
         <small class="hint">3 to 24 lowercase letters or numbers. Dots, dashes and underscores are OK.</small></label>
       <label class="fld">Password<input id="aPass" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small class="hint">At least 8 characters. Don't reuse a password from another site.</small></label>
       <label class="fld">Type it again<input id="aPass2" type="password" autocomplete="new-password" maxlength="128" required></label>
+      ${showAs("name")}
       ${err}<button type="submit" class="btn primary">Make my account</button>
-      <p class="hint">A lead approves new accounts in the Team roster before you can sign in.</p>
       <p class="acctlinks"><button type="button" class="linkbtn" data-gview="login">I already have an account</button>${backToCode}</p></form>`;
-    if (gateView === "made") return `<div class="setup acct"><h3>Account made</h3>
-      <p>Ask a lead to approve it in the Team roster. Once they do, sign in with your username and password.</p>
-      <button type="button" class="btn primary" data-gview="login">Go to sign in</button></div>`;
+    if (gateView === "forgot") return `<form class="setup acct" id="forgotForm" novalidate><h3>Forgot your password?</h3>
+      <p class="hint">Your code from a lead lets you pick a new password. Lost the code too? Ask a lead for a new one.</p>
+      ${codeField}
+      <label class="fld">New password<input id="aPass" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
+      <label class="fld">Type it again<input id="aPass2" type="password" autocomplete="new-password" maxlength="128" required></label>
+      <label class="fld">New username (optional)<input id="aUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" placeholder="Leave blank to keep yours"></label>
+      ${err}<button type="submit" class="btn primary">Save and sign in</button>
+      <p class="acctlinks"><button type="button" class="linkbtn" data-gview="login">Back to sign in</button>${backToCode}</p></form>`;
     if (gateView === "newpw") return `<form class="setup acct" id="newpwForm" novalidate><h3>Pick a new password</h3>
       <p class="hint">${esc(newPwFor ? newPwFor.name : "You")}, you signed in with a temporary password from a lead. Pick your own to keep going.</p>
       <label class="fld">New password<input id="aPass" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
@@ -1827,7 +1843,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     gateView = b.dataset.gview; gateMsg = ""; renderGate();
   });
   document.addEventListener("submit", async (e) => {
-    const id = e.target.id; if (!["loginForm", "signupForm", "newpwForm"].includes(id)) return;
+    const id = e.target.id; if (!["loginForm", "signupForm", "forgotForm", "newpwForm"].includes(id)) return;
     e.preventDefault();
     const btn = e.target.querySelector('button[type="submit"]'), user = ($("aUser")?.value || "").trim().toLowerCase(), pass = $("aPass")?.value || "";
     const busy = (on) => { if (btn) btn.disabled = on; };
@@ -1838,14 +1854,15 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       if (r.error) return acctErr(r.error);
       if (r.mustChange) { newPwFor = r; gateView = "newpw"; renderGate(); return; }
       gateView = "code"; setMe(r.id); toast(`Welcome, ${r.name}`);
-    } else if (id === "signupForm") {
-      const name = ($("aName")?.value || "").trim();
-      if (!name) return acctErr("Enter your name so the team knows who you are.");
-      if (!USERNAME_OK.test(user)) return acctErr("Usernames are 3 to 24 lowercase letters or numbers (dots, dashes and underscores are OK).");
+    } else if (id === "signupForm" || id === "forgotForm") {
+      const code = ($("aCode")?.value || "").trim();
+      if (!/^\d{4}$/.test(code)) return acctErr("Enter the 4-digit code a lead gave you.");
+      if ((id === "signupForm" || user) && !USERNAME_OK.test(user)) return acctErr("Usernames are 3 to 24 lowercase letters or numbers (dots, dashes and underscores are OK).");
       const bad = pwCheck(pass, $("aPass2")?.value || ""); if (bad) return acctErr(bad);
-      busy(true); const r = await window.SITE.signUp(user, pass, name); busy(false);
+      const show = e.target.querySelector('input[name="aShow"]:checked')?.value;
+      busy(true); const r = await window.SITE.claim({ code, username: user || undefined, password: pass, ...(show ? { display: show } : {}) }); busy(false);
       if (r.error) return acctErr(r.error);
-      gateView = "made"; renderGate();
+      gateView = "code"; setMe(r.id); toast(id === "signupForm" ? `Account made. Welcome, ${r.name}! Next time sign in as ${r.username}.` : `New password saved. Welcome back, ${r.name}`);
     } else {
       const bad = pwCheck(pass, $("aPass2")?.value || ""); if (bad) return acctErr(bad);
       busy(true); const r = await window.SITE.changePassword({ password: pass }); busy(false);
@@ -1860,10 +1877,13 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const has = !!ms.login;
     $("acctForm").innerHTML = `<div class="dlghead"><h2>Your account</h2><button type="button" class="x" data-aclose aria-label="Close">×</button></div>
       <p>Signed in as ${who(uid)}${ms.lead ? ` <span class="lead">Lead</span>` : ""}</p>
+      ${has ? `<fieldset class="showas" id="showAs"><legend>What should teammates see?</legend>
+        <label><input type="radio" name="pShow" value="name" ${ms.display === "username" ? "" : "checked"}> The name on the roster (${esc(ms.name)})</label>
+        <label><input type="radio" name="pShow" value="username" ${ms.display === "username" ? "checked" : ""}> My username${ms.handle ? ` (${esc(ms.handle)})` : ""}</label></fieldset>` : ""}
       <div class="setup acct" id="pwBox"><h3>${has ? "Change your password" : "Add a username and password"}</h3>
         ${has ? "" : `<p class="hint">Then you can sign in without your code. Your code keeps working too.</p>
         <label class="fld">Username<input id="pUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24"></label>`}
-        ${has ? `<label class="fld">Current password<input id="pCur" type="password" autocomplete="current-password" maxlength="128"></label>` : ""}
+        ${has ? `<label class="fld">Current password or your 4-digit code<input id="pCur" type="password" autocomplete="current-password" maxlength="128"></label>` : ""}
         <label class="fld">New password<input id="pNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
         <label class="fld">Type it again<input id="pNew2" type="password" autocomplete="new-password" maxlength="128"></label>
         <div class="err" id="pErr" role="alert" hidden></div>
@@ -1871,6 +1891,11 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       <div class="dlgfoot"><button type="button" class="btn" data-signout>Sign out</button><button type="button" class="btn primary" data-aclose>Done</button></div>`;
     $("acctDlg").showModal();
   }
+  $("acctForm").addEventListener("change", async (e) => {
+    if (e.target.name !== "pShow") return;
+    const r = await window.SITE.setDisplay(e.target.value);
+    toast(r.error || (e.target.value === "username" ? "Teammates now see your username" : "Teammates now see your roster name"));
+  });
   $("acctForm").addEventListener("click", async (e) => {
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-aclose")) { $("acctDlg").close(); return; }
@@ -1879,7 +1904,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       const err = (m) => { const x = $("pErr"); x.textContent = m; x.hidden = !m; };
       const pw = $("pNew").value, bad = pwCheck(pw, $("pNew2").value); if (bad) return err(bad);
       const o = { password: pw };
-      if ($("pCur")) { if (!$("pCur").value) return err("Enter your current password."); o.current = $("pCur").value; }
+      if ($("pCur")) { if (!$("pCur").value) return err("Enter your current password or your code."); o.current = $("pCur").value; }
       if ($("pUser")) { o.username = $("pUser").value.trim().toLowerCase(); if (!USERNAME_OK.test(o.username)) return err("Usernames are 3 to 24 lowercase letters or numbers (dots, dashes and underscores are OK)."); }
       b.disabled = true; const r = await window.SITE.changePassword(o); b.disabled = false;
       if (r.error) return err(r.error);
@@ -1893,7 +1918,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   function renderRoster() {
     const list = [...scouts.entries()].sort((a, b) => (b[1].pending ? 1 : 0) - (a[1].pending ? 1 : 0) || a[1].name.localeCompare(b[1].name));
     $("rosterList").innerHTML = list.length ? list.map(([id, s]) => { const open = rosterOpen === id; return `<div class="rrow ${open ? "open" : ""}">
-      <button type="button" class="rname" data-ropen="${id}" aria-expanded="${open}" title="${open ? "Close" : "Change"} ${esc(s.name)}">${who("s_" + id)}${s.lead ? `<span class="lead">Lead</span>` : ""}${s.pending ? `<span class="waiting">Waiting for approval</span>` : ""}${logins.get(id) ? `<span class="uname">@${esc(logins.get(id).username)}</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}<span class="chev" aria-hidden="true">›</span></button>
+      <button type="button" class="rname" data-ropen="${id}" aria-expanded="${open}" title="${open ? "Close" : "Change"} ${esc(s.name)}">${who("s_" + id, s.name)}${s.lead ? `<span class="lead">Lead</span>` : ""}${s.pending ? `<span class="waiting">Waiting for approval</span>` : ""}${logins.get(id) ? `<span class="uname">@${esc(logins.get(id).username)}</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}<span class="chev" aria-hidden="true">›</span></button>
       ${open ? `<div class="redit"><span class="rlabel2">Color</span><div class="swatches" role="group" aria-label="Color for ${esc(s.name)}">${PALETTE.map(c => `<button type="button" class="sw" data-rcolor="${id}" data-c="${c}" style="background:${c}" aria-label="Use this color" aria-pressed="${colorOf("s_" + id) === c}"></button>`).join("")}</div>
       <div class="btns">${s.pending ? `<button type="button" class="btn primary" data-rapprove="${id}">Approve</button>` : `<button type="button" class="btn" data-rlead="${id}">${s.lead ? "Remove lead" : "Make lead"}</button>
       <button type="button" class="btn" data-rreset="${id}">New code</button>${s.login && ACCOUNTS() ? `<button type="button" class="btn" data-rpw="${id}">Reset password</button>` : ""}`}
@@ -1947,7 +1972,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   });
   document.addEventListener("input", (e) => {
     if (e.target.id === "codeIn") { e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4); if (e.target.value.length === 4) trySignIn(e.target.value); }
-    if (e.target.id === "sCode" || e.target.id === "rCode") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
+    if (e.target.id === "sCode" || e.target.id === "rCode" || e.target.id === "aCode") e.target.value = e.target.value.replace(/\D/g, "").slice(0, 4);
   });
   document.addEventListener("submit", async (e) => {
     if (e.target.id !== "setupForm") return;
@@ -2721,7 +2746,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     $("meBox").hidden = gate || offline;
     $("ourTeam").parentElement.hidden = gate; $("allianceSize").parentElement.hidden = gate || !current;   // nothing to set before signing in or choosing a competition
     const ms = meScout();
-    if (ms) { $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(ms.name)}<span class="mesw"> · ${ACCOUNTS() ? "Account" : "Switch"}</span>`; $("meBtn").setAttribute("aria-label", `Scouting as ${ms.name}. ${ACCOUNTS() ? "Your account" : "Switch scout"}`); }
+    if (ms) { $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(nameOf(uid))}<span class="mesw"> · ${ACCOUNTS() ? "Account" : "Switch"}</span>`; $("meBtn").setAttribute("aria-label", `Scouting as ${nameOf(uid)}. ${ACCOUNTS() ? "Your account" : "Switch scout"}`); }
     $("rosterBtn").hidden = !canManage();
     if (canManage()) { const w = waitingCount(); $("rosterBtn").innerHTML = w ? `Team roster <span class="waitbadge">${w} waiting</span>` : "Team roster"; }
     const mode = !loaded ? "loading" : !scouts.size ? (!readOnly ? "setup" : "wait") : "code";

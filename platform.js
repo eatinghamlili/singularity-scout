@@ -109,9 +109,18 @@
       if (!r.out.mustChange) setTimeout(flush, 0);
       return { id: r.out.id, name: r.out.name, mustChange: !!r.out.mustChange };
     };
-    window.SITE.signUp = async (username, password, name) => {
-      let r; try { r = await callBoard({ action: "signup", username, password, name }, false); } catch (e) { return { error: NO_SIGNAL }; }
-      return r.status === 200 ? { ok: true } : { error: r.out.message || "Couldn't make the account. Try again." };
+    // with the 4-digit code a lead handed out: make an account, or set a new password if you forgot it
+    window.SITE.claim = async (o) => {
+      let r; try { r = await callBoard({ action: "claim", ...o }, false); } catch (e) { return { error: NO_SIGNAL }; }
+      if (r.status !== 200 || !r.out.token) return { error: r.out.message || "Couldn't save that. Try again." };
+      try { localStorage.setItem(TOKEN, r.out.token); } catch (e) {}
+      setTimeout(flush, 0);
+      return { id: r.out.id, name: r.out.name, username: r.out.username };
+    };
+    // what teammates see: your roster name or your username
+    window.SITE.setDisplay = async (display) => {
+      let r; try { r = await callBoard({ action: "display", display }, true); } catch (e) { return { error: NO_SIGNAL }; }
+      return r.status === 200 ? { ok: true } : { error: r.out.message || "Couldn't save that. Try again." };
     };
     window.SITE.changePassword = async (o) => {
       let r; try { r = await callBoard({ action: "password", ...o }, true); } catch (e) { return { error: NO_SIGNAL }; }

@@ -10,9 +10,11 @@
 // Each scout can save up to 600 changes and 30 photos an hour (far more than a real event needs),
 // so a lost phone or a stolen sign-in can't flood the board or fill the photo storage.
 // The database refuses writes from anywhere else, so the page can't be bypassed.
-// Scouts can also make an account with a username and password (no email, nothing linked). Passwords are
-// stored only as salted PBKDF2 hashes in a private table, a new account can't do anything until a lead
-// approves it, and a lead can hand out a one-time temporary password if someone forgets theirs.
+// Scouts can also make an account with a username and password (no email, nothing linked). An account starts
+// from the 4-digit code a lead handed out, so nobody can make one without a code; the same code later sets a new
+// password if one is forgotten. Passwords are stored only as salted PBKDF2 hashes in a private table, and a
+// lead can also hand out a one-time temporary password. Each scout picks whether teammates see their roster
+// name or their username.
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -213,7 +215,6 @@ async function recordFail(ip: string) {
 // ---- usernames and passwords ----
 const USERNAME = /^[a-z0-9][a-z0-9._-]{2,23}$/;
 const PW_MIN = 8, PW_MAX = 128, PBKDF2_ITERS = 150_000;
-const SIGNUPS_PER_HOUR = 5, PENDING_MAX = 25;
 const fromHex = (h: string) => new Uint8Array((h.match(/../g) || []).map((x) => parseInt(x, 16)));
 async function hashPassword(pw: string, saltHex?: string, iters = PBKDF2_ITERS) {
   const salt = saltHex ? fromHex(saltHex) : crypto.getRandomValues(new Uint8Array(16));
@@ -223,28 +224,6 @@ async function hashPassword(pw: string, saltHex?: string, iters = PBKDF2_ITERS) 
 }
 const pwProblem = (pw: string) => pw.length < PW_MIN ? `Passwords are at least ${PW_MIN} characters.` : pw.length > PW_MAX ? "That password is too long." : null;
 const wrongLogin = () => fail(401, "wrong_login", "That username and password don't match. Ask a lead if you've forgotten your password.");
-async function signUp(req: Request, body: any) {
-  const ip = ipOf(req);
-  const locked = await lockedOut(ip); if (locked) return locked;
-  const username = String(body?.username || "").trim().toLowerCase(), pw = String(body?.password || ""), name = String(body?.name || "").trim();
-  if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
-  const bad = pwProblem(pw); if (bad) return fail(400, "bad_password", bad);
-  if (!name || name.length > 40) return fail(400, "bad_name", "Names are 1 to 40 letters.");
-  const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
-  const { count: recent } = await db.from("scout_logins").select("*", { count: "exact", head: true }).eq("created_ip", ip).gte("created_at", hourAgo);
-  if ((recent ?? 0) >= SIGNUPS_PER_HOUR) return slowDown("That's a lot of new accounts from one connection. Try again in an hour.");
-  const { count: waiting } = await db.from("docs").select("*", { count: "exact", head: true }).like("path", "scouts/%").eq("data->>pending", "true");
-  if ((waiting ?? 0) >= PENDING_MAX) return slowDown("A lot of accounts are already waiting for a lead. Ask a lead to approve or clear them first.");
-  const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
-  if (taken) return fail(409, "taken", "That username is taken. Pick another.");
-  const id = "a" + crypto.randomUUID().replace(/-/g, "").slice(0, 12);
-  const h = await hashPassword(pw);
-  const { error } = await db.from("scout_logins").insert({ id, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ip });
-  if (error) return fail(409, "taken", "That username is taken. Pick another.");
-  const { error: e2 } = await db.from("docs").upsert({ path: `scouts/${id}`, data: { name, lead: false, pending: true, login: true, createdAt: Date.now() }, updated_at: new Date().toISOString() });
-  if (e2) { await db.from("scout_logins").delete().eq("id", id); return fail(500, "server", "The account couldn't be made. Try again."); }
-  return json({ ok: true, pending: true });
-}
 async function logIn(req: Request, body: any) {
   const ip = ipOf(req);
   const locked = await lockedOut(ip); if (locked) return locked;
@@ -272,7 +251,9 @@ async function changePassword(req: Request, body: any) {
     const ip = ipOf(req);
     const locked = await lockedOut(ip); if (locked) return locked;
     const h0 = await hashPassword(cur, l.salt, l.iters);
-    if (!sameText(h0.hash, String(l.pass_hash))) { await recordFail(ip); return fail(401, "wrong_password", "Your current password isn't right."); }
+    let ok = sameText(h0.hash, String(l.pass_hash));
+    if (!ok && /^\d{4,6}$/.test(cur)) { const { data: k } = await db.from("scout_keys").select("id").eq("hash", await sha256("singularity51:" + cur)).maybeSingle(); ok = !!k && k.id === me; }
+    if (!ok) { await recordFail(ip); return fail(401, "wrong_password", "That isn't your current password or your code."); }
   }
   const h = await hashPassword(pw);
   if (l) {
@@ -286,6 +267,7 @@ async function changePassword(req: Request, body: any) {
     const { error } = await db.from("scout_logins").insert({ id: me, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ipOf(req) });
     if (error) return fail(409, "taken", "That username is taken. Pick another.");
     await db.rpc("merge_doc", { p_path: `scouts/${me}`, p_patch: { login: true } });
+    await setDisplay(me, body?.display ?? meDoc.display ?? "name", username);
   }
   const mark = await currentMark(me);
   return json({ ok: true, token: mark ? await makeToken(me, mark) : null });
@@ -315,19 +297,60 @@ async function resetPassword(req: Request, body: any) {
   return json({ ok: true, username: l.username, temp });
 }
 
-async function signIn(req: Request, body: any) {
-  const ip = ipOf(req);
-  const locked = await lockedOut(ip); if (locked) return locked;
-  const code = String(body?.code || "");
-  if (!/^\d{4,6}$/.test(code)) return fail(400, "bad_code", "Codes are 4 digits.");
+// a scout's 4-digit code: who it belongs to (wrong codes count toward the lockout)
+async function codeOwner(ip: string, code: string) {
+  if (!/^\d{4,6}$/.test(code)) return { err: fail(400, "bad_code", "Codes are 4 digits.") };
   const hash = await sha256("singularity51:" + code);
   const { data } = await db.from("scout_keys").select("id").eq("hash", hash).maybeSingle();
   const scout = data ? await getDoc(`scouts/${data.id}`) : null;
-  if (!data || !scout) {
-    await recordFail(ip);
-    return fail(401, "wrong_code", "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.");
+  if (!data || !scout) { await recordFail(ip); return { err: fail(401, "wrong_code", "That code doesn't match anyone on Team 51's roster. Ask a lead if you've forgotten yours.") }; }
+  return { id: String(data.id), scout, hash };
+}
+async function signIn(req: Request, body: any) {
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
+  const o = await codeOwner(ip, String(body?.code || "")); if (o.err) return o.err;
+  return json({ id: o.id, name: o.scout!.name, lead: !!o.scout!.lead, token: await makeToken(o.id, codeMark(o.hash!)) });
+}
+// what teammates see: the roster name, or the username (only published when the scout picks it)
+async function setDisplay(id: string, display: unknown, username: string) {
+  const d = display === "username" ? "username" : display === "name" ? "name" : null;
+  if (!d) return;
+  await db.rpc("merge_doc", { p_path: `scouts/${id}`, p_patch: { display: d, handle: d === "username" ? username : null } });
+}
+// with your code: make your account (username + password), or set a new password / username if you forgot
+async function claim(req: Request, body: any) {
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
+  const o = await codeOwner(ip, String(body?.code || "")); if (o.err) return o.err;
+  const pw = String(body?.password || ""), want = String(body?.username || "").trim().toLowerCase();
+  const bad = pwProblem(pw); if (bad) return fail(400, "bad_password", bad);
+  const { data: l } = await db.from("scout_logins").select("id, username").eq("id", o.id).maybeSingle();
+  const username = want || l?.username || "";
+  if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
+  if (!l || username !== l.username) {
+    const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
+    if (taken && taken.id !== o.id) return fail(409, "taken", "That username is taken. Pick another.");
   }
-  return json({ id: data.id, name: scout.name, lead: !!scout.lead, token: await makeToken(data.id, codeMark(hash)) });
+  const h = await hashPassword(pw), now = new Date().toISOString();
+  const { error } = l
+    ? await db.from("scout_logins").update({ username, pass_hash: h.hash, salt: h.salt, iters: h.iters, must_change: false, updated_at: now }).eq("id", o.id)
+    : await db.from("scout_logins").insert({ id: o.id, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ip });
+  if (error) return fail(409, "taken", "That username is taken. Pick another.");
+  await db.rpc("merge_doc", { p_path: `scouts/${o.id}`, p_patch: { login: true, pending: false } });
+  const cur = o.scout!.display === "username" ? "username" : "name";
+  await setDisplay(o.id, body?.display ?? cur, username);
+  return json({ id: o.id, name: o.scout!.name, lead: !!o.scout!.lead, username, token: await makeToken(o.id, codeMark(o.hash!)) });
+}
+// a signed-in scout switches between showing their roster name and their username
+async function display(req: Request, body: any) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  const meDoc = me ? await getDoc(`scouts/${me}`) : null;
+  if (!me || !meDoc || meDoc.pending) return fail(401, "signin", "Sign in again first.");
+  const { data: l } = await db.from("scout_logins").select("username").eq("id", me).maybeSingle();
+  if (body?.display === "username" && !l) return fail(400, "no_login", "Make a username first.");
+  await setDisplay(me, body?.display, l?.username || "");
+  return json({ ok: true });
 }
 
 // a photo for a team or match: the page shrinks it first, so it arrives small (a few hundred KB)
@@ -447,7 +470,9 @@ Deno.serve(async (req) => {
   try {
     if (body?.action === "signin") return await signIn(req, body);
     if (body?.action === "upload") return await upload(req, body);
-    if (body?.action === "signup") return await signUp(req, body);
+    if (body?.action === "signup") return fail(410, "need_code", "Ask a lead for a 4-digit code, then use it to make your account.");
+    if (body?.action === "claim") return await claim(req, body);
+    if (body?.action === "display") return await display(req, body);
     if (body?.action === "login") return await logIn(req, body);
     if (body?.action === "password") return await changePassword(req, body);
     if (body?.action === "logins") return await listLogins(req);
