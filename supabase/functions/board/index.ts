@@ -223,6 +223,34 @@ async function hashPassword(pw: string, saltHex?: string, iters = PBKDF2_ITERS) 
   return { hash: hex(bits), salt: hex(salt.buffer), iters };
 }
 const pwProblem = (pw: string) => pw.length < PW_MIN ? `Passwords are at least ${PW_MIN} characters.` : pw.length > PW_MAX ? "That password is too long." : null;
+// before any username is saved it's scanned: the shape, rude words (also spelled with numbers or dots),
+// names that pretend to be staff, another scout's name, and whether someone already has it
+// whole words where a short root would catch real names (Bob, Nigel, Hancock, therapist, skyscraper)
+const BLOCKED = ["fuck", "fvck", "phuck", "shit", "bitch", "cunt", "pussy", "nigger", "nigga", "faggot", "slut", "whore", "porn", "dildo", "penis",
+  "vagina", "retard", "nazi", "hitler", "bastard", "asshole", "jackass", "dumbass", "molest", "pedophile", "boobs", "tits"];
+const RESERVED = ["admin", "administrator", "moderator", "mod", "lead", "leads", "official", "support", "staff", "system", "owner", "root",
+  "team51", "nerdherd", "singularity", "coach", "mentor", "everyone", "nobody", "null", "undefined"];
+const plainOf = (u: string) => u.toLowerCase().replace(/[._\-\s]/g, "").replace(/0/g, "o").replace(/1/g, "i").replace(/3/g, "e").replace(/4/g, "a")
+  .replace(/5/g, "s").replace(/7/g, "t").replace(/\$/g, "s").replace(/@/g, "a");
+const once = (w: string) => w.replace(/(.)\1+/g, "$1");   // "fuuuck" -> "fuck"
+const squash = (u: string) => once(plainOf(u));
+async function usernameProblem(username: string, selfId: string | null) {
+  if (!USERNAME.test(username)) return "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).";
+  const plain = plainOf(username), sq = once(plain);
+  // stretched letters ("fuuuck") only count for words with no double letters of their own (so "boobs" can't block "bobsmith")
+  if (BLOCKED.some((w) => plain.includes(w) || (once(w) === w && sq.includes(w)))) return "That username isn't allowed. Pick something else.";
+  const bare = username.replace(/[._-]/g, "");
+  if (RESERVED.includes(sq) || RESERVED.includes(bare) || /^(team)?51$/.test(bare) || sq.includes("admin")) return "That username is saved for the team. Pick something else.";
+  const { data: scouts } = await db.from("docs").select("path, data").like("path", "scouts/%");
+  for (const r of scouts || []) {
+    const id = String(r.path).slice(7); if (id === selfId) continue;
+    const names = [r.data?.name, r.data?.handle].filter((x) => typeof x === "string").map((x: string) => squash(x.replace(/[^a-z0-9]/gi, "")));
+    if (names.includes(sq)) return "That looks like another scout's name. Pick something that's yours.";
+  }
+  const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
+  if (taken && taken.id !== selfId) return "That username is taken. Pick another.";
+  return null;
+}
 const wrongLogin = () => fail(401, "wrong_login", "That username and password don't match. Ask a lead if you've forgotten your password.");
 async function logIn(req: Request, body: any) {
   const ip = ipOf(req);
@@ -261,9 +289,7 @@ async function changePassword(req: Request, body: any) {
     if (error) return fail(500, "server", "The password couldn't be saved. Try again.");
   } else {
     const username = String(body?.username || "").trim().toLowerCase();
-    if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
-    const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
-    if (taken) return fail(409, "taken", "That username is taken. Pick another.");
+    const why = await usernameProblem(username, me); if (why) return fail(400, "bad_username", why);
     const { error } = await db.from("scout_logins").insert({ id: me, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ipOf(req) });
     if (error) return fail(409, "taken", "That username is taken. Pick another.");
     await db.rpc("merge_doc", { p_path: `scouts/${me}`, p_patch: { login: true } });
@@ -327,11 +353,7 @@ async function claim(req: Request, body: any) {
   const bad = pwProblem(pw); if (bad) return fail(400, "bad_password", bad);
   const { data: l } = await db.from("scout_logins").select("id, username").eq("id", o.id).maybeSingle();
   const username = want || l?.username || "";
-  if (!USERNAME.test(username)) return fail(400, "bad_username", "Usernames are 3 to 24 letters or numbers (dots, dashes and underscores are OK).");
-  if (!l || username !== l.username) {
-    const { data: taken } = await db.from("scout_logins").select("id").eq("username", username).maybeSingle();
-    if (taken && taken.id !== o.id) return fail(409, "taken", "That username is taken. Pick another.");
-  }
+  if (!l || username !== l.username) { const why = await usernameProblem(username, o.id); if (why) return fail(400, "bad_username", why); }
   const h = await hashPassword(pw), now = new Date().toISOString();
   const { error } = l
     ? await db.from("scout_logins").update({ username, pass_hash: h.hash, salt: h.salt, iters: h.iters, must_change: false, updated_at: now }).eq("id", o.id)
@@ -341,6 +363,39 @@ async function claim(req: Request, body: any) {
   const cur = o.scout!.display === "username" ? "username" : "name";
   await setDisplay(o.id, body?.display ?? cur, username);
   return json({ id: o.id, name: o.scout!.name, lead: !!o.scout!.lead, username, token: await makeToken(o.id, codeMark(o.hash!)) });
+}
+async function rename(req: Request, body: any) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  const meDoc = me ? await getDoc(`scouts/${me}`) : null;
+  if (!me || !meDoc || meDoc.pending) return fail(401, "signin", "Sign in again first.");
+  const { data: l } = await db.from("scout_logins").select("id, username, pass_hash, salt, iters").eq("id", me).maybeSingle();
+  if (!l) return fail(400, "no_login", "Make a username and password first.");
+  const ip = ipOf(req);
+  const locked = await lockedOut(ip); if (locked) return locked;
+  const cur = String(body?.current || "");
+  let ok = sameText((await hashPassword(cur, l.salt, l.iters)).hash, String(l.pass_hash));
+  if (!ok && /^\d{4,6}$/.test(cur)) { const { data: k } = await db.from("scout_keys").select("id").eq("hash", await sha256("singularity51:" + cur)).maybeSingle(); ok = !!k && k.id === me; }
+  if (!ok) { await recordFail(ip); return fail(401, "wrong_password", "That isn't your current password or your code."); }
+  const username = String(body?.username || "").trim().toLowerCase();
+  if (username === l.username) return json({ ok: true, username });
+  const why = await usernameProblem(username, me); if (why) return fail(400, "bad_username", why);
+  const { error } = await db.from("scout_logins").update({ username, updated_at: new Date().toISOString() }).eq("id", me);
+  if (error) return fail(409, "taken", "That username is taken. Pick another.");
+  if (meDoc.display === "username") await setDisplay(me, "username", username);
+  return json({ ok: true, username });
+}
+// the scan on its own, so the page can say "available" or what's wrong while someone types
+async function checkName(req: Request, body: any) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  const username = String(body?.username || "").trim().toLowerCase();
+  const why = await usernameProblem(username, me);
+  return json({ ok: !why, problem: why });
+}
+async function whoAmI(req: Request) {
+  const me = await readToken(req.headers.get("x-scout-token"));
+  if (!me) return fail(401, "signin", "Sign in again first.");
+  const { data: l } = await db.from("scout_logins").select("username").eq("id", me).maybeSingle();
+  return json({ username: l?.username || null });
 }
 // a signed-in scout switches between showing their roster name and their username
 async function display(req: Request, body: any) {
@@ -473,6 +528,9 @@ Deno.serve(async (req) => {
     if (body?.action === "signup") return fail(410, "need_code", "Ask a lead for a 4-digit code, then use it to make your account.");
     if (body?.action === "claim") return await claim(req, body);
     if (body?.action === "display") return await display(req, body);
+    if (body?.action === "rename") return await rename(req, body);
+    if (body?.action === "checkname") return await checkName(req, body);
+    if (body?.action === "me") return await whoAmI(req);
     if (body?.action === "login") return await logIn(req, body);
     if (body?.action === "password") return await changePassword(req, body);
     if (body?.action === "logins") return await listLogins(req);

@@ -117,6 +117,16 @@
       setTimeout(flush, 0);
       return { id: r.out.id, name: r.out.name, username: r.out.username };
     };
+    // the username scan (shape, rude words, staff names, other scouts' names, taken), and changing your username
+    window.SITE.checkName = async (username) => {
+      try { const r = await callBoard({ action: "checkname", username }, true); return r.status === 200 ? r.out : { ok: false, problem: r.out.message }; }
+      catch (e) { return { ok: false, problem: "Can't check right now. You can still try saving." }; }
+    };
+    window.SITE.rename = async (o) => {
+      let r; try { r = await callBoard({ action: "rename", ...o }, true); } catch (e) { return { error: NO_SIGNAL }; }
+      return r.status === 200 ? { username: r.out.username } : { error: r.out.message || "Couldn't change your username. Try again." };
+    };
+    window.SITE.whoAmI = async () => { try { const r = await callBoard({ action: "me" }, true); return r.status === 200 ? r.out : null; } catch (e) { return null; } };
     // what teammates see: your roster name or your username
     window.SITE.setDisplay = async (display) => {
       let r; try { r = await callBoard({ action: "display", display }, true); } catch (e) { return { error: NO_SIGNAL }; }

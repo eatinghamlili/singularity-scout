@@ -474,6 +474,10 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .acctlinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: 0; }
 .gatealt { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 6px 0 0; }
 .gatealt .linkbtn, .acctlinks .linkbtn { font-size: 14px; padding: 6px 0; }
+.scanmsg { display: block; font-size: 13px; min-height: 1.3em; color: var(--muted); }
+.scanmsg.good { color: #15803d; } .scanmsg.bad { color: var(--bad); }
+:root[data-theme="dark"] .scanmsg.good { color: #4ade80; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .scanmsg.good { color: #4ade80; } }
 .showas { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .showas legend { font-size: 13px; font-weight: 600; color: var(--muted); padding: 0 4px; }
 .showas label { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 15px; }
@@ -1814,8 +1818,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     if (gateView === "signup") return `<form class="setup acct" id="signupForm" novalidate><h3>Make an account</h3>
       <p class="hint">Use the code a lead gave you once, then sign in with your username and password from now on. Your code keeps working too.</p>
       ${codeField}
-      <label class="fld">Username<input id="aUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" required>
-        <small class="hint">3 to 24 lowercase letters or numbers. Dots, dashes and underscores are OK.</small></label>
+      <label class="fld">Username<input id="aUser" data-scan autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" required>
+        <small class="hint">3 to 24 lowercase letters or numbers. Dots, dashes and underscores are OK.</small><small class="scanmsg" aria-live="polite"></small></label>
       <label class="fld">Password<input id="aPass" type="password" autocomplete="new-password" minlength="8" maxlength="128" required><small class="hint">At least 8 characters. Don't reuse a password from another site.</small></label>
       <label class="fld">Type it again<input id="aPass2" type="password" autocomplete="new-password" maxlength="128" required></label>
       ${showAs("name")}
@@ -1826,7 +1830,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       ${codeField}
       <label class="fld">New password<input id="aPass" type="password" autocomplete="new-password" minlength="8" maxlength="128" required></label>
       <label class="fld">Type it again<input id="aPass2" type="password" autocomplete="new-password" maxlength="128" required></label>
-      <label class="fld">New username (optional)<input id="aUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" placeholder="Leave blank to keep yours"></label>
+      <label class="fld">New username (optional)<input id="aUser" data-scan autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24" placeholder="Leave blank to keep yours"><small class="scanmsg" aria-live="polite"></small></label>
       ${err}<button type="submit" class="btn primary">Save and sign in</button>
       <p class="acctlinks"><button type="button" class="linkbtn" data-gview="login">Back to sign in</button>${backToCode}</p></form>`;
     if (gateView === "newpw") return `<form class="setup acct" id="newpwForm" novalidate><h3>Pick a new password</h3>
@@ -1882,15 +1886,38 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         <label><input type="radio" name="pShow" value="username" ${ms.display === "username" ? "checked" : ""}> My username${ms.handle ? ` (${esc(ms.handle)})` : ""}</label></fieldset>` : ""}
       <div class="setup acct" id="pwBox"><h3>${has ? "Change your password" : "Add a username and password"}</h3>
         ${has ? "" : `<p class="hint">Then you can sign in without your code. Your code keeps working too.</p>
-        <label class="fld">Username<input id="pUser" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24"></label>`}
+        <label class="fld">Username<input id="pUser" data-scan autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24"><small class="scanmsg" aria-live="polite"></small></label>`}
         ${has ? `<label class="fld">Current password or your 4-digit code<input id="pCur" type="password" autocomplete="current-password" maxlength="128"></label>` : ""}
         <label class="fld">New password<input id="pNew" type="password" autocomplete="new-password" minlength="8" maxlength="128"></label>
         <label class="fld">Type it again<input id="pNew2" type="password" autocomplete="new-password" maxlength="128"></label>
         <div class="err" id="pErr" role="alert" hidden></div>
         <button type="button" class="btn primary" data-asave>${has ? "Change password" : "Save"}</button></div>
+      ${has ? `<div class="setup acct" id="unameBox"><h3>Change your username</h3>
+        <p class="hint" id="unameNow">Your username: …</p>
+        <label class="fld">New username<input id="nUser" data-scan autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" maxlength="24"><small class="scanmsg" aria-live="polite"></small></label>
+        <label class="fld">Current password or your 4-digit code<input id="nCur" type="password" autocomplete="current-password" maxlength="128"></label>
+        <div class="err" id="nErr" role="alert" hidden></div>
+        <button type="button" class="btn primary" data-rename>Change username</button></div>` : ""}
       <div class="dlgfoot"><button type="button" class="btn" data-signout>Sign out</button><button type="button" class="btn primary" data-aclose>Done</button></div>`;
     $("acctDlg").showModal();
+    if (has) window.SITE.whoAmI().then(r => { const el = $("unameNow"); if (el) el.textContent = r && r.username ? `Your username: ${r.username}` : ""; });
   }
+  // the username scan as you type: the server checks the shape, rude words, staff-sounding names, other scouts' names and taken ones
+  let scanT = 0, scanSeq = 0;
+  document.addEventListener("input", (e) => {
+    const inp = e.target; if (!inp.matches || !inp.matches("input[data-scan]")) return;
+    const msg = inp.parentElement.querySelector(".scanmsg"); if (!msg) return;
+    inp.value = inp.value.toLowerCase().replace(/\s+/g, "");
+    clearTimeout(scanT); msg.className = "scanmsg"; msg.textContent = "";
+    const u = inp.value.trim(); if (!u || !ACCOUNTS()) return;
+    if (!USERNAME_OK.test(u)) { msg.className = "scanmsg bad"; msg.textContent = u.length < 3 ? "At least 3 letters or numbers." : "Only lowercase letters, numbers, dots, dashes and underscores."; return; }
+    msg.textContent = "Checking…";
+    const seq = ++scanSeq;
+    scanT = setTimeout(async () => {
+      const r = await window.SITE.checkName(u); if (seq !== scanSeq) return;
+      msg.className = "scanmsg " + (r.ok ? "good" : "bad"); msg.textContent = r.ok ? "✓ Available" : (r.problem || "Couldn't check that right now.");
+    }, 450);
+  });
   $("acctForm").addEventListener("change", async (e) => {
     if (e.target.name !== "pShow") return;
     const r = await window.SITE.setDisplay(e.target.value);
@@ -1900,6 +1927,15 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const b = e.target.closest("button"); if (!b) return;
     if (b.hasAttribute("data-aclose")) { $("acctDlg").close(); return; }
     if (b.hasAttribute("data-signout")) { $("acctDlg").close(); gateMsg = ""; gateView = "code"; window.SITE.signOut && window.SITE.signOut(); setMe(null); return; }
+    if (b.hasAttribute("data-rename")) {
+      const err = (m) => { const x = $("nErr"); x.textContent = m; x.hidden = !m; };
+      const u = $("nUser").value.trim().toLowerCase();
+      if (!USERNAME_OK.test(u)) return err("Usernames are 3 to 24 lowercase letters or numbers (dots, dashes and underscores are OK).");
+      if (!$("nCur").value) return err("Enter your current password or your code.");
+      b.disabled = true; const r = await window.SITE.rename({ username: u, current: $("nCur").value }); b.disabled = false;
+      if (r.error) return err(r.error);
+      $("acctDlg").close(); toast(`Your username is now ${r.username}. Sign in with it next time.`); return;
+    }
     if (b.hasAttribute("data-asave")) {
       const err = (m) => { const x = $("pErr"); x.textContent = m; x.hidden = !m; };
       const pw = $("pNew").value, bad = pwCheck(pw, $("pNew2").value); if (bad) return err(bad);
