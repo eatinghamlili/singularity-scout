@@ -1259,13 +1259,15 @@ input, textarea { caret-color: var(--accent); }
         <h2>Weights</h2>
         <p class="sub">How much each phase counts toward Fit. Penalties subtract. Scout ratings blend your team's ratings in with the OPR numbers.</p>
         <div id="sliders"></div>
+        <p class="hint" id="weightsWho" hidden>Leads set the weights, since they change every team's pick score for everyone.</p>
         <p class="hint rankshare"><b>Qualification rank: 25%</b> of each team's pick score, once matches have been played. The other 75% is the Fit and scout blend above.</p>
       </section>
       <section class="panel howto">
         <h2>How to use it</h2>
         <ol>
-          <li><b>Load from FTCScout</b> to pull a competition's teams and OPR.</li>
-          <li>To rate a team or add a note, tap its number on the <b>Pick list</b>, <b>Rankings</b> or <b>Quals</b>. Add a note each time you watch it, and rate it 1–10. Ratings from everyone are averaged. Scouting notes opens a read-only summary.</li>
+          <li>Pick the competition from <b>All competitions</b>. Its teams, OPR and match schedule load by themselves.</li>
+          <li>Tap <b>I'll scout this team</b> on a team to claim it. Under <b>Your teams</b> on Quals, each of your quals shows ✓ written up, ! played but not written up yet, or ○ still to come.</li>
+          <li>Tap any team number to open it. <b>Scouting</b> is where you write: pick the qual or the pits, count what it scored, add a note and your 1–10 numbers. <b>Notes</b> gathers everyone's scouting. Ratings from all scouts are averaged.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
         <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
@@ -2027,7 +2029,7 @@ input, textarea { caret-color: var(--accent); }
         <label class="fld">Current password or your 4-digit code<input id="nCur" type="password" autocomplete="current-password" maxlength="128"></label>
         <div class="err" id="nErr" role="alert" hidden></div>
         <button type="button" class="btn primary" data-rename>Change username</button></div>` : ""}
-      <div class="dlgfoot"><button type="button" class="btn" data-signout>Sign out</button><button type="button" class="btn primary" data-aclose>Done</button></div>`;
+      <div class="dlgfoot"><button type="button" class="btn" data-signout>Sign out</button><button type="button" class="btn" data-aclose>Done</button></div>`;
     $("acctDlg").showModal();
     if (has) window.SITE.whoAmI().then(r => { const el = $("unameNow"); if (el) el.textContent = r && r.username ? `Your username: ${r.username}` : ""; });
   }
@@ -2930,7 +2932,8 @@ input, textarea { caret-color: var(--accent); }
     $("allianceSize").value = String(settings.size || 2);
     $("loadBtn").disabled = readOnly || offline;
     $("loadBtn").textContent = isOwner ? `Competition not listed? Load it from ${SOURCE.name}` : "Competition not listed? Ask for it to be added";
-    $("resetDraft").disabled = readOnly || !teams.size;
+    $("resetDraft").disabled = readOnly || !teams.size || !canManage();
+    $("resetDraft").title = canManage() ? "" : "Only leads can reset the draft";
     const b = $("banner");
     if (offline) { b.hidden = false; b.innerHTML = `<b>Not connected.</b> ${esc(window.SITE?.problem || "Couldn't reach the team database.")}`; }
     else if (readOnly) { b.hidden = false; b.innerHTML = `<b>Can't save.</b> The team database refused a change. Ask a lead to check the database setup (README.md).`; }
@@ -3118,8 +3121,9 @@ input, textarea { caret-color: var(--accent); }
 
   function renderSliders() {
     const w = settings.weights;
+    $("weightsWho").hidden = canManage() || readOnly;
     $("sliders").innerHTML = [["auto", "Auto", 2], ["teleop", "TeleOp", 2], ["endgame", "Endgame", 2], ["fouls", "Penalties", 2], ["scout", "Scout ratings", 1]].map(([k, l, max]) =>
-      `<label class="slider"><span>${l}</span><input type="range" id="w-${k}" min="0" max="${max}" step="0.1" value="${w[k]}" data-w="${k}" ${readOnly ? "disabled" : ""}><span class="num" id="wv-${k}">${k === "scout" ? Math.round(w[k] * 100) + "%" : n(w[k]).toFixed(1)}</span></label>`).join("");
+      `<label class="slider"><span>${l}</span><input type="range" id="w-${k}" min="0" max="${max}" step="0.1" value="${w[k]}" data-w="${k}" ${readOnly || !canManage() ? "disabled" : ""}><span class="num" id="wv-${k}">${k === "scout" ? Math.round(w[k] * 100) + "%" : n(w[k]).toFixed(1)}</span></label>`).join("");
   }
 
   function render() {
@@ -4066,12 +4070,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   document.querySelectorAll("th button.sort").forEach(b => b.onclick = () => { view.sort = view.sort === b.dataset.sort ? "fit" : b.dataset.sort; render(); });
   $("sortPhone").onchange = (e) => { view.sort = e.target.value; render(); };
   $("sliders").addEventListener("input", (e) => {
-    const k = e.target.dataset.w; if (!k) return;
+    const k = e.target.dataset.w; if (!k || !canManage()) return;
     settings.weights[k] = parseFloat(e.target.value);
     $("wv-" + k).textContent = k === "scout" ? Math.round(settings.weights[k] * 100) + "%" : settings.weights[k].toFixed(1);
     saveSettings(); render();
   });
   $("resetDraft").onclick = async () => {
+    if (!canManage()) return;
     if (!(await confirmBox("Reset the draft?", "Every team in this competition goes back to available. Stats, ratings and notes stay.", "Reset"))) return;
     for (const t of teams.values()) if (t.status && t.status !== "available") patchTeam(t.number, { status: "available" });
     toast("Draft reset");
