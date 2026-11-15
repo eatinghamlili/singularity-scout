@@ -2648,7 +2648,7 @@ input, textarea { caret-color: var(--accent); }
         ${nav}<button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
-      <div class="pviewsw mpages" role="group" aria-label="Match window page"><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button><button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button></div>
+      <div class="pviewsw mpages" role="group" aria-label="Match window page"><button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
       ${matchPage === "scout" ? (m ? `<div class="mscout">
           <h3 class="mside red">Red alliance</h3>${m.red.map(x => matchScoutCard(x.n, "red", m)).join("")}
           <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
