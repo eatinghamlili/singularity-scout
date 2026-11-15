@@ -1197,6 +1197,13 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 
 .btips .brole { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .btips .bby { color: var(--muted); font-size: 12px; white-space: nowrap; }
+
+/* briefing on every qual: our matches carry a clear mark */
+.ourmatch { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); text-transform: uppercase; letter-spacing: .04em; vertical-align: 1px; white-space: nowrap; }
+.mrole.red { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; } .mrole.blue { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
+:root[data-theme="dark"] .mrole.red { color: #fca5a5; } :root[data-theme="dark"] .mrole.blue { color: #93c5fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mrole.red { color: #fca5a5; } :root:not([data-theme="light"]) .mrole.blue { color: #93c5fd; } }
+.btable td.hi { font-weight: 700; color: var(--ink); }
 </style>
 
 <header class="top">
@@ -2852,9 +2859,10 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   // the pre-match briefing: what the drive team needs before one of our matches, on one screen
   function isOurMatch(m) { const us = settings.us; return !!m && [...m.red, ...m.blue].some(x => x.n === us); }
   function briefingHtml(m) {
-    const us = settings.us, usRed = m.red.some(x => x.n === us), c = compute();
+    const us = settings.us, ours = isOurMatch(m), usRed = m.red.some(x => x.n === us), c = compute();
     formOf(us);   // makes sure the predictor has run for this competition
-    const mine = (usRed ? m.red : m.blue).map(x => x.n), theirs = (usRed ? m.blue : m.red).map(x => x.n);
+    // our matches read from our side (us vs them); everyone else's read Red vs Blue
+    const mine = (ours && !usRed ? m.blue : m.red).map(x => x.n), theirs = (ours && !usRed ? m.red : m.blue).map(x => x.n);
     const T = (n) => teams.get(n), has = (t) => !!t && stats(t).src !== "none";
     const tot = (t) => { const x = stats(t); return x.auto + x.teleop + x.endgame; };
     const PH = [["auto", "Auto"], ["teleop", "TeleOp"], ["endgame", "Endgame"]];
@@ -2872,7 +2880,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       g = g.trim(); return g.length > 200 ? g.slice(0, 200).replace(/\s+\S*$/, "") + "…" : g + (g.length < one.length ? " …" : ""); };
     const by = (z) => `<small class="bby">${esc(z.by === uid ? "you" : nameOf(z.by))}</small>`;
     const tips = [];
-    for (const [list, roleOf] of [[mine, (n) => n === us ? "us" : "partner"], [theirs, () => "opponent"]]) for (const n of list) {
+    for (const [list, roleOf] of [[mine, (n) => !ours ? "red" : n === us ? "us" : "partner"], [theirs, () => ours ? "opponent" : "blue"]]) for (const n of list) {
       const ns = qualNotes(n); if (!ns.length) continue;
       const counted = ns.filter(z => z.counts).map(z => countPts(z.counts)), avg = (k) => Math.round(counted.reduce((a, x) => a + x[k], 0) / counted.length);
       const pts = counted.length ? `scored about <b>${avg("total")}</b> (Auto ${avg("auto")} · TeleOp ${avg("tele")} · End ${avg("end")})` : "";
@@ -2892,14 +2900,17 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       </div>`;
     };
     return `<div class="brief">
-      <p class="bline">We're <b class="${usRed ? "r" : "b"}">${usRed ? "Red" : "Blue"}</b>${mine.length > 1 ? ` with ${mine.filter(n => n !== us).map(n => `<b>${esc(n)}</b>`).join(" and ")}` : ""}${win != null ? ` · <b>${win}%</b> to win, about ${Math.round(usRed ? pr.red : pr.blue)} to ${Math.round(usRed ? pr.blue : pr.red)}` : ""}${m.played ? " · already played" : ""}.</p>
+      ${ours ? `<p class="bline"><span class="ourmatch">★ Our match</span> We're <b class="${usRed ? "r" : "b"}">${usRed ? "Red" : "Blue"}</b>${mine.length > 1 ? ` with ${mine.filter(n => n !== us).map(n => `<b>${esc(n)}</b>`).join(" and ")}` : ""}${win != null ? ` · <b>${win}%</b> to win, about ${Math.round(usRed ? pr.red : pr.blue)} to ${Math.round(usRed ? pr.blue : pr.red)}` : ""}${m.played ? " · already played" : ""}.</p>`
+        : `<p class="bline"><b class="r">Red</b> ${mine.map(n => `<b>${esc(n)}</b>`).join(" and ")} vs <b class="b">Blue</b> ${theirs.map(n => `<b>${esc(n)}</b>`).join(" and ")}${pr ? ` · <b>${pr.pRed >= 0.5 ? "Red" : "Blue"} ${Math.round((pr.pRed >= 0.5 ? pr.pRed : 1 - pr.pRed) * 100)}%</b> to win, about ${Math.round(pr.red)} to ${Math.round(pr.blue)}` : ""}${m.played ? " · already played" : ""}.<br><small class="hint">Team ${esc(us)} isn't in this match.</small></p>`}
       <h3 class="mside">What scouts saw in ${esc(label)}</h3>
       ${tips.length ? `<ul class="btips">${tips.map(x => `<li>${x}</li>`).join("")}</ul>`
         : `<p class="hint">${m.played ? `Nobody wrote up ${esc(label)}.` : `No notes for ${esc(label)} yet. They show up here as scouts write up this qual.`}</p>`}
-      <table class="btable"><thead><tr><th>Points a match</th><th class="r">Us</th><th class="r">Them</th></tr></thead>
-        <tbody>${ph.map(p => `<tr><td>${p.l}</td><td class="r num ${p.a > p.b + 0.5 ? "win" : ""}">${fmt(p.a)}</td><td class="r num ${p.b > p.a + 0.5 ? "lose" : ""}">${fmt(p.b)}</td></tr>`).join("")}</tbody></table>
-      <h3 class="mside">Our alliance</h3>${mine.map(n => row(n, n === us ? "Us" : "Partner")).join("")}
-      <h3 class="mside">Opponents</h3>${theirs.map(n => row(n, "Opponent")).join("")}
+      <table class="btable"><thead><tr><th>Points a match</th><th class="r">${ours ? "Us" : "Red"}</th><th class="r">${ours ? "Them" : "Blue"}</th></tr></thead>
+        <tbody>${ph.map(p => `<tr><td>${p.l}</td><td class="r num ${p.a > p.b + 0.5 ? (ours ? "win" : "hi") : ""}">${fmt(p.a)}</td><td class="r num ${p.b > p.a + 0.5 ? (ours ? "lose" : "hi") : ""}">${fmt(p.b)}</td></tr>`).join("")}</tbody></table>
+      ${ours ? `<h3 class="mside">Our alliance</h3>${mine.map(n => row(n, n === us ? "Us" : "Partner")).join("")}
+      <h3 class="mside">Opponents</h3>${theirs.map(n => row(n, "Opponent")).join("")}`
+        : `<h3 class="mside red">Red alliance</h3>${mine.map(n => row(n, "Red")).join("")}
+      <h3 class="mside blue">Blue alliance</h3>${theirs.map(n => row(n, "Blue")).join("")}`}
     </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>`;
   }
   function renderMatchDlg() {
@@ -2914,7 +2925,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const keep = $("mNote") ? $("mNote").value : (renderMatchDlg.draft || "");
     renderMatchDlg.draft = keep;
     const ours = isOurMatch(m);
-    if (matchPage === "brief" && !ours) matchPage = "notes";
+    if (matchPage === "brief" && !m) matchPage = "notes";
     const order = (quals.shownKeys && quals.shownKeys.includes(key)) ? quals.shownKeys : (quals.list || []).map(matchKey);
     const at = order.indexOf(key), prevK = at > 0 ? order[at - 1] : null, nextK = at >= 0 && at < order.length - 1 ? order[at + 1] : null;
     const shortOf = (k) => { const x = (quals.list || []).find(y => matchKey(y) === k); return x ? (x.level === "Quals" ? "Q" : "") + x.id : matchLabelOf(k); };
@@ -2922,11 +2933,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
         <button type="button" class="btn" data-mnav="${esc(prevK || "")}" ${prevK ? "" : "disabled"} aria-label="${prevK ? "Previous match: " + esc(shortOf(prevK)) : "No earlier match"}">‹ ${prevK ? esc(shortOf(prevK)) : ""}</button>
         <button type="button" class="btn" data-mnav="${esc(nextK || "")}" ${nextK ? "" : "disabled"} aria-label="${nextK ? "Next match: " + esc(shortOf(nextK)) : "No later match"}">${nextK ? esc(shortOf(nextK)) : ""} ›</button></div>` : "";
     $("matchForm").innerHTML = `
-      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}</small></div>
+      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? "Played" : "Not played yet") : ""}${ours ? ` · <span class="ourmatch">★ Our match</span>` : ""}</small></div>
         ${nav}<button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
-      <div class="pviewsw mpages ${ours ? "three" : ""}" role="group" aria-label="Match window page">${ours ? `<button type="button" data-mpage="brief" aria-pressed="${matchPage === "brief"}">Briefing</button>` : ""}<button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
+      <div class="pviewsw mpages ${m ? "three" : ""}" role="group" aria-label="Match window page">${m ? `<button type="button" data-mpage="brief" aria-pressed="${matchPage === "brief"}">Briefing</button>` : ""}<button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
       ${matchPage === "brief" && m ? briefingHtml(m) : matchPage === "scout" ? (m ? `<div class="mscout">
           <h3 class="mside red">Red alliance</h3>${m.red.map(x => matchScoutCard(x.n, "red", m)).join("")}
           <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
