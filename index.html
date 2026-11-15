@@ -483,9 +483,13 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .achips, .abtns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
 .abtns { margin-left: auto; }
 .achip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
-.aq { color: var(--muted); font-size: 12px; font-family: var(--f-body); letter-spacing: .02em; }
+.aq { color: var(--muted); font-size: 13.5px; font-family: var(--f-body); letter-spacing: .02em; }
 .aqgrid b { font-family: var(--f-body); }
 .qdone { color: #15803d; font-weight: 600; }
+.qtodo { color: #a16207; font-weight: 600; }
+.qlate { color: #b91c1c; font-weight: 700; }
+:root[data-theme="dark"] .qtodo { color: #fbbf24; } :root[data-theme="dark"] .qlate { color: #f87171; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qtodo { color: #fbbf24; } :root:not([data-theme="light"]) .qlate { color: #f87171; } }
 :root[data-theme="dark"] .qdone { color: #4ade80; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qdone { color: #4ade80; } }
 .myteam.finished { opacity: .75; }
@@ -2620,7 +2624,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       ${tags ? `<div class="tags">${tags}</div>` : ""}
       ${hexOrPhoto(t, "m" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
       ${(() => { const key = matchKey(m), on = scoutsOnMatch(t, key), done = on.filter(k => doneQuals(t, k).has(key)), todo = on.filter(k => !done.includes(k));
-        return on.length ? `<div class="assignline">${todo.length ? `<span class="hint">Scouting this qual:</span> ${todo.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}${done.length ? `<span class="qdone">✓ Scouted:</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
+        return on.length ? `<div class="assignline">${todo.length ? (m.played ? `<span class="qlate">! Not written up yet:</span> ` : `<span class="qtodo">○ Scouting this qual:</span> `) + todo.map(k => who(k, k === uid ? "You" : null)).join(" ") : ""}${done.length ? `<span class="qdone">✓ Scouted:</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
           : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
       ${noteList(t, "mc" + t.number, 1)}
     </article>`;
@@ -3413,12 +3417,23 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function doneQuals(t, k) { return new Set(allNotes(t).filter(x => x.by === k && x.ctx === "qual" && x.match).map(x => x.match)); }
   // what's still to scout: their picked quals (or all of the team's) without the checked ones
   function leftQuals(t, k) { const done = doneQuals(t, k), mine = qualsOf(t, k) || teamQuals(t.number).map(matchKey); return mine.filter(q => !done.has(q)); }
-  // the quals as a short line, checked ones marked: "Q7 ✓, Q13" (html, every label escaped)
+  // a qual that's been played: its notes are now overdue if nobody saved them
+  function playedKeys(num) { return new Set(teamQuals(num).filter(m => m.played).map(matchKey)); }
+  // one qual, marked: ✓ written up, ! played but not written up yet, ○ still to come (html, label escaped)
+  function qualMark(key, done, played) {
+    const l = esc(matchLabelOf(key));
+    return done.has(key) ? `<span class="qdone" title="Scouted">${l} ✓</span>`
+      : played.has(key) ? `<span class="qlate" title="Played, but no notes saved yet">! ${l}</span>`
+      : `<span class="qtodo" title="Not scouted yet">○ ${l}</span>`;
+  }
+  // the quals as a short line: "Q7 ✓, ! Q9, ○ Q13"
   function qualsHtml(t, k) {
-    const q = qualsOf(t, k), done = doneQuals(t, k), all = teamQuals(t.number).map(matchKey);
-    if (q) return q.map(x => done.has(x) ? `<span class="qdone">${esc(matchLabelOf(x))} ✓</span>` : esc(matchLabelOf(x))).join(", ");
-    const n = all.filter(x => done.has(x)).length;
-    return !all.length ? "all quals" : n === all.length ? `<span class="qdone">all scouted ✓</span>` : n ? `all quals <span class="qdone">(${n} ✓)</span>` : "all quals";
+    const q = qualsOf(t, k), done = doneQuals(t, k), played = playedKeys(t.number), all = teamQuals(t.number).map(matchKey);
+    if (q) return q.map(x => qualMark(x, done, played)).join(", ");
+    if (!all.length) return "all quals";
+    const n = all.filter(x => done.has(x)).length, late = all.filter(x => !done.has(x) && played.has(x)).length, todo = all.length - n - late;
+    if (n === all.length) return `<span class="qdone">all scouted ✓</span>`;
+    return `all quals: ${[n ? `<span class="qdone">${n} ✓</span>` : "", late ? `<span class="qlate">${late} to write up</span>` : "", todo ? `<span class="qtodo">○ ${todo} to go</span>` : ""].filter(Boolean).join(" · ")}`;
   }
   function nextQualOf(num, only) {
     const m = teamQuals(num).find(q => !q.played && (!only || only.includes(matchKey(q)))); if (!m) return null;
