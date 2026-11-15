@@ -3206,7 +3206,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   }
   function scoutedBox(t) {
     const s = scoutedCounts(t);
-    if (!s) return `<div class="scoutedbox empty"><h3>Scouted in quals</h3><p class="hint">No qual counts yet. When a scout picks "A qual match" on the Notes page, what this robot scored shows up here.</p></div>`;
+    if (!s) return `<div class="scoutedbox empty"><h3>Scouted in quals</h3><p class="hint">No qual counts yet. When a scout picks "A qual match" on the Scouting page, what this robot scored shows up here.</p></div>`;
     const n1 = (v) => (Math.round(v * 10) / 10).toString(), pc = (v) => Math.round(v * 100) + "%";
     const col = (k, label) => `<div class="scol"><h4>${label}</h4><dl>${CNT_SCORE.map(([f, l, sub]) => `<dt>${l} ${sub}</dt><dd class="num">${n1(s[k][f])}</dd>`).join("")}
       ${CNT_FLAGS[k].map(([f, l]) => `<dt>${l}</dt><dd class="num">${pc(s[k][f])}</dd>`).join("")}</dl></div>`;
@@ -3439,8 +3439,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const free = c.all.filter(t => t !== c.us && !scoutsOn(t).length).length;
     return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Pick "No scout yet" in Scouting notes to see them.</span>` : ""}</div>`;
   }
-  // the Notes | Scouting switch at the top of a team's window (same idea as the match window)
-  const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Notes</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Scouting</button></div>`;
+  // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
+  const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button></div>`;
   function statBox(title, s, extra) {
     if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
     return `<div class="statbox"><h3>${title}</h3><dl>
@@ -3462,7 +3462,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}${assignBox(t)}
+      ${teamPages()}
       <div class="viewtop">
         <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
         ${(() => {
@@ -3492,7 +3492,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   function renderTeamDlg() {
     const t = teams.get(dlgTeam); if (!t) { $("teamDlg").close(); return; }
-    // keep what's been typed on the Notes page through redraws and trips to the Scouting page
+    // keep what's been typed on the Scouting page through redraws and trips to the Notes page
     if ($("dNote")) { draft.note = $("dNote").value; draft.tags = $("dTags").value; draft.dnp = $("dDnp").checked; }
     if (dlgMode === "view") return renderTeamView(t);
     renderTeamEdit(t);
@@ -3536,7 +3536,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}
+      ${teamPages()}${assignBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
       ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
