@@ -1137,6 +1137,37 @@ input, textarea { caret-color: var(--accent); }
 .qualsum .nextm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
 .briefbtn { order: 2; }
 @media (max-width: 560px) { .briefbtn { order: 2; flex: 1 1 100%; min-height: 44px; } }
+
+/* ---- coverage board ---- */
+.cvwrap { grid-column: 1 / -1; display: flex; flex-direction: column; min-width: 0; }   /* the match list is a card grid; the board spans it */
+.cvtoggle { margin: 2px 0 10px; width: fit-content; max-width: 100%; }
+.cvsum { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.cvsum p { margin: 0; }
+.cvload { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 13px; }
+.cvload .num { color: var(--muted); margin-right: 4px; }
+.cvwarn { color: #a16207; }
+.cvlist { display: flex; flex-direction: column; gap: 6px; }
+.cvrow { display: grid; grid-template-columns: 64px 1fr 1fr; gap: 8px; align-items: stretch; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.cvq { display: flex; flex-direction: column; justify-content: center; }
+.cvq b { font-family: var(--f-body); font-weight: 700; font-size: 15px; }
+.cvq small { color: var(--muted); font-size: 11.5px; }
+.cvside { display: grid; gap: 6px; }
+.cvchip { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); }
+.cvchip b { font-family: var(--f-display); font-size: 16px; line-height: 1.1; }
+.cvchip small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cvchip.red { background: color-mix(in srgb, #dc2626 8%, var(--surface)); } .cvchip.blue { background: color-mix(in srgb, #2563eb 8%, var(--surface)); }
+.cvchip.me b { color: var(--accent-ink); } .cvchip.us small { color: var(--accent-ink); font-weight: 600; }
+.cvchip.gap { border: 1.5px dashed #d97706; }
+html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.gap.past small { color: var(--muted); font-weight: 400; }   /* after the match a gap is history, not a to-do */
+.cvchip.gap small { color: #a16207; font-weight: 600; }
+.cvchip.done small { color: #15803d; font-weight: 600; } .cvchip.late small { color: #b91c1c; font-weight: 600; }
+:root[data-theme="dark"] .cvchip.gap small, :root[data-theme="dark"] .cvwarn { color: #fbbf24; }
+:root[data-theme="dark"] .cvchip.done small { color: #4ade80; } :root[data-theme="dark"] .cvchip.late small { color: #f87171; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cvchip.gap small, :root:not([data-theme="light"]) .cvwarn { color: #fbbf24; }
+  :root:not([data-theme="light"]) .cvchip.done small { color: #4ade80; } :root:not([data-theme="light"]) .cvchip.late small { color: #f87171; } }
+.cvchip:hover { border-color: var(--accent); } .cvchip:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+@media (min-width: 900px) { .cvlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); } }
+@media (max-width: 560px) { .cvrow { grid-template-columns: 48px 1fr 1fr; padding: 8px; gap: 6px; } .cvchip { min-height: 44px; justify-content: center; } }
 </style>
 
 <header class="top">
@@ -1235,6 +1266,7 @@ input, textarea { caret-color: var(--accent); }
             <div class="seg" role="group" aria-label="Which matches">
               <button type="button" id="qOurs" aria-pressed="true">Our matches</button>
               <button type="button" id="qAll" aria-pressed="false">All</button>
+              <button type="button" id="qCover" aria-pressed="false" title="Which robots in each qual have a scout">Coverage</button>
             </div>
             <button type="button" class="btn" id="qRefresh">Refresh</button>
           </div>
@@ -2430,6 +2462,7 @@ input, textarea { caret-color: var(--accent); }
      Read straight from the stats source each time (it's public), never saved. Refreshes every
      2 minutes while the tab is open. */
   let quals = { key: null, at: 0, list: null, err: "", loading: false }, qualOurs = true;
+  var qualCover = false, coverPlayed = false;   // Quals: the coverage board, and whether it looks back at played quals
   async function loadQuals(force) {
     const ev = current && events.get(current); if (!ev || quals.loading) return;
     if (!force && quals.key === current && Date.now() - quals.at < 60000) return;
@@ -2613,10 +2646,56 @@ input, textarea { caret-color: var(--accent); }
       <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The predictor picked the winner of this match">Called it</span>` : `<span class="pbad" title="The predictor picked the wrong winner for this match">Missed</span>`}</div>`;
   }
 
+  /* Coverage board: every qual with each robot and who's scouting it, so gaps get filled before the match.
+     Coming up: covered or a gap. Already played: written up ✓, scouted but not written up !, or nobody. */
+  function coverageHtml(list, label, fmtT, q) {
+    const ql = list.filter(m => m.level === "Quals"), upcoming = ql.filter(m => !m.played), played = ql.filter(m => m.played);
+    const rows = (coverPlayed ? played.slice().reverse() : upcoming).filter(m => !q || [...m.red, ...m.blue].some(t => String(t.n).includes(q)));
+    const stateOf = (m, n) => {
+      if (n === settings.us) return { k: "us", on: [] };   // our own robot doesn't need a scout
+      const t = teams.get(n), key = matchKey(m), on = t ? scoutsOnMatch(t, key) : [];
+      if (!m.played) return { k: on.length ? "on" : "gap", on };
+      const by = t ? [...new Set(allNotes(t).filter(x => x.ctx === "qual" && x.match === key).map(x => x.by))] : [];
+      return by.length ? { k: "done", on: by } : { k: on.length ? "late" : "gap", on };
+    };
+    const names = (ids) => ids.map(k => esc(nameOf(k))).join(", ");
+    const chip = (m, x, color) => {
+      const st = stateOf(m, x.n);
+      const sub = st.k === "us" ? "us" : st.k === "gap" ? (m.played ? "nobody" : "no scout") : (st.k === "done" ? "✓ " : st.k === "late" ? "! " : "") + names(st.on);
+      const tip = st.k === "us" ? "Our robot" : st.k === "gap" ? (m.played ? "Nobody scouted this robot" : "Nobody is scouting this robot yet") : st.k === "done" ? "Written up by " + names(st.on) : st.k === "late" ? "Played, but no notes saved yet" : "Scouted by " + names(st.on);
+      return `<button type="button" class="cvchip ${st.k} ${color} ${m.played ? "past" : ""} ${x.n === settings.us ? "me" : ""}" data-team="${x.n}" title="${esc(tip)}"><b>${esc(x.n)}</b><small>${sub}</small></button>`;
+    };
+    // the summary: how many robots have a scout, who's carrying the most, and anyone with two robots in one match
+    const load = new Map(), twice = [];
+    let total = 0, got = 0;
+    for (const m of rows) {
+      const per = new Map();
+      for (const x of [...m.red, ...m.blue]) {
+        const st = stateOf(m, x.n); if (st.k === "us") continue; total++;
+        if (st.k === "on" || st.k === "done") got++;
+        for (const k of (st.k === "gap" ? [] : st.on)) { load.set(k, (load.get(k) || 0) + 1); per.set(k, (per.get(k) || 0) + 1); }
+      }
+      if (!m.played) for (const [k, c] of per) if (c > 1) twice.push(`${esc(nameOf(k))} has ${c} robots in ${esc(label(m))}`);
+    }
+    const toggle = `<div class="seg cvtoggle" role="group" aria-label="Which quals"><button type="button" data-cvp="0" aria-pressed="${!coverPlayed}">Coming up · ${upcoming.length}</button><button type="button" data-cvp="1" aria-pressed="${coverPlayed}">Already played · ${played.length}</button></div>`;
+    if (!rows.length) return toggle + (q ? dinoEmpty("No quals match", "Try a different team number.", "sm", "lying")
+      : coverPlayed ? dinoEmpty("No quals played yet", "Come back once matches start.", "sm", "sleep") : dinoEmpty("Every qual is played", "Switch to Already played to see which ones got written up.", "sm", "sleep"));
+    const loads = [...load.entries()].sort((a, b) => b[1] - a[1]);
+    const sum = `<div class="cvsum">
+      <p><b>${got} of ${total}</b> robots ${coverPlayed ? "were written up" : "have a scout"}${total - got ? ` · <span class="${coverPlayed ? "qlate" : "qtodo"}">${total - got} ${coverPlayed ? "not written up" : "with nobody yet"}</span>` : ` · <span class="qdone">all covered ✓</span>`}</p>
+      ${loads.length ? `<div class="cvload">${loads.map(([k, c]) => `${who(k, k === uid ? "You" : null)}<span class="num">${c}</span>`).join("")}</div>` : ""}
+      ${twice.length ? `<p class="hint cvwarn">Two robots in one match is hard to watch: ${twice.slice(0, 4).join("; ")}${twice.length > 4 ? "…" : ""}.</p>` : ""}
+      <p class="hint">${coverPlayed ? "Tap a team to see its notes." : `Tap a team to claim it${canManage() ? " or assign a scout" : ""}.`}</p></div>`;
+    return toggle + sum + `<div class="cvlist">${rows.map(m => `<div class="cvrow">
+      <div class="cvq"><b>${esc(label(m))}</b><small>${m.scheduled ? esc(fmtT(m.scheduled)) : ""}</small></div>
+      <div class="cvside">${m.red.map(x => chip(m, x, "red")).join("")}</div>
+      <div class="cvside">${m.blue.map(x => chip(m, x, "blue")).join("")}</div></div>`).join("")}</div>`;
+  }
   function renderQuals(c) {
     if ($("qualsWrap").hidden) return;
     if ($("matchDlg").open && matchPage === "scout") renderMatchDlg();   // ratings, notes and photos change live
-    $("qOurs").setAttribute("aria-pressed", String(qualOurs)); $("qAll").setAttribute("aria-pressed", String(!qualOurs));
+    $("qOurs").setAttribute("aria-pressed", String(qualOurs && !qualCover)); $("qAll").setAttribute("aria-pressed", String(!qualOurs && !qualCover));
+    $("qCover").setAttribute("aria-pressed", String(qualCover)); $("predHead").hidden = qualCover;
     $("qRefresh").disabled = quals.loading;
     const us = settings.us, picks = new Set(c.field.filter(t => t.status === "partner").map(t => t.number));
     const list = quals.key === current ? quals.list : null;
@@ -2649,6 +2728,7 @@ input, textarea { caret-color: var(--accent); }
       ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm"><button type="button" class="btn primary briefbtn" data-brief="${esc(matchKey(next))}">Briefing for ${label(next)}</button>Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
+    if (qualCover) { quals.shownKeys = list.map(matchKey); $("qualNote").textContent = ""; $("matchList").innerHTML = `<div class="cvwrap">${coverageHtml(list, label, fmtT, q)}</div>`; return; }
     let shown = qualOurs && ours.length ? ours : list;
     if (q) shown = shown.filter(m => [...m.red, ...m.blue].some(t => String(t.n).includes(q)));
     quals.shownKeys = shown.map(matchKey);   // the match window's previous/next follow this list
@@ -4075,8 +4155,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // the Team tab only exists on phones; going wider puts the side panels back beside the list
   const phoneMq = matchMedia("(max-width: 560px)");
   phoneMq.addEventListener("change", () => { if (!phoneMq.matches && view.tab === "team") setTab("pick"); });
-  $("qOurs").onclick = () => { qualOurs = true; render(); };
-  $("qAll").onclick = () => { qualOurs = false; render(); };
+  $("qOurs").onclick = () => { qualOurs = true; qualCover = false; render(); };
+  $("qAll").onclick = () => { qualOurs = false; qualCover = false; render(); };
+  $("qCover").onclick = () => { qualCover = true; render(); };
+  document.addEventListener("click", (e) => { const b = e.target.closest("[data-cvp]"); if (b) { coverPlayed = b.dataset.cvp === "1"; render(); } });
   $("qRefresh").onclick = () => loadQuals(true);
   // a message showing inside a window that closes moves back to the page
   const toastHome = new MutationObserver(() => { const el = $("toast"), d = el.parentElement; if (d && d.tagName === "DIALOG" && !d.open) document.body.appendChild(el); });
