@@ -814,7 +814,7 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .dots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
   .dots button { width: auto; height: 34px; }
   /* on a phone, writing comes first: stats move below the note, numbers and tags */
-  #teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap { order: 1; }
+  #teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap, #teamForm .statsbottom { order: 1; }
   #teamForm .dlgfoot { order: 2; }
   #search { width: 100%; order: 5; }
   .evname { max-width: none; }
@@ -990,6 +990,38 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 .photobtn { flex: 1 1 0; justify-content: center; text-align: center; }
 .photobtn:focus-within { outline: 2px solid var(--glow); outline-offset: 2px; }
 .photothumbs { flex: 1 0 100%; }
+
+/* ---- refresh ----
+   Phones: a compact two-row header, one-line status strips, and the tabs as a bar at the bottom of the screen
+   (always one thumb-tap away, however far down a list you are). Everywhere: calmer cards and one button height. */
+.panel, .card, .notecard, .match, .evcard, .scoutedbox, .statbox, .assignbox, .myteams, .ctxbox { border-radius: 14px; }
+.statsbottom { display: flex; flex-direction: column; gap: 10px; margin-top: 6px; padding-top: 14px; border-top: 1px dashed var(--line); }
+.statsbottom > h3 { margin: 0; }
+@media (max-width: 560px) {
+  .top .wrap { padding-block: 8px; gap: 6px 8px; }
+  .brandlogo { width: 34px; }
+  .brand h1 { font-size: 17px; white-space: nowrap; }
+  #meBtn { min-height: 36px; padding: 4px 10px; font-size: 14px; }
+  #evNav .hfield > span { display: none; }
+  #evNav .evname { font-size: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: block; }
+  #homeBtn, #rosterBtn, #themeBtn, .top .btn-band, .top .hfield select { min-height: 36px; font-size: 14px; padding-block: 4px; }
+  label.hfield:has(#allianceSize) > span { font-size: 11px; }
+  .livestate > span:nth-child(2) { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .liveopt, #pickToggle { min-height: 36px; padding-block: 4px; font-size: 14px; }
+  .boardview { gap: 8px; }
+
+  /* the tab bar lives at the bottom of the screen */
+  .panel .toolbar .tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30; margin: 0; width: auto; justify-content: space-around;
+    background: var(--band); padding: 4px max(6px, env(safe-area-inset-right, 0px)) calc(4px + env(safe-area-inset-bottom, 0px)) max(6px, env(safe-area-inset-left, 0px));
+    box-shadow: 0 -6px 18px -10px rgb(0 0 0 / .45); border-top: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+  .panel .toolbar .tabs button { flex: 1 1 0; text-align: center; color: var(--band-muted); font-size: 13px; padding: 12px 2px 10px; min-height: 0;
+    border-bottom: 0; border-top: 3px solid transparent; border-radius: 0; letter-spacing: .05em; }
+  .panel .toolbar .tabs button[aria-selected="true"] { color: var(--band-ink); border-top-color: var(--glow); border-bottom: 0; }
+  .panel .toolbar .tabs button:hover { color: var(--band-ink); }
+  body:has(#boardView:not([hidden])) .foot .wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
+  body:has(#boardView:not([hidden])) .toast { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
+  body:has(#boardView:not([hidden])) #syncPill { bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+}
 </style>
 
 <header class="top">
@@ -3418,10 +3450,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
       ${pitCheck(t)}${formBox(t)}${scoutedBox(t)}
-      <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
-      ${t !== c.us ? `<div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>` : ""}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
         ${peopleBoxes(t)}${noteList(t, "view" + t.number, 6, dlgBy)}</div>
+      <section class="statsbottom" aria-label="Results from FTCScout"><h3>Results</h3>
+        ${t !== c.us ? `<div class="viewexp"><span>Expected points with us</span><b class="num">${fmt(expected(t))}</b><span class="hint">OPR ${fmt(s.auto)} auto · ${fmt(s.teleop)} teleop · ${fmt(s.endgame)} endgame, scaled by reliability</span></div>` : ""}
+        <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div></section>
       <div class="dlgfoot sticky"><button type="button" class="btn primary" data-close>Close</button></div>`;
   }
   function renderTeamDlg() {
@@ -3470,7 +3503,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}${assignBox(t)}
+      ${teamPages()}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "Notes save only when the board is open on claude.ai." : !uid ? "Enter your scout code to add notes and numbers." : "View-only access can't add notes."}</p>`}
       ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
@@ -3774,6 +3807,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("qualsWrap").hidden = tab !== "quals"; $("availSeg").hidden = tab !== "pick";
     if (tab === "quals") loadQuals(false);
     render();
+    // the phone tab bar sits at the bottom of the screen: start the new tab at the top of its list
+    if (window.matchMedia("(max-width: 560px)").matches) { const panel = document.querySelector(".panel"); if (panel && panel.getBoundingClientRect().top < 0) panel.scrollIntoView({ block: "start" }); }
   }
   // tapping the dark area outside a window closes it (handy on phones)
   document.querySelectorAll("dialog").forEach(d => d.addEventListener("click", (e) => { if (e.target === d) d.close(); }));
