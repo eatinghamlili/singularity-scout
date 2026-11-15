@@ -505,7 +505,8 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .abtns select { min-height: 40px; }
 .myteams { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
 .myteams > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
-.myteams.empty { border-style: dashed; }
+.myteams.none { border-style: dashed; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; padding: 8px 12px; background: transparent; }
+.myteams.none .hint { font-size: 13px; }
 .myrow { display: flex; flex-wrap: wrap; gap: 8px; }
 .myteam { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; padding: 8px 12px; min-width: 160px; flex: 1 1 200px;
   border: 1px solid var(--line); border-radius: 10px; background: var(--surface); touch-action: manipulation; }
@@ -1053,6 +1054,9 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   body:has(#boardView:not([hidden])) .foot .wrap { padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px)); }
   body:has(#boardView:not([hidden])) .toast { bottom: calc(70px + env(safe-area-inset-bottom, 0px)); }
   body:has(#boardView:not([hidden])) #syncPill { bottom: calc(70px + env(safe-area-inset-bottom, 0px)) !important; }
+  /* the Team tab's cards live outside the list panel; with the tabs moved to the bottom bar, its empty shell goes */
+  .grid.teamtab > .panel { background: none; border: 0; box-shadow: none; padding: 0; min-height: 0; }
+  .grid.teamtab > .panel > .toolbar { padding: 0; min-height: 0; border: 0; }
 }
 </style>
 
@@ -2168,7 +2172,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     let state, text, more = "";
     if (liveOn && liveBusy) { state = "busy"; text = `Checking ${SOURCE.name} for new results…`; }
     else if (fresh) { state = "on"; text = `Live · standings updated ${ago(live.at)}`; more = `, checking every ${live.every} min${live.changed ? ` · ${live.changed} team${live.changed === 1 ? "" : "s"} changed` : ""}`; }
-    else if (live && live.on) { state = "stale"; text = `Live updates paused · last update ${ago(live.at)}. They resume as soon as any scout has this competition open.`; }
+    else if (live && live.on) { state = "stale"; text = `Live updates paused · last update ${ago(live.at)}.`; more = " They resume as soon as any scout has this competition open."; }
     else { state = "off"; text = ev.loadedAt ? `Standings from ${ago(live?.at || ev.loadedAt)}. Open during the event to keep them current.` : ""; }
     const ownerCtl = uid && !readOnly ? `<div class="livectl" id="liveCtl">
       <label class="livesel">Every <select id="liveEvery" aria-label="Update interval">${LIVE_CHOICES.map(m => `<option value="${m}" ${m === liveEvery ? "selected" : ""}>${m} min</option>`).join("")}</select></label>
@@ -2536,6 +2540,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const us = settings.us, picks = new Set(c.field.filter(t => t.status === "partner").map(t => t.number));
     const list = quals.key === current ? quals.list : null;
     if (!list) {
+      // Quals is the opening tab, so it can show before the competition itself has arrived: start the schedule once it has
+      if (!quals.loading && !(quals.key === current && quals.err) && current && events.get(current)) setTimeout(() => loadQuals(false), 0);
       $("qualSum").innerHTML = ""; $("matchList").innerHTML = `<div class="empty">${quals.err ? esc(quals.err) : "Getting the match schedule…"}</div>`;
       $("qualNote").textContent = ""; return;
     }
@@ -2559,7 +2565,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
     $("myTeamsQ").innerHTML = myTeamsHtml(compute());
     $("qualSum").innerHTML = ours.length
-      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match${ours.filter(surOf).length === 1 ? "" : "es"} not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
@@ -2567,7 +2573,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     quals.shownKeys = shown.map(matchKey);   // the match window's previous/next follow this list
     const nextAll = list.find(m => !m.played);
     $("qualNote").textContent = list.length
-      ? `${list.filter(m => m.played).length} of ${list.length} matches played${quals.at ? ` · updated ${ago(quals.at)}` : ""}. From ${SOURCE.matchesFrom === "FIRST" ? "FIRST (official)" : SOURCE.name}. Tap a match for its notes, or a team number for that team's scouting.`
+      ? `${list.filter(m => m.played).length} of ${list.length} played${quals.at ? ` · updated ${ago(quals.at)}` : ""} · from ${SOURCE.matchesFrom === "FIRST" ? "FIRST (official)" : SOURCE.name}. Tap a match for its notes, or a team number for its scouting.`
       : `${SOURCE.name} hasn't posted a match schedule for this competition yet.`;
     if (!shown.length) { $("matchList").innerHTML = list.length ? dinoEmpty("No matches match", "Try a different team number.", "sm", "lying") : dinoEmpty("No matches yet", "The schedule usually appears the morning of the event.", "", "sleep"); return; }
     const chip = (t) => `<button type="button" class="mteam ${t.n === us ? "me" : ""} ${picks.has(t.n) ? "pick" : ""}" data-team="${t.n}" title="${esc((teams.get(t.n) || {}).name || "")}">${t.n}${t.sur ? "*" : ""}${t.noShow ? `<small>no show</small>` : ""}${t.dq ? `<small>DQ</small>` : ""}</button>`;
@@ -2624,7 +2630,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       ${tags ? `<div class="tags">${tags}</div>` : ""}
       ${hexOrPhoto(t, "m" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
       ${(() => { const key = matchKey(m), on = scoutsOnMatch(t, key), done = on.filter(k => doneQuals(t, k).has(key)), todo = on.filter(k => !done.includes(k));
-        return on.length ? `<div class="assignline">${todo.length ? (m.played ? `<span class="qlate">! Not written up yet:</span> ` : `<span class="qtodo">○ Scouting this qual:</span> `) + todo.map(k => who(k, k === uid ? "You" : null)).join(" ") : ""}${done.length ? `<span class="qdone">✓ Scouted:</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
+        return on.length ? `<div class="assignline">${todo.length ? (m.played ? `<span class="qlate">Not written up yet !</span> ` : `<span class="qtodo">Scouting this qual ○</span> `) + todo.map(k => who(k, k === uid ? "You" : null)).join(" ") : ""}${done.length ? `<span class="qdone">Scouted ✓</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
           : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
       ${noteList(t, "mc" + t.number, 1)}
     </article>`;
@@ -3422,21 +3428,21 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function leftQuals(t, k) { const done = doneQuals(t, k), mine = qualsOf(t, k) || teamQuals(t.number).map(matchKey); return mine.filter(q => !done.has(q)); }
   // a qual that's been played: its notes are now overdue if nobody saved them
   function playedKeys(num) { return new Set(teamQuals(num).filter(m => m.played).map(matchKey)); }
-  // one qual, marked: ✓ written up, ! played but not written up yet, ○ still to come (html, label escaped)
+  // one qual, marked after its number: ✓ written up, ! played but not written up yet, ○ still to come (html, label escaped)
   function qualMark(key, done, played) {
     const l = esc(matchLabelOf(key));
     return done.has(key) ? `<span class="qdone" title="Scouted">${l} ✓</span>`
-      : played.has(key) ? `<span class="qlate" title="Played, but no notes saved yet">! ${l}</span>`
-      : `<span class="qtodo" title="Not scouted yet">○ ${l}</span>`;
+      : played.has(key) ? `<span class="qlate" title="Played, but no notes saved yet">${l} !</span>`
+      : `<span class="qtodo" title="Not scouted yet">${l} ○</span>`;
   }
-  // the quals as a short line: "Q7 ✓, ! Q9, ○ Q13"
+  // the quals as a short line: "Q7 ✓, Q9 !, Q13 ○"
   function qualsHtml(t, k) {
     const q = qualsOf(t, k), done = doneQuals(t, k), played = playedKeys(t.number), all = teamQuals(t.number).map(matchKey);
     if (q) return q.map(x => qualMark(x, done, played)).join(", ");
     if (!all.length) return "all quals";
     const n = all.filter(x => done.has(x)).length, late = all.filter(x => !done.has(x) && played.has(x)).length, todo = all.length - n - late;
     if (n === all.length) return `<span class="qdone">all scouted ✓</span>`;
-    return `all quals: ${[n ? `<span class="qdone">${n} ✓</span>` : "", late ? `<span class="qlate">${late} to write up</span>` : "", todo ? `<span class="qtodo">○ ${todo} to go</span>` : ""].filter(Boolean).join(" · ")}`;
+    return `all quals: ${[n ? `<span class="qdone">${n} ✓</span>` : "", late ? `<span class="qlate">${late} to write up !</span>` : "", todo ? `<span class="qtodo">${todo} to go ○</span>` : ""].filter(Boolean).join(" · ")}`;
   }
   function nextQualOf(num, only) {
     const m = teamQuals(num).find(q => !q.played && (!only || only.includes(matchKey(q)))); if (!m) return null;
@@ -3467,7 +3473,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function myTeamsHtml(c) {
     if (!uid || !current) return "";
     const mine = c.all.filter(iScout);
-    if (!mine.length) return `<div class="myteams empty"><b>Your teams</b><span class="hint">You're not scouting a team yet. Open a team and tap "I'll scout this team".</span></div>`;
+    if (!mine.length) return `<div class="myteams none"><b>Your teams</b><span class="hint">You're not scouting a team yet. Open a team and tap "I'll scout this team".</span></div>`;
     const rows = mine.map(t => { const mq = qualsOf(t, uid), left = leftQuals(t, uid), finished = teamQuals(t.number).length && !left.length, nq = finished ? null : nextQualOf(t.number, left);
       return `<button type="button" class="myteam ${finished ? "finished" : ""}" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
         <small>${finished ? `<span class="qdone">all scouted ✓</span>` : nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? "quals left to write up" : "no schedule yet"}${mq && !finished ? ` · ${qualsHtml(t, uid)}` : ""}</small></button>`; });
