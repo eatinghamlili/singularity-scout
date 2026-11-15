@@ -3019,8 +3019,11 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     subscribeEvent(current);
     window.scrollTo(0, 0);
     render();
-    if (current && pendingTab) { const t = pendingTab; pendingTab = null; setTab(t); }
+    // opening a competition starts on its Quals tab
+    const fresh = !!current && current !== routedKey; routedKey = current;
+    if (current && (pendingTab || fresh)) { const t = pendingTab || "quals"; pendingTab = null; setTab(t); }
   }
+  var routedKey = null;   // the competition the board last opened (var: route() can run before this line)
   function goTo(key) { if (location.hash.slice(1) === (key || "")) route(); else location.hash = key || ""; }
 
   function renderSliders() {
