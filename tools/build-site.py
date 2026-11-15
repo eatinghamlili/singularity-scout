@@ -100,7 +100,8 @@ HEAD = """<!doctype html>
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co; connect-src 'self' https://facgwsflliuhndhrfwmh.supabase.co wss://facgwsflliuhndhrfwmh.supabase.co https://bhfvbejkmubksoupiidg.supabase.co wss://bhfvbejkmubksoupiidg.supabase.co https://api.ftcscout.org; worker-src 'self'; manifest-src 'self'; frame-src 'none'; object-src 'none'; base-uri 'none'; form-action 'self'">
 <meta name="referrer" content="strict-origin-when-cross-origin">
 <meta name="description" content="Team 51 NerdHerd Singularity's FTC scouting and alliance selection board.">
-<meta name="theme-color" content="#1b0f33">
+<meta name="theme-color" content="#1b0f33" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0a0614" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">

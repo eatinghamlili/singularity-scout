@@ -1056,6 +1056,27 @@ input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
 input, textarea { caret-color: var(--accent); }
 @media (max-width: 560px) { select:not(.top select) { min-height: 44px; } }
 @media (pointer: coarse) { select:not(.top select) { min-height: 44px; } }
+
+/* ---- iPhone pass ----
+   Touch screens: every control gets at least a 44pt tap area (Apple's minimum) without growing how it looks:
+   an invisible margin around small chips, team numbers and links catches the near-misses. */
+@media (pointer: coarse) {
+  .mteam, .nnum, .linkbtn, .qhelp, .btn, .btn-band, .pthumb button, .achip .ax { position: relative; }
+  .mteam::after, .nnum::after, .linkbtn::after, .qhelp::after, .btn::after, .btn-band::after, .pthumb button::after, .achip .ax::after {
+    content: ""; position: absolute; inset: -5px; }
+  .qhelp::after, .pthumb button::after, .achip .ax::after { inset: -10px; }
+  .nnum::after, .linkbtn::after { inset: -10px -4px; }
+  .pthumb button { position: absolute; }
+  summary { padding-block: 10px; }
+  .check { min-height: 44px; }
+  .check input[type="checkbox"] { width: 22px; height: 22px; flex: none; }
+  .dots button { height: 42px; }
+}
+/* phones: alliance selection is a Pick list job, so its strip (and the best-pick card) stay on that tab */
+@media (max-width: 560px) {
+  body:not(:has(#tabPick[aria-selected="true"])) #pickBar,
+  body:not(:has(#tabPick[aria-selected="true"])) #next { display: none; }
+}
 </style>
 
 <header class="top">
