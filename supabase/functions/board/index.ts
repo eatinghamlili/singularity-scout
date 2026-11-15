@@ -502,7 +502,10 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
         if (!/^s_[A-Za-z0-9_-]{1,40}$/.test(k)) return "Pick a scout on the roster.";
         if (k !== uid && !lead) return "Only leads can assign other scouts.";
         if (v === null) continue;
-        if (!isObj(v) || v.by !== uid || !isTime(v.at) || Object.keys(v).length !== 2) return "That assignment couldn't be saved.";
+        if (!isObj(v) || v.by !== uid || !isTime(v.at) || Object.keys(v).some((f) => !["by", "at", "quals"].includes(f))) return "That assignment couldn't be saved.";
+        // which quals (none listed = all of the team's quals)
+        if (v.quals !== undefined && v.quals !== null && !(Array.isArray(v.quals) && v.quals.length <= 40 && v.quals.every((q: unknown) => typeof q === "string" && /^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(q))))
+          return "Those quals couldn't be saved.";
         if (k !== uid && !(await getDoc(`scouts/${k.slice(2)}`))) return "That scout isn't on the roster.";
       }
     }
