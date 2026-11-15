@@ -1170,6 +1170,17 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   #printSheet tr.taken td:not(.box) { color: #777; text-decoration: line-through; }
   #printSheet tr.dnp .fl { font-weight: 700; }
 }
+
+/* ---- count check ---- */
+.crew.cc div { align-items: baseline; } .crew.cc span { color: var(--muted); font-size: 12.5px; text-align: right; }
+.crew.cc span b { font-size: 12.5px; }
+.ccflags { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+.ccflags > b { font-size: 13px; }
+.ccflag { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px;
+  border: 1px solid color-mix(in srgb, #dc2626 35%, var(--line)); background: color-mix(in srgb, #dc2626 6%, var(--surface)); font-size: 13px; }
+.ccflag small { color: var(--muted); font-size: 12px; }
+.ccflag:hover { border-color: #dc2626; } .ccflag:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+@media (pointer: coarse) { .ccflag { min-height: 44px; } }
 </style>
 
 <header class="top">
@@ -1315,6 +1326,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 
     <aside class="rail">
       <section class="panel" id="crew"></section>
+      <section class="panel" id="countCheck"></section>
       <section class="panel" id="needs"></section>
       <section class="panel">
         <h2>Weights</h2>
@@ -3114,6 +3126,54 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       ${canManage() ? `<p class="hint" style="margin-top:10px">Give new scouts a code in Team roster.</p>` : ""}`;
   }
 
+  /* Count check: our scouts' qual counts against FIRST's official alliance scores. Scouts don't count hive tips,
+     so a little under is normal; counting MORE than the alliance scored means something was counted twice
+     (or the wrong robot or qual was picked). Leads see every scout; everyone else sees their own counts. */
+  var OVER = 6;   // (var: render can run before this line) points of slack before a count looks too high (penalty points and rounding)
+  function countCheck() {
+    const list = quals.key === current && quals.list ? quals.list : [];
+    const per = new Map(), flags = [];
+    let alliances = 0;
+    for (const m of list) {
+      if (!m.played || m.level !== "Quals" || m.redScore == null) continue;
+      const key = matchKey(m);
+      for (const [side, color, score, foul] of [[m.red, "Red", m.redScore, m.redFoul], [m.blue, "Blue", m.blueScore, m.blueFoul]]) {
+        const official = foul != null ? score - foul : score;   // without penalty points when FIRST gives them
+        const robots = side.map(x => {
+          const t = teams.get(x.n), ns = t ? allNotes(t).filter(z => z.ctx === "qual" && z.match === key && z.counts) : [];
+          return { n: x.n, ns, pts: ns.length ? ns.reduce((a, z) => a + countPts(z.counts).total, 0) / ns.length : null };
+        }).filter(r => r.pts != null);
+        if (!robots.length) continue;
+        alliances++;
+        const sum = robots.reduce((a, r) => a + r.pts, 0), full = robots.length === side.length, over = sum > official + OVER;
+        for (const r of robots) for (const z of r.ns) {
+          const x = per.get(z.by) || { n: 0, over: new Set(), full: 0, gap: 0 };
+          x.n++; if (over) x.over.add(key + color);   // alliances, not notes
+          if (full) { x.full++; x.gap += official - sum; }
+          per.set(z.by, x);
+        }
+        if (over) flags.push({ key, label: matchLabelOf(key), color, official, sum, robots });
+      }
+    }
+    return { per, flags, alliances };
+  }
+  function renderCountCheck() {
+    const el = $("countCheck"); if (!el) return;
+    if (!current) { el.innerHTML = ""; return; }
+    const { per, flags, alliances } = countCheck(), lead = canManage();
+    const rows = [...per.entries()].filter(([id]) => lead || id === uid).sort((a, b) => b[1].over.size - a[1].over.size || b[1].n - a[1].n);
+    const mineFlags = flags.filter(f => lead || f.robots.some(r => r.ns.some(z => z.by === uid)));
+    const line = ([id, x]) => `<div>${who(id, id === uid ? "You" : null)}<span>${x.n} count${x.n === 1 ? "" : "s"}${x.full ? ` · about ${Math.round(Math.abs(x.gap / x.full))} ${x.gap >= 0 ? "under" : "over"} the real score` : ""}${x.over.size ? ` · <b class="qlate">${x.over.size} alliance${x.over.size === 1 ? "" : "s"} too high !</b>` : ""}</span></div>`;
+    el.innerHTML = `<h2>Count check</h2>
+      <p class="sub">Qual counts added up per alliance and checked against FIRST's official score. A few points under is normal, since hive tips aren't counted. Over means something was counted twice.</p>
+      ${!alliances ? `<p class="hint">Nothing to check yet. Counts are checked once a qual is played and a scout picked it on the Scouting page.</p>`
+        : `${rows.length ? `<div class="crew cc">${rows.map(line).join("")}</div>` : `<p class="hint">You haven't counted a played qual yet.</p>`}
+        ${mineFlags.length ? `<div class="ccflags"><b>Looks too high</b>${mineFlags.slice(-6).reverse().map(f => `<button type="button" class="ccflag" data-match="${esc(f.key)}">
+            <span><b>${esc(f.label)} ${f.color}</b>: counted ${Math.round(f.sum)}, scored ${Math.round(f.official)}</span>
+            <small>${f.robots.map(r => `${esc(r.n)}: ${Math.round(r.pts)} (${r.ns.map(z => esc(z.by === uid ? "you" : nameOf(z.by))).join(", ")})`).join(" · ")}</small></button>`).join("")}</div>`
+          : `<p class="hint qdone">No counts above the real score ✓</p>`}`}`;
+  }
+
   let noteCounts = {}, countsAt = 0, countsBusy = false;
   /* Keep "We're competing" honest: for competitions that haven't happened yet, re-check the registered
      teams every 30 minutes, so Team 51 shows up there as soon as it registers (and drops off if it withdraws). */
@@ -3289,7 +3349,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 
   function render() {
     const c = compute();
-    renderHeader(); renderHome(); renderCrew(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
+    renderHeader(); renderHome(); renderCrew(); renderCountCheck(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
     $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick";
