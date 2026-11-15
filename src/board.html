@@ -1181,6 +1181,19 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .ccflag small { color: var(--muted); font-size: 12px; }
 .ccflag:hover { border-color: #dc2626; } .ccflag:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 @media (pointer: coarse) { .ccflag { min-height: 44px; } }
+
+/* ---- note search ---- */
+.nhits { display: flex; flex-direction: column; gap: 8px; margin: 4px 0 14px; }
+.nhits h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 15px; text-transform: uppercase; letter-spacing: .05em; }
+.nhits h3.nhteams { margin-top: 8px; }
+.nhit { padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); display: flex; flex-direction: column; gap: 6px; }
+.nhtop { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.nhtop small { color: var(--muted); font-size: 12px; }
+.nhit p { margin: 0; font-size: 14px; line-height: 1.45; overflow-wrap: anywhere; }
+.nhit mark { --hl: color-mix(in srgb, #facc15 55%, transparent); background: var(--hl); color: inherit; border-radius: 2px; padding: 0; box-shadow: 0 0 0 1.5px var(--hl); }   /* no padding: it would split the word */
+:root[data-theme="dark"] .nhit mark { --hl: color-mix(in srgb, #facc15 35%, transparent); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nhit mark { --hl: color-mix(in srgb, #facc15 35%, transparent); } }
+@media (min-width: 900px) { .nhits { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } .nhits h3, .nhits > p { grid-column: 1 / -1; } }
 </style>
 
 <header class="top">
@@ -1303,6 +1316,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <label class="check"><input type="checkbox" id="notesOnly" checked> Only teams with scouting</label>
           <label class="sortphone notesWhoBox">Show <select id="notesWho" aria-label="Which teams to show"><option value="all">All teams</option><option value="mine">My teams</option><option value="none">No scout yet</option></select></label></div>
         <div id="myTeamsN"></div>
+        <div id="noteHits"></div>
         <div class="notecards" id="noteCards"></div>
       </div>
       <div class="tablewrap" id="pickWrap">
@@ -2430,9 +2444,34 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     return { all, us, field, avg, need, fit, ranked, rankPct, skills };
   }
 
+  /* Note search: a word typed on the Notes tab ("defense", "broke", "slow intake") finds every note that says it,
+     team notes and match notes alike, newest first, with the word highlighted. */
+  function noteHits(q) {
+    const hits = [];
+    for (const t of teams.values()) for (const x of allNotes(t)) if (x.text && x.text.toLowerCase().includes(q))
+      hits.push({ team: t.number, match: x.ctx === "qual" && x.match ? x.match : "", pit: x.ctx === "pit", by: x.by, at: x.at, text: x.text });
+    for (const [key, d] of matchDocs) for (const x of Object.values(d.notes || {})) if (x && x.text && x.text.toLowerCase().includes(q))
+      hits.push({ team: null, match: key, by: x.by, at: x.at, text: x.text });
+    return hits.sort((a, b) => (b.at || 0) - (a.at || 0));
+  }
+  function hitSnippet(text, q) {
+    const i = text.toLowerCase().indexOf(q), a = Math.max(0, i - 60), b = Math.min(text.length, i + q.length + 110);
+    return (a ? "…" : "") + esc(text.slice(a, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length, b)) + (b < text.length ? "…" : "");
+  }
+  function renderNoteHits(q) {
+    const el = $("noteHits");
+    if (!/[a-z]/.test(q) || q.length < 2) { el.innerHTML = ""; return; }
+    const hits = noteHits(q);
+    el.innerHTML = `<section class="nhits"><h3>${hits.length ? `${hits.length} note${hits.length === 1 ? "" : "s"} mention “${esc(q)}”` : `No notes mention “${esc(q)}”`}</h3>
+      ${hits.slice(0, 40).map(h => `<div class="nhit"><div class="nhtop">${h.team != null ? `<button type="button" class="ctxtag team" data-team="${h.team}" title="Open ${esc(h.team)}'s page">${esc(h.team)}</button>` : ""}${h.match ? `<button type="button" class="ctxtag qual" data-match="${esc(h.match)}" title="Open this match">${esc(matchLabelOf(h.match))}</button>` : h.pit ? `<span class="ctxtag">Pits</span>` : ""}${who(h.by, h.by === uid ? "You" : null)}<small>${esc(when(h.at))}</small></div>
+        <p>${hitSnippet(h.text, q)}</p></div>`).join("")}
+      ${hits.length > 40 ? `<p class="hint">Showing the newest 40. Add another word to narrow it down.</p>` : ""}
+      ${hits.some(h => h.team != null) ? `<h3 class="nhteams">Teams</h3>` : ""}</section>`;
+  }
   function renderNotes(c) {
     if ($("notesWrap").hidden) return;
     const q = view.q.trim().toLowerCase();
+    renderNoteHits(q);
     const who0 = $("notesWho").value, only = $("notesOnly").checked && who0 === "all";
     $("myTeamsN").innerHTML = myTeamsHtml(c);
     const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
@@ -4151,7 +4190,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function setTab(tab) {
     view.tab = tab;
     $("tabPick").setAttribute("aria-selected", String(tab === "pick")); $("tabRank").setAttribute("aria-selected", String(tab === "rank")); $("tabNotes").setAttribute("aria-selected", String(tab === "notes"));
-    $("tabQuals").setAttribute("aria-selected", String(tab === "quals")); $("tabTeam").setAttribute("aria-selected", String(tab === "team"));
+    $("tabQuals").setAttribute("aria-selected", String(tab === "quals"));
+    $("search").placeholder = tab === "notes" ? "Team, or a word in the notes…" : "Find team…"; $("tabTeam").setAttribute("aria-selected", String(tab === "team"));
     document.querySelector(".grid").classList.toggle("teamtab", tab === "team");
     $("colKey").hidden = tab !== "pick" && tab !== "rank";
     $("pickWrap").hidden = tab !== "pick"; $("rankWrap").hidden = tab !== "rank"; $("notesWrap").hidden = tab !== "notes"; $("qualsWrap").hidden = tab !== "quals"; $("availSeg").hidden = tab !== "pick";
