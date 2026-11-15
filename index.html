@@ -846,9 +846,6 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .raterow { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "l a" "d d"; }
   .dots { display: grid; grid-template-columns: repeat(10, minmax(0, 1fr)); gap: 3px; }
   .dots button { width: auto; height: 34px; }
-  /* on a phone, writing comes first: stats move below the note, numbers and tags */
-  #teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap, #teamForm .statsbottom { order: 1; }
-  #teamForm .dlgfoot { order: 2; }
   #search { width: 100%; order: 5; }
   .evname { max-width: none; }
   .evrow { flex: 1 1 100%; }
@@ -1058,6 +1055,31 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   .grid.teamtab > .panel { background: none; border: 0; box-shadow: none; padding: 0; min-height: 0; }
   .grid.teamtab > .panel > .toolbar { padding: 0; min-height: 0; border: 0; }
 }
+
+/* ---- polish ----
+   One dropdown style everywhere below the header (Sort, Show, Assign a scout, the qual picker, live interval):
+   it was the browser's plain grey box, the one control on the page that didn't look like the rest. */
+select:not(.top select) { -webkit-appearance: none; appearance: none; cursor: pointer;
+  background-color: var(--sunk); color: var(--ink); border: 1px solid var(--line); border-radius: 7px;
+  padding: 6px 30px 6px 10px; min-height: 34px; font-weight: 500; line-height: 1.25; max-width: 100%;
+  background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+  background-position: calc(100% - 15px) 52%, calc(100% - 10px) 52%; background-size: 5px 5px; background-repeat: no-repeat;
+  transition: border-color .15s ease-out; }
+select:not(.top select):hover { border-color: var(--accent); }
+select:not(.top select):focus-visible { border-color: var(--accent); outline: 2px solid var(--glow); outline-offset: 1px; }
+select:not(.top select):disabled { opacity: .5; cursor: not-allowed; }
+.fld select:not(.top select) { width: 100%; font-weight: 400; }
+.sortphone select:not(.top select) { color: var(--ink); }
+/* the writing page: stats sit below the note on every screen */
+#teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap, #teamForm .statsbottom { order: 1; }
+#teamForm .dlgfoot { order: 2; }
+/* browser parts drawn in the board's colors: selection, scrollbars, checkboxes, the text caret */
+::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--ink); }
+html, dialog, .dlg, .tablewrap { scrollbar-color: color-mix(in srgb, var(--accent) 45%, var(--line)) transparent; }
+input[type="checkbox"], input[type="radio"] { accent-color: var(--accent); }
+input, textarea { caret-color: var(--accent); }
+@media (max-width: 560px) { select:not(.top select) { min-height: 44px; } }
+@media (pointer: coarse) { select:not(.top select) { min-height: 44px; } }
 </style>
 
 <header class="top">
