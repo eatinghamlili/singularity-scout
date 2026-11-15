@@ -1102,6 +1102,15 @@ input, textarea { caret-color: var(--accent); }
   body:not(:has(#tabPick[aria-selected="true"])) #pickBar,
   body:not(:has(#tabPick[aria-selected="true"])) #next { display: none; }
 }
+
+/* ---- safety + looks pass ----
+   A scout's own code is hidden as dots while it's typed (stands are crowded; phones get looked over).
+   The number pad stays, since it's still a number field. Codes a lead is handing out stay readable. */
+.codein { -webkit-text-security: disc; text-security: disc; }
+/* the sign-in mascot sits on a round badge like the rest of the site, so its cut-out edge doesn't fringe on dark */
+.gatedino { width: 132px; aspect-ratio: 1; object-fit: contain; border-radius: 50%; padding: 12px 10px 6px;
+  background: radial-gradient(closest-side, #f6f0ff, #e9ddff); margin-bottom: 12px;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent), 0 12px 26px -14px rgb(124 58 237 / .6); }
 </style>
 
 <header class="top">

@@ -10,6 +10,7 @@
 // Each scout can save up to 600 changes and 30 photos an hour (far more than a real event needs),
 // so a lost phone or a stolen sign-in can't flood the board or fill the photo storage.
 // The database refuses writes from anywhere else, so the page can't be bypassed.
+// A new password (or a lead's reset) signs the scout out on every other phone, so a lost phone can be locked out.
 // Scouts can also make an account with a username and password (no email, nothing linked). An account starts
 // from the 4-digit code a lead handed out, so nobody can make one without a code; the same code later sets a new
 // password if one is forgotten. Passwords are stored only as salted PBKDF2 hashes in a private table, and a
@@ -62,12 +63,17 @@ const unb64u = (s: string) => atob(s.replace(/-/g, "+").replace(/_/g, "/"));
 async function sign(body: string) { return hex(await crypto.subtle.sign("HMAC", await hmacKey(), enc.encode(body))); }
 // a sign-in remembers which code it came from (a short fingerprint, not the code); a new code ends it
 const codeMark = (hash: string) => hash.slice(0, 16);
-async function currentMark(sid: string) {
-  const { data } = await db.from("scout_keys").select("hash").eq("id", sid).maybeSingle();
-  if (data?.hash) return codeMark(String(data.hash));
-  const { data: l } = await db.from("scout_logins").select("pass_hash").eq("id", sid).maybeSingle();
-  return l?.pass_hash ? "p" + String(l.pass_hash).slice(0, 15) : null;   // a new password signs other phones out
+async function signInState(sid: string) {
+  const [{ data }, { data: l }] = await Promise.all([
+    db.from("scout_keys").select("hash").eq("id", sid).maybeSingle(),
+    db.from("scout_logins").select("pass_hash, updated_at").eq("id", sid).maybeSingle(),
+  ]);
+  const mark = data?.hash ? codeMark(String(data.hash)) : l?.pass_hash ? "p" + String(l.pass_hash).slice(0, 15) : null;
+  // when the password last changed (own change, a lead's reset, or a reset with the code): older sign-ins end
+  const pwAt = l?.updated_at ? Date.parse(String(l.updated_at)) : 0;
+  return { mark, pwAt: Number.isFinite(pwAt) ? pwAt : 0 };
 }
+async function currentMark(sid: string) { return (await signInState(sid)).mark; }
 async function makeToken(sid: string, mark: string) { const body = b64u(JSON.stringify({ sid, v: mark, exp: Date.now() + TOKEN_DAYS * 864e5 })); return body + "." + await sign(body); }
 function sameText(a: string, b: string) { if (a.length !== b.length) return false; let d = 0; for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i); return d === 0; }
 async function readToken(tok: string | null): Promise<string | null> {
@@ -77,7 +83,11 @@ async function readToken(tok: string | null): Promise<string | null> {
   let sid: unknown, v: unknown, exp: unknown;
   try { ({ sid, v, exp } = JSON.parse(unb64u(body))); } catch { return null; }
   if (typeof sid !== "string" || typeof v !== "string" || !(Number(exp) > Date.now())) return null;   // older sign-ins without a fingerprint sign in again
-  return (await currentMark(sid)) === v ? sid : null;
+  const st = await signInState(sid);
+  if (st.mark !== v) return null;   // a new code ends it
+  const issued = Number(exp) - TOKEN_DAYS * 864e5;
+  if (st.pwAt && issued < st.pwAt) return null;   // so does a new password: a lost phone stays locked out
+  return sid;
 }
 // per-scout hourly budget: false when this request would go over it (and then nothing is recorded)
 async function withinLimit(sid: string, kind: "write" | "upload", n: number) {
@@ -290,7 +300,7 @@ async function changePassword(req: Request, body: any) {
   } else {
     const username = String(body?.username || "").trim().toLowerCase();
     const why = await usernameProblem(username, me); if (why) return fail(400, "bad_username", why);
-    const { error } = await db.from("scout_logins").insert({ id: me, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ipOf(req) });
+    const { error } = await db.from("scout_logins").insert({ id: me, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ipOf(req), updated_at: new Date().toISOString() });
     if (error) return fail(409, "taken", "That username is taken. Pick another.");
     await db.rpc("merge_doc", { p_path: `scouts/${me}`, p_patch: { login: true } });
     await setDisplay(me, body?.display ?? meDoc.display ?? "name", username);
@@ -357,7 +367,7 @@ async function claim(req: Request, body: any) {
   const h = await hashPassword(pw), now = new Date().toISOString();
   const { error } = l
     ? await db.from("scout_logins").update({ username, pass_hash: h.hash, salt: h.salt, iters: h.iters, must_change: false, updated_at: now }).eq("id", o.id)
-    : await db.from("scout_logins").insert({ id: o.id, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ip });
+    : await db.from("scout_logins").insert({ id: o.id, username, pass_hash: h.hash, salt: h.salt, iters: h.iters, created_ip: ip, updated_at: now });
   if (error) return fail(409, "taken", "That username is taken. Pick another.");
   await db.rpc("merge_doc", { p_path: `scouts/${o.id}`, p_patch: { login: true, pending: false } });
   const cur = o.scout!.display === "username" ? "username" : "name";
@@ -379,7 +389,7 @@ async function rename(req: Request, body: any) {
   const username = String(body?.username || "").trim().toLowerCase();
   if (username === l.username) return json({ ok: true, username });
   const why = await usernameProblem(username, me); if (why) return fail(400, "bad_username", why);
-  const { error } = await db.from("scout_logins").update({ username, updated_at: new Date().toISOString() }).eq("id", me);
+  const { error } = await db.from("scout_logins").update({ username }).eq("id", me);   // updated_at marks password changes only
   if (error) return fail(409, "taken", "That username is taken. Pick another.");
   if (meDoc.display === "username") await setDisplay(me, "username", username);
   return json({ ok: true, username });
@@ -416,12 +426,18 @@ async function upload(req: Request, body: any) {
   if (!(await withinLimit(me, "upload", 1))) return slowDown("That's a lot of photos in one hour. Try again in a little while.");
   const doc = String(body?.path || "");
   if (!/^events\/[0-9]{4}-[A-Z0-9]{1,30}\/(teams|matches)\/[A-Za-z0-9_-]{1,24}$/.test(doc)) return fail(400, "bad_path", "Photos go on a team or a match.");
-  const type = String(body?.type || ""), ext = ({ "image/webp": "webp", "image/jpeg": "jpg", "image/png": "png" } as Record<string, string>)[type];
-  if (!ext) return fail(400, "bad_type", "That kind of picture isn't supported.");
+  if (!["image/webp", "image/jpeg", "image/png"].includes(String(body?.type || ""))) return fail(400, "bad_type", "That kind of picture isn't supported.");
   let bytes: Uint8Array;
   try { const bin = atob(String(body?.data || "")); bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i); }
   catch { return fail(400, "bad_data", "That picture couldn't be read."); }
   if (bytes.length < 100 || bytes.length > 2_000_000) return fail(400, "too_big", "That picture is too large.");
+  // what the file really is, from its first bytes (a web page or script can't pass as a photo, and a
+  // mislabeled but real JPEG/PNG/WebP is saved as what it is)
+  const at = (i: number, ...b: number[]) => b.every((x, j) => bytes[i + j] === x);
+  const ext = at(0, 0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a) ? "png" : at(0, 0xff, 0xd8, 0xff) ? "jpg"
+    : at(0, 0x52, 0x49, 0x46, 0x46) && at(8, 0x57, 0x45, 0x42, 0x50) ? "webp" : null;   // RIFF....WEBP
+  if (!ext) return fail(400, "bad_data", "That file isn't a picture the board can use.");
+  const type = ({ png: "image/png", jpg: "image/jpeg", webp: "image/webp" } as Record<string, string>)[ext];
   const name = `${doc}/${crypto.randomUUID().replace(/-/g, "").slice(0, 16)}.${ext}`;
   const { error } = await db.storage.from("photos").upload(name, bytes, { contentType: type, upsert: false });
   if (error) return fail(500, "server", "The photo couldn't be saved. Try again.");
