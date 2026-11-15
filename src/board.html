@@ -1143,6 +1143,33 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .cvchip:hover { border-color: var(--accent); } .cvchip:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 @media (min-width: 900px) { .cvlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(380px, 1fr)); } }
 @media (max-width: 560px) { .cvrow { grid-template-columns: 48px 1fr 1fr; padding: 8px; gap: 6px; } .cvchip { min-height: 44px; justify-content: center; } }
+
+/* ---- paper backup of the pick list ---- */
+#printSheet { display: none; }
+@media (max-width: 560px) { #printBtn { display: none; } }   /* phones print from the Team tab */
+@media print {
+  @page { margin: 12mm; }
+  html, body { background: #fff !important; color: #000 !important; }
+  body::before { display: none !important; }
+  body > *:not(#printSheet) { display: none !important; }
+  #printSheet { display: block !important; font-family: var(--f-body); font-size: 10.5pt; color: #000; }
+  #printSheet h1 { font-family: var(--f-display); font-size: 20pt; margin: 0 0 2pt; text-transform: uppercase; letter-spacing: .02em; }
+  #printSheet header p { margin: 0 0 3pt; }
+  #printSheet .small { font-size: 8.5pt; color: #333; }
+  #printSheet table { width: 100%; min-width: 0; border-collapse: collapse; margin: 6pt 0; font-size: 10pt; }
+  #printSheet th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: .04em; border-bottom: 1.5pt solid #000; padding: 3pt 4pt; }
+  #printSheet td { border-bottom: .5pt solid #999; padding: 3.5pt 4pt; vertical-align: top; }
+  #printSheet tr { break-inside: avoid; }
+  #printSheet th, #printSheet td { color: #000; background: none; }
+  #printSheet .r { text-align: right; font-variant-numeric: tabular-nums; }
+  #printSheet .tn { font-weight: 700; font-size: 11pt; }
+  #printSheet .nm { max-width: 46mm; }
+  #printSheet .b { font-weight: 700; }
+  #printSheet .fl { font-size: 8.5pt; max-width: 50mm; }
+  #printSheet .box { width: 12mm; border-left: .5pt solid #999; text-align: center; font-weight: 700; }
+  #printSheet tr.taken td:not(.box) { color: #777; text-decoration: line-through; }
+  #printSheet tr.dnp .fl { font-weight: 700; }
+}
 </style>
 
 <header class="top">
@@ -1211,6 +1238,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <button id="showAll" aria-pressed="true">All</button>
         </div>
         <button class="btn" id="exportBtn">Copy CSV</button>
+        <button type="button" class="btn" id="printBtn" data-print title="A paper copy of the pick list, in case the Wi-Fi goes down at selection">Print pick list</button>
         <label class="sortphone" id="sortPhoneBox">Sort <select id="sortPhone" aria-label="Sort the pick list by">
           <option value="fit">Pick score</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
           <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option><option value="scouted">Scouted OPR</option></select></label>
@@ -1303,12 +1331,13 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <li>Tap any team number to open it. <b>Scouting</b> is where you write: pick the qual or the pits, count what it scored, add a note and your 1–10 numbers. <b>Notes</b> gathers everyone's scouting. Ratings from all scouts are averaged.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
-        <div class="railrow"><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
+        <div class="railrow"><button type="button" class="btn" data-print>Print pick list</button><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
       </section>
     </aside>
   </div>
   </div>
 </main>
+<section id="printSheet" aria-hidden="true"></section>
 <footer class="foot"><div class="wrap"><img class="footdino" id="footDino" alt="" width="64" height="66"><div><b>Singularity Scout</b><span>Made by Team 51 · NerdHerd Singularity. Rawr.</span></div></div></footer>
 
 <dialog id="teamDlg"><form class="dlg" id="teamForm" method="dialog"></form></dialog>
@@ -4215,6 +4244,34 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     for (const t of teams.values()) if (t.status && t.status !== "available") patchTeam(t.number, { status: "available" });
     toast("Draft reset");
   };
+  /* Paper backup: the pick list as one printable sheet (in case the venue Wi-Fi dies at alliance selection).
+     Any print of this page prints the sheet, so Ctrl+P / Share > Print work too. */
+  function buildPrintSheet() {
+    const el = $("printSheet"); if (!el) return;
+    const c = compute(), ev = current && events.get(current);
+    if (!ev || !c.all.length) { el.innerHTML = `<h1>Team ${esc(settings.us)} pick list</h1><p>Open a competition first.</p>`; return; }
+    const w = settings.weights, now = new Date();
+    const partners = c.field.filter(t => t.status === "partner");
+    const row = (t, i) => {
+      const x = stats(t), sc = scoutAgg(t), has = x.src !== "none";
+      const flags = [t.dnp ? "DO NOT PICK" : "", cantMove(t) ? "CAN'T MOVE" : "", t.status === "taken" ? "taken" : "", t.status === "partner" ? "OUR PICK" : "", ...(t.tags || []).slice(0, 3)].filter(Boolean).join(" · ");
+      return `<tr class="${t.status === "taken" ? "taken" : ""} ${t.dnp || cantMove(t) ? "dnp" : ""}">
+        <td class="r">${i + 1}</td><td class="tn">${esc(t.number)}</td><td class="nm">${esc(t.name || "")}</td>
+        <td>${t.ev && t.ev.rank ? `#${esc(t.ev.rank)} <small>${esc(t.ev.w)}-${esc(t.ev.l)}-${esc(t.ev.t)}</small>` : "–"}</td>
+        <td class="r">${has ? fmt(x.auto) : "–"}</td><td class="r">${has ? fmt(x.teleop) : "–"}</td><td class="r">${has ? fmt(x.endgame) : "–"}</td>
+        <td class="r">${sc.overall != null ? sc.overall.toFixed(1) : "–"}</td><td class="r b">${esc(c.fit.get(t.number))}</td>
+        <td class="fl">${esc(flags)}</td><td class="box">${t.status === "taken" ? "✕" : ""}</td></tr>`;
+    };
+    el.innerHTML = `<header><h1>Team ${esc(settings.us)} pick list</h1>
+        <p><b>${esc(ev.name || current)}</b> · alliances of ${esc(settings.size)} · printed ${esc(now.toLocaleString([], { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }))}</p>
+        <p class="small">Order = pick score (fit for our robot from OPR and weights Auto ${fmt(w.auto)} · TeleOp ${fmt(w.teleop)} · Endgame ${fmt(w.endgame)} · Penalties ${fmt(w.fouls)}, scout ratings ${Math.round(w.scout * 100)}%, and ${Math.round(RANK_SHARE * 100)}% qualification rank). Do-not-pick and can't-move teams sit lower; teams already taken are crossed out at the end. Tick "Gone" as captains pick.</p>
+        ${partners.length ? `<p><b>Our alliance so far:</b> ${[settings.us, ...partners.map(t => t.number)].map(esc).join(" + ")}</p>` : ""}</header>
+      <table><thead><tr><th class="r">#</th><th>Team</th><th>Name</th><th>Qual rank</th><th class="r">Auto</th><th class="r">TeleOp</th><th class="r">End</th><th class="r">Scouts /10</th><th class="r">Score</th><th>Flags</th><th>Gone</th></tr></thead>
+        <tbody>${[...c.ranked.filter(t => t.status !== "taken"), ...c.ranked.filter(t => t.status === "taken")].map(row).join("")}</tbody></table>
+      <p class="small">Singularity Scout · Auto/TeleOp/End are points a match (OPR, or season best before 3 matches here).</p>`;
+  }
+  window.addEventListener("beforeprint", buildPrintSheet);
+  document.addEventListener("click", (e) => { if (e.target.closest("[data-print]")) { buildPrintSheet(); window.print(); } });
   $("exportBtn").onclick = () => {
     const q = (s) => /[",\n]/.test(s) ? `"${String(s).replace(/"/g, '""')}"` : String(s);
     const c = compute();
