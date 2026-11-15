@@ -461,6 +461,10 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .achip { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 2px 6px; }
 .aq { color: var(--muted); font-size: 12px; font-family: var(--f-body); letter-spacing: .02em; }
 .aqgrid b { font-family: var(--f-body); }
+.qdone { color: #15803d; font-weight: 600; }
+:root[data-theme="dark"] .qdone { color: #4ade80; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qdone { color: #4ade80; } }
+.myteam.finished { opacity: .75; }
 .aqedit { flex: 1 0 100%; display: flex; flex-direction: column; gap: 8px; padding: 10px; border: 1px dashed var(--accent); border-radius: 10px; background: var(--surface); }
 .aqall { font-weight: 600; display: flex; align-items: center; gap: 8px; min-height: 36px; }
 .aqgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 4px 10px; }
@@ -2294,7 +2298,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
-        ${scoutsOn(t).length ? `<div class="assignline"><span class="hint">Scouting:</span> ${scoutsOn(t).map(k => `${who(k, k === uid ? "You" : null)}${qualsOf(t, k) ? `<small class="aq">${esc(qualsText(qualsOf(t, k)))}</small>` : ""}`).join(" ")}</div>` : ""}
+        ${scoutsOn(t).length ? `<div class="assignline"><span class="hint">Scouting:</span> ${scoutsOn(t).map(k => `${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small>`).join(" ")}</div>` : ""}
         ${hexOrPhoto(t, "card" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
         ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
@@ -2584,7 +2588,9 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
         <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
       ${tags ? `<div class="tags">${tags}</div>` : ""}
       ${hexOrPhoto(t, "m" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
-      ${(() => { const on = scoutsOnMatch(t, matchKey(m)); return on.length ? `<div class="assignline"><span class="hint">Scouting this qual:</span> ${on.map(k => who(k, k === uid ? "You" : null)).join(" ")}</div>` : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
+      ${(() => { const key = matchKey(m), on = scoutsOnMatch(t, key), done = on.filter(k => doneQuals(t, k).has(key)), todo = on.filter(k => !done.includes(k));
+        return on.length ? `<div class="assignline">${todo.length ? `<span class="hint">Scouting this qual:</span> ${todo.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}${done.length ? `<span class="qdone">✓ Scouted:</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
+          : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
       ${noteList(t, "mc" + t.number, 1)}
     </article>`;
   }
@@ -3370,6 +3376,17 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function qualsOf(t, k) { const v = (t.assigned || {})[k]; return v && Array.isArray(v.quals) && v.quals.length ? v.quals : null; }
   function qualsText(q) { return q ? q.map(matchLabelOf).join(", ") : "all quals"; }
   function scoutsOnMatch(t, key) { return scoutsOn(t).filter(k => { const q = qualsOf(t, k); return !q || q.includes(key); }); }
+  // quals this scout already saved qual notes for on this team get a checkmark
+  function doneQuals(t, k) { return new Set(allNotes(t).filter(x => x.by === k && x.ctx === "qual" && x.match).map(x => x.match)); }
+  // what's still to scout: their picked quals (or all of the team's) without the checked ones
+  function leftQuals(t, k) { const done = doneQuals(t, k), mine = qualsOf(t, k) || teamQuals(t.number).map(matchKey); return mine.filter(q => !done.has(q)); }
+  // the quals as a short line, checked ones marked: "Q7 ✓, Q13" (html, every label escaped)
+  function qualsHtml(t, k) {
+    const q = qualsOf(t, k), done = doneQuals(t, k), all = teamQuals(t.number).map(matchKey);
+    if (q) return q.map(x => done.has(x) ? `<span class="qdone">${esc(matchLabelOf(x))} ✓</span>` : esc(matchLabelOf(x))).join(", ");
+    const n = all.filter(x => done.has(x)).length;
+    return !all.length ? "all quals" : n === all.length ? `<span class="qdone">all scouted ✓</span>` : n ? `all quals <span class="qdone">(${n} ✓)</span>` : "all quals";
+  }
   function nextQualOf(num, only) {
     const m = teamQuals(num).find(q => !q.played && (!only || only.includes(matchKey(q)))); if (!m) return null;
     const time = m.time || m.scheduled; const red = m.red.some(x => x.n === num);
@@ -3380,7 +3397,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (!uid || readOnly) return "";
     const on = scoutsOn(t), lead = canManage();
     const canEdit = (k) => lead || k === uid;
-    const chip = (k) => `<span class="achip">${who(k, k === uid ? "You" : null)}<small class="aq">${esc(qualsText(qualsOf(t, k)))}</small>
+    const chip = (k) => `<span class="achip">${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small>
       ${canEdit(k) ? `<button type="button" class="linkbtn" data-aqual="${esc(k)}" aria-expanded="${aqualOpen === k}">Quals</button><button type="button" class="ax" data-unassign="${esc(k)}" aria-label="Take ${esc(k === uid ? "yourself" : nameOf(k))} off this team">×</button>` : ""}</span>`;
     const list = teamQuals(t.number), picked = aqualOpen && on.includes(aqualOpen) ? qualsOf(t, aqualOpen) : null;
     const editor = aqualOpen && on.includes(aqualOpen) && canEdit(aqualOpen) ? `<div class="aqedit" role="group" aria-label="Quals ${esc(aqualOpen === uid ? "you're" : nameOf(aqualOpen) + " is")} scouting">
@@ -3400,14 +3417,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (!uid || !current) return "";
     const mine = c.all.filter(iScout);
     if (!mine.length) return `<div class="myteams empty"><b>Your teams</b><span class="hint">You're not scouting a team yet. Open a team and tap "I'll scout this team".</span></div>`;
-    const rows = mine.map(t => { const mq = qualsOf(t, uid), nq = nextQualOf(t.number, mq);
-      return `<button type="button" class="myteam" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
-        <small>${nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? (mq ? "your quals are played" : "all quals played") : "no schedule yet"}${mq ? ` · yours: ${esc(qualsText(mq))}` : ""}</small></button>`; });
+    const rows = mine.map(t => { const mq = qualsOf(t, uid), left = leftQuals(t, uid), finished = teamQuals(t.number).length && !left.length, nq = finished ? null : nextQualOf(t.number, left);
+      return `<button type="button" class="myteam ${finished ? "finished" : ""}" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
+        <small>${finished ? `<span class="qdone">all scouted ✓</span>` : nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? "quals left to write up" : "no schedule yet"}${mq && !finished ? ` · ${qualsHtml(t, uid)}` : ""}</small></button>`; });
     const free = c.all.filter(t => t !== c.us && !scoutsOn(t).length).length;
     return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Pick "No scout yet" in Scouting notes to see them.</span>` : ""}</div>`;
   }
   // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
-  const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button></div>`;
+  const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button></div>`;
   function statBox(title, s, extra) {
     if (!s) return `<div class="statbox"><h3>${title}</h3><p>No data yet.</p></div>`;
     return `<div class="statbox"><h3>${title}</h3><dl>
