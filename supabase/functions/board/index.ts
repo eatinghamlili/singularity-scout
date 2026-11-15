@@ -34,7 +34,7 @@ const KEYS: [RegExp, string[] | null][] = [
   [/^settings\/main$/, ["us", "event", "size", "weights"]],
   [/^scouts\//, ["name", "lead", "color", "createdAt", "hash", "pending"]],
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
-  [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo"]],
+  [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo", "assigned"]],
   [/\/matches\//, ["label", "notes"]],
   [/^events\/[^/]+$/, ["season", "code", "name", "start", "end", "city", "regionCode", "type", "teamCount", "hasUs", "source", "loadedAt", "loadedBy", "live", "starred", "starredBy", "starredAt"]],
 ];
@@ -495,6 +495,17 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
     const cur = await getDoc(path);
     const n = checkNotes(data.notes, cur?.notes, uid); if (n) return n;
     if (path.includes("/teams/")) { const tf = checkTeamFields(data, uid); if (tf) return tf; }
+    // who's scouting this team: anyone can sign themselves up or step off; only leads assign other scouts
+    if (data.assigned !== undefined) {
+      if (!isObj(data.assigned) || Object.keys(data.assigned).length > 20) return "That assignment couldn't be saved.";
+      for (const [k, v] of Object.entries(data.assigned)) {
+        if (!/^s_[A-Za-z0-9_-]{1,40}$/.test(k)) return "Pick a scout on the roster.";
+        if (k !== uid && !lead) return "Only leads can assign other scouts.";
+        if (v === null) continue;
+        if (!isObj(v) || v.by !== uid || !isTime(v.at) || Object.keys(v).length !== 2) return "That assignment couldn't be saved.";
+        if (k !== uid && !(await getDoc(`scouts/${k.slice(2)}`))) return "That scout isn't on the roster.";
+      }
+    }
     if ("label" in data && !isStr(data.label, 20)) return "That match label isn't valid.";
     if (data.ratings !== undefined) {
       if (!isObj(data.ratings)) return "Ratings must be an object.";

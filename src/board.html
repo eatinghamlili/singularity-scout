@@ -454,6 +454,26 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .scanmsg.good { color: #15803d; } .scanmsg.bad { color: var(--bad); }
 :root[data-theme="dark"] .scanmsg.good { color: #4ade80; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .scanmsg.good { color: #4ade80; } }
+.assignbox { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); }
+.assignbox .mlabel { font-size: 14px; font-weight: 700; flex: 1 0 100%; }
+.achips, .abtns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.abtns { margin-left: auto; }
+.achip { display: inline-flex; align-items: center; gap: 2px; }
+.achip .ax { all: unset; cursor: pointer; min-width: 28px; min-height: 28px; display: grid; place-items: center; font-size: 18px; color: var(--muted); border-radius: 6px; }
+.achip .ax:focus-visible { outline: 2px solid var(--glow); }
+.abtns select { min-height: 40px; }
+.myteams { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid var(--accent); border-radius: 12px; background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.myteams > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.myteams.empty { border-style: dashed; }
+.myrow { display: flex; flex-wrap: wrap; gap: 8px; }
+.myteam { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 0 8px; align-items: baseline; padding: 8px 12px; min-width: 160px; flex: 1 1 200px;
+  border: 1px solid var(--line); border-radius: 10px; background: var(--surface); touch-action: manipulation; }
+.myteam b.num { font-size: 18px; }
+.myteam span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.myteam small { grid-column: 1 / -1; color: var(--muted); font-size: 13px; }
+.myteam:focus-visible { outline: 2px solid var(--glow); }
+.assignline { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; font-size: 13px; }
+.notesWhoBox { display: inline-flex !important; }
 .showas { border: 1px solid var(--line); border-radius: 10px; padding: 8px 12px 10px; margin: 0; display: flex; flex-direction: column; gap: 6px; }
 .showas legend { font-size: 13px; font-weight: 600; color: var(--muted); padding: 0 4px; }
 .showas label { display: flex; align-items: center; gap: 8px; min-height: 32px; font-size: 15px; }
@@ -1054,7 +1074,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       </div>
       <div class="qualsview" id="qualsWrap" hidden>
         <div class="qualshead">
-          <div class="qualsum" id="qualSum"></div>
+          <div id="myTeamsQ"></div><div class="qualsum" id="qualSum"></div>
           <div class="qualctl">
             <div class="seg" role="group" aria-label="Which matches">
               <button type="button" id="qOurs" aria-pressed="true">Our matches</button>
@@ -1078,7 +1098,9 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
       </div>
       <div class="notesview" id="notesWrap" hidden>
         <div class="noteshead"><p class="hint" id="notesNote"></p>
-          <label class="check"><input type="checkbox" id="notesOnly" checked> Only teams with scouting</label></div>
+          <label class="check"><input type="checkbox" id="notesOnly" checked> Only teams with scouting</label>
+          <label class="sortphone notesWhoBox">Show <select id="notesWho" aria-label="Which teams to show"><option value="all">All teams</option><option value="mine">My teams</option><option value="none">No scout yet</option></select></label></div>
+        <div id="myTeamsN"></div>
         <div class="notecards" id="noteCards"></div>
       </div>
       <div class="tablewrap" id="pickWrap">
@@ -1305,6 +1327,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     x.tags = Array.isArray(x.tags) ? x.tags.map(v => txt(v, 40)).filter(Boolean).slice(0, 30) : [];
     x.ratings = isRec(x.ratings) ? Object.fromEntries(Object.entries(x.ratings).filter(([, r]) => isRec(r)).map(([k, r]) => [k, { ...numRec(r), ...(typeof r.note === "string" ? { note: r.note.slice(0, 2000) } : {}) }])) : {};
     x.notes = cleanNotes(x.notes);
+    x.assigned = isRec(x.assigned) ? Object.fromEntries(Object.entries(x.assigned).filter(([k, v]) => /^s_[A-Za-z0-9_-]{1,40}$/.test(k) && isRec(v)).map(([k, v]) => [k, { by: txt(v.by, 60), at: numOr(v.at, 0) }])) : {};
     x.mobility = isRec(x.mobility) ? { ok: x.mobility.ok === true, by: txt(x.mobility.by, 60), at: numOr(x.mobility.at, 0) } : null;
     x.photo = isRec(x.photo) && typeof x.photo.url === "string" ? { url: x.photo.url, by: txt(x.photo.by, 60), at: numOr(x.photo.at, 0) } : null;
     x.aiRecap = isRec(x.aiRecap) && typeof x.aiRecap.text === "string" ? { ...x.aiRecap, text: x.aiRecap.text.slice(0, 6000), at: numOr(x.aiRecap.at, 0) } : null;
@@ -1326,7 +1349,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const t = teams.get(num); if (!t) return;
     const merged = { ...t, ...patch };
     // mirror the store's nested merge locally so the screen updates before the save lands
-    for (const f of ["ratings", "notes"]) if (patch[f]) {
+    for (const f of ["ratings", "notes", "assigned"]) if (patch[f]) {
       merged[f] = { ...(t[f] || {}) };
       for (const [k, v] of Object.entries(patch[f])) merged[f][k] = v === null ? null : { ...((t[f] || {})[k] || {}), ...v };
     }
@@ -2204,13 +2227,16 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   function renderNotes(c) {
     if ($("notesWrap").hidden) return;
     const q = view.q.trim().toLowerCase();
-    const only = $("notesOnly").checked;
+    const who0 = $("notesWho").value, only = $("notesOnly").checked && who0 === "all";
+    $("myTeamsN").innerHTML = myTeamsHtml(c);
     const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
     let list = c.all.slice();
     list = list.filter(t => !q || String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q)
       || allNotes(t).some(x => x.text.toLowerCase().includes(q)) || (t.tags || []).join(" ").toLowerCase().includes(q));
     const scouted = (t) => scoutAgg(t).count > 0 || allNotes(t).length > 0 || (t.tags || []).length || t.dnp;
     if (only) list = list.filter(scouted);
+    if (who0 === "mine") list = list.filter(iScout);
+    else if (who0 === "none") list = list.filter(t => t !== c.us && !scoutsOn(t).length);
     // highest scout average first; teams nobody has rated yet go last (most notes first among them)
     const avgOf = (t) => scoutAgg(t).overall ?? -1;
     list.sort((a, b) => avgOf(b) - avgOf(a) || allNotes(b).length - allNotes(a).length || a.number - b.number);
@@ -2227,6 +2253,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
+        ${scoutsOn(t).length ? `<div class="assignline"><span class="hint">Scouting:</span> ${scoutsOn(t).map(k => who(k, k === uid ? "You" : null)).join(" ")}</div>` : ""}
         ${hexOrPhoto(t, "card" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
         ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
@@ -2450,6 +2477,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
     const sideTxt = (m) => { const red = m.red.some(t => t.n === us); const mine = (red ? m.red : m.blue).filter(t => t.n !== us).map(t => t.n), opp = (red ? m.blue : m.red).map(t => t.n);
       return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
+    $("myTeamsQ").innerHTML = myTeamsHtml(compute());
     $("qualSum").innerHTML = ours.length
       ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate match${ours.filter(surOf).length === 1 ? "" : "es"} not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
@@ -3291,6 +3319,36 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   function takeDraft(num) { const x = readDrafts()[draftKey(num)]; return x && x.draft ? x : null; }
   function dropDraft(num) { const o = readDrafts(); delete o[draftKey(num)]; writeDrafts(o); }
+  /* ---------- who's scouting which team ----------
+     Any scout can sign up for a team (and step off it); leads can also assign anyone. Each scout then sees
+     their teams and each one's next qual at the top of the Scouting notes and Quals tabs. */
+  function scoutsOn(t) { return Object.entries(t.assigned || {}).filter(([, v]) => v).map(([k]) => k).filter(k => scouts.has(k.slice(2))); }
+  function iScout(t) { return !!uid && scoutsOn(t).includes(uid); }
+  function nextQualOf(num) {
+    const m = teamQuals(num).find(q => !q.played); if (!m) return null;
+    const time = m.time || m.scheduled; const red = m.red.some(x => x.n === num);
+    return { label: "Q" + m.id, side: red ? "Red" : "Blue", when: time ? new Date(time).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : "", key: matchKey(m) };
+  }
+  function assignBox(t) {
+    if (!uid || readOnly) return "";
+    const on = scoutsOn(t), lead = canManage();
+    const chip = (k) => `<span class="achip">${who(k, k === uid ? "You" : null)}${lead || k === uid ? `<button type="button" class="ax" data-unassign="${esc(k)}" aria-label="Take ${esc(k === uid ? "yourself" : nameOf(k))} off this team">×</button>` : ""}</span>`;
+    const free = lead ? [...scouts.entries()].filter(([id, x]) => !x.pending && !on.includes("s_" + id)).sort((a, b) => nameOf("s_" + a[0]).localeCompare(nameOf("s_" + b[0]))) : [];
+    return `<div class="assignbox"><span class="mlabel">Scouting this team</span>
+      <div class="achips">${on.length ? on.map(chip).join("") : `<span class="hint">Nobody yet</span>`}</div>
+      <div class="abtns">${iScout(t) ? "" : `<button type="button" class="btn" data-claim>I'll scout this team</button>`}
+        ${lead && free.length ? `<select data-assignpick aria-label="Assign a scout to this team"><option value="">Assign a scout…</option>${free.map(([id]) => `<option value="s_${esc(id)}">${esc(nameOf("s_" + id))}</option>`).join("")}</select>` : ""}</div></div>`;
+  }
+  function myTeamsHtml(c) {
+    if (!uid || !current) return "";
+    const mine = c.all.filter(iScout);
+    if (!mine.length) return `<div class="myteams empty"><b>Your teams</b><span class="hint">You're not scouting a team yet. Open a team and tap "I'll scout this team".</span></div>`;
+    const rows = mine.map(t => { const nq = nextQualOf(t.number);
+      return `<button type="button" class="myteam" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
+        <small>${nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? "all quals played" : "no schedule yet"}</small></button>`; });
+    const free = c.all.filter(t => t !== c.us && !scoutsOn(t).length).length;
+    return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Pick "No scout yet" in Scouting notes to see them.</span>` : ""}</div>`;
+  }
   // the Notes | Scouting switch at the top of a team's window (same idea as the match window)
   const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Notes</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Scouting</button></div>`;
   function statBox(title, s, extra) {
@@ -3314,7 +3372,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}
+      ${teamPages()}${assignBox(t)}
       <div class="viewtop">
         <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
         ${(() => {
@@ -3387,7 +3445,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}
+      ${teamPages()}${assignBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "Notes save only when the board is open on claude.ai." : !uid ? "Enter your scout code to add notes and numbers." : "View-only access can't add notes."}</p>`}
       ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
@@ -3433,7 +3491,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       toast("Note deleted", orig ? { label: "Undo", run: () => { patchTeam(num, { notes: { [nid]: orig } }); refresh(); toast("Note restored"); } } : null);
     }
   }
+  function setAssigned(k, on) {
+    const t = teams.get(dlgTeam); if (!t || !uid) return;
+    patchTeam(dlgTeam, { assigned: { [k]: on ? { by: uid, at: Date.now() } : null } });
+    renderTeamDlg();
+    toast(on ? (k === uid ? `You're scouting ${t.number}` : `${nameOf(k)} is scouting ${t.number}`) : (k === uid ? `You stopped scouting ${t.number}` : `${nameOf(k)} is off ${t.number}`));
+  }
+  $("teamForm").addEventListener("change", (e) => { if (e.target.matches("[data-assignpick]") && e.target.value) setAssigned(e.target.value, true); });
   $("teamForm").addEventListener("click", (e) => {
+    const a = e.target.closest("[data-claim],[data-unassign]");
+    if (a) { a.hasAttribute("data-claim") ? setAssigned(uid, true) : setAssigned(a.dataset.unassign, false); return; }
     const b = e.target.closest("[data-usedraft],[data-dropdraft]"); if (!b) return;
     const d = offeredDraft; offeredDraft = null;
     if (b.hasAttribute("data-dropdraft") || !d) { dropDraft(dlgTeam); renderTeamDlg(); return; }
@@ -3783,6 +3850,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   };
   $("tryClear").onclick = () => { $("tryRed").value = ""; $("tryBlue").value = ""; renderTry(); $("tryRed").focus(); };
   $("notesOnly").addEventListener("change", () => render());
+  $("notesWho").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
   window.addEventListener("hashchange", route);
 
