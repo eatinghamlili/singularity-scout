@@ -1086,6 +1086,32 @@ input, textarea { caret-color: var(--accent); }
 .gatedino { width: 132px; aspect-ratio: 1; object-fit: contain; border-radius: 50%; padding: 12px 10px 6px;
   background: radial-gradient(closest-side, #f6f0ff, #e9ddff); margin-bottom: 12px;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent), 0 12px 26px -14px rgb(124 58 237 / .6); }
+
+/* ---- pre-match briefing ---- */
+.pviewsw.three { grid-template-columns: repeat(3, 1fr); }
+.brief { display: flex; flex-direction: column; gap: 12px; padding: 2px 0 8px; }
+.bline { margin: 0; font-size: 15px; line-height: 1.5; text-wrap: pretty; }
+.bline .r { color: #dc2626; } .bline .b { color: #2563eb; }
+.btips { margin: 0; padding: 10px 14px 10px 30px; border-radius: 12px; display: grid; gap: 6px; font-size: 14px; line-height: 1.4;
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line)); }
+.btips li::marker { color: var(--accent); }
+.btable { width: 100%; min-width: 0; max-width: 100%; border-collapse: collapse; font-size: 14px; }   /* not the wide pick-list table size */
+.btable th, .btable td { padding: 6px 8px; border-bottom: 1px solid var(--line); text-align: left; }
+.btable .r { text-align: right; } .btable td.win { color: var(--good); font-weight: 700; } .btable td.lose { color: var(--bad); font-weight: 700; }
+.brow { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: flex; flex-direction: column; gap: 5px; background: var(--surface); }
+.brow.us { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.btop { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.btop .nnum { font-size: 22px; }
+.bname { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; flex: 1; }
+.bname b { font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bscore { text-align: right; flex: none; } .bscore b { display: block; font-family: var(--f-display); font-size: 20px; line-height: 1; color: var(--accent-ink); }
+.bscore small { color: var(--muted); font-size: 11px; }
+.bnums { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
+.bnums b { color: var(--ink); font-size: 13px; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
+.bnote { margin: 0; font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.qualsum .nextm { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.briefbtn { order: 2; }
+@media (max-width: 560px) { .briefbtn { order: 2; flex: 1 1 100%; min-height: 44px; } }
 </style>
 
 <header class="top">
@@ -2588,7 +2614,7 @@ input, textarea { caret-color: var(--accent); }
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
     $("myTeamsQ").innerHTML = myTeamsHtml(compute());
     $("qualSum").innerHTML = ours.length
-      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm">Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
+      ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm"><button type="button" class="btn primary briefbtn" data-brief="${esc(matchKey(next))}">Briefing for ${label(next)}</button>Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
     const q = view.q.trim();
     let shown = qualOurs && ours.length ? ours : list;
@@ -2625,11 +2651,13 @@ input, textarea { caret-color: var(--accent); }
   }
   let openMatchKey = null;
   const matchDrafts = new Map();
-  function openMatch(key) {
+  function openMatch(key, page) {
     const wasOpen = $("matchDlg").open;
     if (wasOpen && openMatchKey && key !== openMatchKey) matchDrafts.set(openMatchKey, $("mNote") ? $("mNote").value : (renderMatchDlg.draft || ""));
     if (key !== openMatchKey) { renderMatchDlg.draft = matchDrafts.get(key) || ""; if ($("mNote")) $("mNote").value = renderMatchDlg.draft; }   // the redraw reads the box
-    if (!wasOpen) matchPage = "notes";   // a fresh open starts on Notes; Previous/Next keep the page you're on
+    // a fresh open starts on Notes (Briefing for one of our matches still to play); Previous/Next keep the page you're on
+    const mm = (quals.list || []).find(x => matchKey(x) === key);
+    if (page) matchPage = page; else if (!wasOpen) matchPage = isOurMatch(mm) && !mm.played ? "brief" : "notes";
     openMatchKey = key; renderMatchDlg();
     if (!wasOpen) $("matchDlg").showModal(); else { $("matchForm").scrollTop = 0; $("matchDlg").scrollTop = 0; }
     const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
@@ -2658,6 +2686,60 @@ input, textarea { caret-color: var(--accent); }
       ${noteList(t, "mc" + t.number, 1)}
     </article>`;
   }
+  // the pre-match briefing: what the drive team needs before one of our matches, on one screen
+  function isOurMatch(m) { const us = settings.us; return !!m && [...m.red, ...m.blue].some(x => x.n === us); }
+  function briefingHtml(m) {
+    const us = settings.us, usRed = m.red.some(x => x.n === us), c = compute();
+    formOf(us);   // makes sure the predictor has run for this competition
+    const mine = (usRed ? m.red : m.blue).map(x => x.n), theirs = (usRed ? m.blue : m.red).map(x => x.n);
+    const T = (n) => teams.get(n), has = (t) => !!t && stats(t).src !== "none";
+    const tot = (t) => { const x = stats(t); return x.auto + x.teleop + x.endgame; };
+    const PH = [["auto", "Auto"], ["teleop", "TeleOp"], ["endgame", "Endgame"]];
+    const sum = (list, k) => list.reduce((a, n) => a + (has(T(n)) ? stats(T(n))[k] || 0 : 0), 0);
+    const ph = PH.map(([k, l]) => ({ l, a: sum(mine, k), b: sum(theirs, k) }));
+    const pr = lastPred && lastPred.key === current ? lastPred.out.get(matchKey(m)) : null;
+    const win = pr ? Math.round((usRed ? pr.pRed : 1 - pr.pRed) * 100) : null;
+    // a few plain-language calls, most useful first
+    const tips = [];
+    const opp = theirs.map(T).filter(has).sort((a, b) => tot(b) - tot(a));
+    if (opp[0]) {
+      const x = stats(opp[0]), top = PH.slice().sort((p, q) => x[q[0]] / Math.max(0.5, c.avg[q[0]]) - x[p[0]] / Math.max(0.5, c.avg[p[0]]))[0];
+      tips.push(`Biggest threat: <b>${esc(opp[0].number)}</b>, about ${fmt(tot(opp[0]))} points a match, strongest in ${top[1]}.`);
+    }
+    for (const p of ph) { const d = p.a - p.b; if (Math.abs(d) >= 3) tips.push(d > 0 ? `We're ahead in ${p.l} by about ${fmt(d)} points.` : `They're ahead in ${p.l} by about ${fmt(-d)} points. Plan for it.`); }
+    for (const n of theirs) {
+      const t = T(n); if (!t) continue;
+      const d = scoutAgg(t).avg.defense;
+      if (d != null && d >= 6.5) tips.push(`<b>${esc(n)}</b> plays defense (scouts rate it ${d.toFixed(1)}/10).`);
+      if (has(t) && stats(t).pen > 8) tips.push(`<b>${esc(n)}</b> gives away about ${fmt(stats(t).pen)} penalty points a match.`);
+    }
+    for (const n of mine) {
+      if (n === us) continue; const t = T(n); if (!t) continue;
+      if (cantMove(t)) tips.push(`Partner <b>${esc(n)}</b> was marked as a robot that can't move. Check with them in the queue.`);
+      const f = formOf(n); if (f && (f.n || f.scouted) && f.k > 1.2) tips.push(`Partner <b>${esc(n)}</b> is streaky: big matches and quiet ones.`);
+      if (has(t) && stats(t).pen > 8) tips.push(`Partner <b>${esc(n)}</b> gives away about ${fmt(stats(t).pen)} penalty points a match.`);
+    }
+    const row = (n, role) => {
+      const t = T(n), cls = role.toLowerCase();
+      if (!t) return `<div class="brow ${cls}"><div class="btop"><span class="nnum">${esc(n)}</span><div class="bname"><span class="mrole ${cls}">${role}</span><small class="hint">Not in this competition's team list yet.</small></div></div></div>`;
+      const sc = scoutAgg(t), x = stats(t), last = allNotes(t).filter(z => z.text).pop();
+      return `<div class="brow ${cls}">
+        <div class="btop"><button type="button" class="nnum" data-team="${t.number}" title="Open ${esc(t.number)}'s page">${esc(t.number)}</button>
+          <div class="bname"><b>${esc(t.name || "")}</b><span class="mrole ${cls}">${role}</span></div>
+          <div class="bscore">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>scouts /10</small>` : `<small>not rated</small>`}</div></div>
+        <div class="bnums">${has(t) ? `<span class="num">Auto ${fmt(x.auto)} · TeleOp ${fmt(x.teleop)} · End ${fmt(x.endgame)}</span><b class="num">${fmt(tot(t))} a match</b>` : `<span>No results yet</span>`}${moveTag(t)}</div>
+        ${last ? `<p class="bnote">${who(last.by, last.by === uid ? "You" : null)} ${esc(last.text)}</p>` : ""}
+      </div>`;
+    };
+    return `<div class="brief">
+      <p class="bline">We're <b class="${usRed ? "r" : "b"}">${usRed ? "Red" : "Blue"}</b>${mine.length > 1 ? ` with ${mine.filter(n => n !== us).map(n => `<b>${esc(n)}</b>`).join(" and ")}` : ""}${win != null ? ` · <b>${win}%</b> to win, about ${Math.round(usRed ? pr.red : pr.blue)} to ${Math.round(usRed ? pr.blue : pr.red)}` : ""}${m.played ? " · already played" : ""}.</p>
+      ${tips.length ? `<ul class="btips">${tips.slice(0, 6).map(x => `<li>${x}</li>`).join("")}</ul>` : `<p class="hint">Not much to go on yet: no results or scouting for these teams.</p>`}
+      <table class="btable"><thead><tr><th>Points a match</th><th class="r">Us</th><th class="r">Them</th></tr></thead>
+        <tbody>${ph.map(p => `<tr><td>${p.l}</td><td class="r num ${p.a > p.b + 0.5 ? "win" : ""}">${fmt(p.a)}</td><td class="r num ${p.b > p.a + 0.5 ? "lose" : ""}">${fmt(p.b)}</td></tr>`).join("")}</tbody></table>
+      <h3 class="mside">Our alliance</h3>${mine.map(n => row(n, n === us ? "Us" : "Partner")).join("")}
+      <h3 class="mside">Opponents</h3>${theirs.map(n => row(n, "Opponent")).join("")}
+    </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>`;
+  }
   function renderMatchDlg() {
     const key = openMatchKey; if (!key) return;
     // a redraw (live updates) shouldn't jump the window back to the top
@@ -2669,6 +2751,8 @@ input, textarea { caret-color: var(--accent); }
     const side = (list, color) => list.length ? `<div class="alli ${color}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
     const keep = $("mNote") ? $("mNote").value : (renderMatchDlg.draft || "");
     renderMatchDlg.draft = keep;
+    const ours = isOurMatch(m);
+    if (matchPage === "brief" && !ours) matchPage = "notes";
     const order = (quals.shownKeys && quals.shownKeys.includes(key)) ? quals.shownKeys : (quals.list || []).map(matchKey);
     const at = order.indexOf(key), prevK = at > 0 ? order[at - 1] : null, nextK = at >= 0 && at < order.length - 1 ? order[at + 1] : null;
     const shortOf = (k) => { const x = (quals.list || []).find(y => matchKey(y) === k); return x ? (x.level === "Quals" ? "Q" : "") + x.id : matchLabelOf(k); };
@@ -2680,8 +2764,8 @@ input, textarea { caret-color: var(--accent); }
         ${nav}<button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null) : ""}
-      <div class="pviewsw mpages" role="group" aria-label="Match window page"><button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
-      ${matchPage === "scout" ? (m ? `<div class="mscout">
+      <div class="pviewsw mpages ${ours ? "three" : ""}" role="group" aria-label="Match window page">${ours ? `<button type="button" data-mpage="brief" aria-pressed="${matchPage === "brief"}">Briefing</button>` : ""}<button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
+      ${matchPage === "brief" && m ? briefingHtml(m) : matchPage === "scout" ? (m ? `<div class="mscout">
           <h3 class="mside red">Red alliance</h3>${m.red.map(x => matchScoutCard(x.n, "red", m)).join("")}
           <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
         </div><div class="dlgfoot sticky"><button type="button" class="btn" data-mclose>Close</button></div>` : `<p class="hint">This match isn't in the schedule anymore.</p>`) : `
@@ -3967,7 +4051,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mv = e.target.closest("[data-mnav]");
     if (mv) { if (mv.dataset.mnav) openMatch(mv.dataset.mnav); return; }
     const mp = e.target.closest("[data-mpage]");
-    if (mp) { matchPage = mp.dataset.mpage; try { localStorage.setItem("ss51-mpage", matchPage); } catch {} renderMatchDlg(); return; }
+    if (mp) { matchPage = mp.dataset.mpage; try { if (matchPage !== "brief") localStorage.setItem("ss51-mpage", matchPage); } catch {} renderMatchDlg(); return; }
+    const br = e.target.closest("[data-brief]");
+    if (br) { openMatch(br.dataset.brief, "brief"); return; }
     const sw = e.target.closest("[data-pview]");
     if (sw) { photoMode.set(sw.dataset.pview, sw.dataset.v === "photo"); if ($("teamDlg").open && sw.closest("#teamDlg")) renderTeamDlg(); else if (sw.closest("#matchDlg")) renderMatchDlg(); else render(); return; }
     const pick = e.target.closest("[data-photopick]");
