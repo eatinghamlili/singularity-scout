@@ -1229,6 +1229,15 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 :root[data-theme="dark"] .mrole.red { color: #fca5a5; } :root[data-theme="dark"] .mrole.blue { color: #93c5fd; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mrole.red { color: #fca5a5; } :root:not([data-theme="light"]) .mrole.blue { color: #93c5fd; } }
 .btable td.hi { font-weight: 700; color: var(--ink); }
+
+.hfield select:disabled { opacity: .6; cursor: not-allowed; }
+
+.autopick { margin: -4px 0 0; font-size: 12.5px; color: var(--accent-ink); }
+
+/* iPhone: a fixed bottom bar rides up on top of the keyboard and covers what you're typing, so it steps aside while typing */
+@media (max-width: 560px) {
+  body.typing .panel .toolbar .tabs { display: none; }
+}
 </style>
 
 <header class="top">
@@ -1291,7 +1300,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <button role="tab" id="tabNotes" aria-selected="false"><span class="tlong">Scouting </span>notes</button>
           <button role="tab" id="tabTeam" class="phonetab" aria-selected="false" title="Scouting crew, our hexagon, weights and how to use it">Team</button>
         </div>
-        <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team">
+        <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
         <div class="seg" role="group" aria-label="Show" id="availSeg">
           <button id="showAvail" aria-pressed="false">Available</button>
           <button id="showAll" aria-pressed="true">All</button>
@@ -1751,6 +1760,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
         red: side(m, "Red"), blue: side(m, "Blue"),
         redScore: m.scores && m.scores.red ? m.scores.red.totalPoints : null,
         blueScore: m.scores && m.scores.blue ? m.scores.blue.totalPoints : null,
+        // penalty points (total minus no-penalty total) and hive tips, so scouts' counts can be checked like for like
+        redFoul: m.scores && m.scores.red && m.scores.red.totalPointsNp != null ? m.scores.red.totalPoints - m.scores.red.totalPointsNp : null,
+        blueFoul: m.scores && m.scores.blue && m.scores.blue.totalPointsNp != null ? m.scores.blue.totalPoints - m.scores.blue.totalPointsNp : null,
+        redTips: m.scores && m.scores.red && m.scores.red.tips != null ? m.scores.red.tips : null,
+        blueTips: m.scores && m.scores.blue && m.scores.blue.tips != null ? m.scores.blue.tips : null,
       })).sort((a, b) => (a.level === "Quals" ? 0 : 1) - (b.level === "Quals" ? 0 : 1) || String(a.scheduled || "").localeCompare(String(b.scheduled || "")) || a.id - b.id);
     },
     async seasonStats(season, num) { return seasonPart(await this.get(`/teams/${num}/quick-stats?season=${season}`)); },
@@ -1797,7 +1811,10 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       if (quals && Array.isArray(quals.schedule) && quals.schedule.length) {
         this.matchesFrom = "FIRST";
         // FIRST for qualifications; playoffs keep FTCScout's numbering so their notes stay put
-        return [...quals.schedule.map(conv).sort((a, b) => a.id - b.id), ...(ftcs || []).filter(m => m.level !== "Quals")];
+        // FIRST doesn't list hive tips; take them from FTCScout's copy of the same qual when it has one
+        const tipsFrom = new Map((ftcs || []).filter(m => m.level === "Quals").map(m => [m.id, m]));
+        const withTips = (q) => { const f = tipsFrom.get(q.id); return f ? { ...q, redTips: f.redTips, blueTips: f.blueTips } : q; };
+        return [...quals.schedule.map(conv).map(withTips).sort((a, b) => a.id - b.id), ...(ftcs || []).filter(m => m.level !== "Quals")];
       }
       if (ftcs) { this.matchesFrom = this.name; return ftcs; }
       throw { code: "x", message: `Couldn't reach ${this.name} or FIRST for the match schedule.` };
@@ -2748,7 +2765,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       const by = t ? [...new Set(allNotes(t).filter(x => x.ctx === "qual" && x.match === key).map(x => x.by))] : [];
       return by.length ? { k: "done", on: by } : { k: on.length ? "late" : "gap", on };
     };
-    const names = (ids) => ids.map(k => esc(nameOf(k))).join(", ");
+    const names = (ids) => ids.map(k => k === uid ? "you" : esc(nameOf(k))).join(", ");
     const chip = (m, x, color) => {
       const st = stateOf(m, x.n);
       const sub = st.k === "us" ? "us" : st.k === "gap" ? (m.played ? "nobody" : "no scout") : (st.k === "done" ? "✓ " : st.k === "late" ? "! " : "") + names(st.on);
@@ -3187,6 +3204,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     if (gate && (!wasGate || mode !== gateMode)) { gateMode = mode; renderGate(); }
     $("ourTeam").textContent = settings.us;
     $("allianceSize").value = String(settings.size || 2);
+    // alliance size changes the best pick for everyone: leads set it (like the weights)
+    $("allianceSize").disabled = readOnly || !canManage(); $("allianceSize").title = canManage() ? "" : "Leads choose the alliance size";
     $("loadBtn").disabled = readOnly || offline;
     $("loadBtn").textContent = isOwner ? `Competition not listed? Load it from ${SOURCE.name}` : "Competition not listed? Ask for it to be added";
     $("resetDraft").disabled = readOnly || !teams.size || !canManage();
@@ -3213,6 +3232,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   /* Count check: our scouts' qual counts against FIRST's official alliance scores. Scouts don't count hive tips,
      so a little under is normal; counting MORE than the alliance scored means something was counted twice
      (or the wrong robot or qual was picked). Leads see every scout; everyone else sees their own counts. */
+  var TIP_PTS = 20;   // a hive tip, which scouts don't count
   var OVER = 6;   // (var: render can run before this line) points of slack before a count looks too high (penalty points and rounding)
   function countCheck() {
     const list = quals.key === current && quals.list ? quals.list : [];
@@ -3221,8 +3241,9 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     for (const m of list) {
       if (!m.played || m.level !== "Quals" || m.redScore == null) continue;
       const key = matchKey(m);
-      for (const [side, color, score, foul] of [[m.red, "Red", m.redScore, m.redFoul], [m.blue, "Blue", m.blueScore, m.blueFoul]]) {
-        const official = foul != null ? score - foul : score;   // without penalty points when FIRST gives them
+      for (const [side, color, score, foul, tips] of [[m.red, "Red", m.redScore, m.redFoul, m.redTips], [m.blue, "Blue", m.blueScore, m.blueFoul, m.blueTips]]) {
+        // what scouts can count: the score without penalty points and without hive tips (20 each), when the results say
+        const official = (foul != null ? score - foul : score) - (tips != null ? tips * TIP_PTS : 0);
         const robots = side.map(x => {
           const t = teams.get(x.n), ns = t ? allNotes(t).filter(z => z.ctx === "qual" && z.match === key && z.counts) : [];
           return { n: x.n, ns, pts: ns.length ? ns.reduce((a, z) => a + countPts(z.counts).total, 0) / ns.length : null };
@@ -3244,12 +3265,13 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   function renderCountCheck() {
     const el = $("countCheck"); if (!el) return;
     if (!current) { el.innerHTML = ""; return; }
+    if (!el.offsetParent && el.innerHTML) return;   // off screen (phones: not on the Team tab): skip the work until it shows
     const { per, flags, alliances } = countCheck(), lead = canManage();
     const rows = [...per.entries()].filter(([id]) => lead || id === uid).sort((a, b) => b[1].over.size - a[1].over.size || b[1].n - a[1].n);
     const mineFlags = flags.filter(f => lead || f.robots.some(r => r.ns.some(z => z.by === uid)));
     const line = ([id, x]) => `<div>${who(id, id === uid ? "You" : null)}<span>${x.n} count${x.n === 1 ? "" : "s"}${x.full ? ` · about ${Math.round(Math.abs(x.gap / x.full))} ${x.gap >= 0 ? "under" : "over"} the real score` : ""}${x.over.size ? ` · <b class="qlate">${x.over.size} alliance${x.over.size === 1 ? "" : "s"} too high !</b>` : ""}</span></div>`;
     el.innerHTML = `<h2>Count check</h2>
-      <p class="sub">Qual counts added up per alliance and checked against FIRST's official score. A few points under is normal, since hive tips aren't counted. Over means something was counted twice.</p>
+      <p class="sub">Qual counts added up per alliance and checked against the official score, leaving out penalty points and hive tips (scouts don't count those). A few points under means pieces were missed; over means something was counted twice.</p>
       ${!alliances ? `<p class="hint">Nothing to check yet. Counts are checked once a qual is played and a scout picked it on the Scouting page.</p>`
         : `${rows.length ? `<div class="crew cc">${rows.map(line).join("")}</div>` : `<p class="hint">You haven't counted a played qual yet.</p>`}
         ${mineFlags.length ? `<div class="ccflags"><b>Looks too high</b>${mineFlags.slice(-6).reverse().map(f => `<button type="button" class="ccflag" data-match="${esc(f.key)}">
@@ -3450,6 +3472,9 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   const NOTES_SHOWN = { dlg: 3, card: 1 };   // Scouting notes cards show only the newest note
   const when = (at) => at ? new Date(at).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
   function allNotes(t) {
+    // team records are replaced on every change, never edited in place, so each one's list can be kept
+    const cache = allNotes.cache || (allNotes.cache = new WeakMap()), keep = t && typeof t === "object";
+    if (keep && cache.has(t)) return cache.get(t);
     const out = [];
     for (const [nid, x] of Object.entries(t.notes || {})) if (x && (x.text || x.counts)) out.push({ id: nid, by: x.by, text: x.text || "", at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [],
       ctx: x.ctx === "qual" || x.ctx === "pit" ? x.ctx : "", match: typeof x.match === "string" ? x.match : "", counts: x.counts && typeof x.counts === "object" ? x.counts : null,
@@ -3459,7 +3484,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     out.sort((a, b) => a.at - b.at);
     const per = {};
     out.forEach((x, i) => { x.n = i + 1; x.mine = per[x.by] = (per[x.by] || 0) + 1; });
-    return out.reverse();
+    const res = out.reverse(); if (keep) cache.set(t, res);
+    return res;
   }
   /* ---------- photos (website only: uploads go through the team's server function) ---------- */
   const PHOTOS_ON = () => !!(window.SITE && window.SITE.uploadPhoto);
@@ -3840,7 +3866,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       return `<button type="button" class="myteam ${finished ? "finished" : ""}" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
         <small>${finished ? `<span class="qdone">all scouted ✓</span>` : nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? "quals left to write up" : "no schedule yet"}${mq && !finished ? ` · ${qualsHtml(t, uid)}` : ""}</small></button>`; });
     const free = c.all.filter(t => t !== c.us && !scoutsOn(t).length).length;
-    return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Pick "No scout yet" in Scouting notes to see them.</span>` : ""}</div>`;
+    return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Switch the match list below to Coverage to see which quals need one.</span>` : ""}</div>`;
   }
   // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
   const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button></div>`;
@@ -3901,6 +3927,18 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     renderTeamEdit(t);
     if (draft.note && $("dNote")) $("dNote").value = draft.note;
   }
+  // the qual a scout is most likely writing up: the latest of this team's quals that has started (on the field
+  // or just played) and that they haven't written up yet (their own picked quals only, if they picked some);
+  // failing that, the next one to come
+  function suggestQual(t) {
+    const list = teamQuals(t.number); if (!list.length) return "";
+    const done = uid ? doneQuals(t, uid) : new Set(), mine = uid ? qualsOf(t, uid) : null, soon = Date.now() + 60000;
+    const ok = (m) => !done.has(matchKey(m)) && (!mine || mine.includes(matchKey(m)));
+    const last = list.filter(m => (m.played || (m.time && Date.parse(m.time) <= soon)) && ok(m)).pop();
+    if (last) return matchKey(last);
+    const next = list.find(m => !m.played && ok(m));
+    return next ? matchKey(next) : "";
+  }
   function qualPickInner(t) {
     const list = teamQuals(t.number);
     if (!list.length) return quals.loading || (quals.key !== current) ? `<p class="hint">Getting the match schedule…</p>`
@@ -3909,7 +3947,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return `<label class="fld"><span>Which qual? <span class="req">Required</span></span><select id="dMatch">
       <option value="" ${draft.match ? "" : "selected"} disabled>Pick a qual…</option>
       ${list.map(m => { const k = matchKey(m), red = m.red.some(x => x.n === t.number);
-        return `<option value="${esc(k)}" ${draft.match === k ? "selected" : ""}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</option>`; }).join("")}</select></label>`;
+        return `<option value="${esc(k)}" ${draft.match === k ? "selected" : ""}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</option>`; }).join("")}</select></label>
+      ${draft.autoMatch && draft.match ? (() => { const m = list.find(x => matchKey(x) === draft.match); return m ? `<p class="hint autopick">Picked Q${esc(m.id)} for you: ${m.played ? "it was just played" : Date.parse(m.time || "") <= Date.now() ? "it's on the field now" : Date.parse(m.time || "") <= Date.now() + 60000 ? "it's about to start" : "it's this team's next qual"}. Change it if that's wrong.</p>` : ""; })() : ""}`;
   }
   function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t); }
   function countsHtml() {
@@ -4024,7 +4063,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.hasAttribute("data-close")) { $("teamDlg").close(); return; }
     if (b.dataset.tpage) { if (b.dataset.tpage === dlgMode) return; dlgMode = b.dataset.tpage; renderTeamDlg(); $("teamDlg").scrollTop = 0; $("teamForm").scrollTop = 0;
       const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
-    if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true; renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
+    if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true;
+      if (draft.ctx === "qual" && !draft.match && teams.get(dlgTeam)) { draft.match = suggestQual(teams.get(dlgTeam)); draft.autoMatch = !!draft.match; } renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
     if (b.dataset.cnt) { const [k, f] = b.dataset.cnt.split("."); draft.counts[k][f] = Math.max(0, Math.min(99, (draft.counts[k][f] || 0) + Number(b.dataset.d))); dlgDirty = true;
       const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.state) { draft.state = draft.state === b.dataset.state ? "" : b.dataset.state; dlgDirty = true; $("ctxBox")?.classList.remove("need");
@@ -4037,7 +4077,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
   });
   $("teamForm").addEventListener("change", (e) => {
-    if (e.target.id === "dMatch") { draft.match = e.target.value; dlgDirty = true; $("ctxBox")?.classList.remove("need"); return; }
+    if (e.target.id === "dMatch") { draft.match = e.target.value; draft.autoMatch = false; document.querySelector(".autopick")?.remove(); dlgDirty = true; $("ctxBox")?.classList.remove("need"); return; }
     if (e.target.id !== "dUpd") return;
     draft.upd = e.target.checked;
     // keep what's typed; just switch the number buttons on or off
@@ -4373,8 +4413,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("homeBtn").onclick = () => goTo(null);
   window.addEventListener("hashchange", route);
 
-  $("allianceSize").addEventListener("change", (e) => { settings.size = parseInt(e.target.value, 10); saveSettings(true); render(); });
+  $("allianceSize").addEventListener("change", (e) => { if (!canManage()) { e.target.value = String(settings.size || 2); return; } settings.size = parseInt(e.target.value, 10); saveSettings(true); render(); });
   $("search").addEventListener("input", (e) => { view.q = e.target.value; render(); });
+  // while a text box is in use the phone's fixed tab bar steps aside (on iPhone it would ride up over the keyboard)
+  const TYPES = 'input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]), textarea, select';
+  document.addEventListener("focusin", (e) => { if (e.target.matches && e.target.matches(TYPES)) document.body.classList.add("typing"); });
+  document.addEventListener("focusout", () => setTimeout(() => { const a = document.activeElement; if (!(a && a.matches && a.matches(TYPES))) document.body.classList.remove("typing"); }, 0));
+  // the keyboard's Search key puts the keyboard away so the results show (phones)
+  $("search").addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
   $("showAvail").onclick = () => { view.filter = "available"; $("showAvail").setAttribute("aria-pressed", "true"); $("showAll").setAttribute("aria-pressed", "false"); render(); };
   $("showAll").onclick = () => { view.filter = "all"; $("showAll").setAttribute("aria-pressed", "true"); $("showAvail").setAttribute("aria-pressed", "false"); render(); };
   document.querySelectorAll("th button.sort").forEach(b => b.onclick = () => { view.sort = view.sort === b.dataset.sort ? "fit" : b.dataset.sort; render(); });

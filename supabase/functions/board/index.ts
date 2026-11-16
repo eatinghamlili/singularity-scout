@@ -3,7 +3,7 @@
 // checked against who they are before it is saved:
 //   - notes are written as yourself, and only your own notes can be deleted
 //   - only your own ratings can be changed
-//   - the roster is for leads
+//   - the roster and the board settings (alliance size, weights) are for leads
 //   - our team stays Team 51
 // A sign-in only lasts while the scout's code stays the same: a new code signs every device out.
 // Wrong codes are limited per connection, every 10 minutes and every day, so codes can't be guessed.
@@ -472,6 +472,8 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
 
   const shape = checkShape(path, data); if (shape) return shape;
   if (path === "settings/main") {
+    // the alliance size and the weights change the pick list for the whole team: leads set them
+    if (!lead) return "Only leads change the board settings (alliance size and weights).";
     if ("us" in data && Number(data.us) !== US) return `This board is for Team ${US}.`;
     if (kind === "upsert") data = { ...data, us: US };
     if ("size" in data && ![2, 3].includes(data.size)) return "Alliances are 2 or 3 teams.";
