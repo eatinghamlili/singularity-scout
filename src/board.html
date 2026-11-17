@@ -2918,7 +2918,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const mm = (quals.list || []).find(x => matchKey(x) === key);
     if (page) matchPage = page; else if (!wasOpen) matchPage = isOurMatch(mm) && !mm.played ? "brief" : "notes";
     openMatchKey = key; renderMatchDlg();
-    if (!wasOpen) $("matchDlg").showModal(); else { $("matchForm").scrollTop = 0; $("matchDlg").scrollTop = 0; }
+    if (!wasOpen) $("matchDlg").showModal();
+    $("matchForm").scrollTop = 0; $("matchDlg").scrollTop = 0;   // every match opens at the top
     const l = $("mNotesList"); if (l) l.scrollTop = l.scrollHeight;
   }
   // which page of the match window: "notes" (read and write match notes) or "scout" (the four teams at a glance)
@@ -3882,7 +3883,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
     // every visit starts fresh (no qual picked, nothing counted); an unsaved note from before is only offered
     offeredDraft = uid ? takeDraft(num) : null; aqualOpen = null;
-    renderTeamDlg(); $("teamDlg").showModal(); if (dlgMode === "edit") autoRecap();
+    renderTeamDlg(); $("teamDlg").showModal();
+    // a team always opens at the top (not wherever it was scrolled to last time); "Pick it up" still jumps to the unsaved note
+    $("teamDlg").scrollTop = 0; $("teamForm").scrollTop = 0;
+    if (dlgMode === "edit") autoRecap();
   }
   var offeredDraft = null;   // var: render() can run before this line
   function draftOffer() {
