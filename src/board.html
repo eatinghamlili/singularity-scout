@@ -599,6 +599,42 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .tag { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--sunk); border: 1px solid var(--line); color: var(--muted); white-space: nowrap; }
 .tag.dnp { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
 .tag.src { color: var(--accent-ink); border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+.tag.tier { font-weight: 700; color: var(--ink); }
+.tag.tier.t1 { background: color-mix(in srgb, #16a34a 18%, var(--surface)); border-color: color-mix(in srgb, #16a34a 55%, transparent); }
+.tag.tier.t2 { background: color-mix(in srgb, #0ea5e9 16%, var(--surface)); border-color: color-mix(in srgb, #0ea5e9 50%, transparent); }
+.tag.tier.t3 { background: color-mix(in srgb, #eab308 16%, var(--surface)); border-color: color-mix(in srgb, #eab308 50%, transparent); }
+.tag.tier.t4 { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, transparent); }
+.tag.talk, .tag.warn { color: #b45309; border-color: color-mix(in srgb, #f59e0b 60%, transparent); background: color-mix(in srgb, #f59e0b 10%, var(--surface)); }
+.tiersel { display: inline-flex; gap: 4px; margin-top: 4px; }
+.tiersel button { min-width: 34px; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); font-weight: 700; cursor: pointer; touch-action: manipulation; color: var(--ink); }
+.tiersel button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.tiersel button[data-v="4"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #fff; }
+.tierseg { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tierseg button { padding: 8px 6px; }
+.tierseg button.mno[aria-pressed="true"] { background: var(--bad); color: #fff; }
+.claimpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin-top: 4px; }
+.claimbtn { min-height: 44px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-weight: 600; cursor: pointer; text-align: left; touch-action: manipulation; }
+.claimbtn::before { content: ""; display: inline-block; width: 14px; height: 14px; margin-right: 8px; vertical-align: -2px; border-radius: 4px; border: 2px solid var(--line); box-sizing: border-box; }
+.claimbtn:hover { border-color: #eab308; }
+/* Team 51 yellow when the team says its robot can do it */
+.claimbtn[aria-pressed="true"] { background: #facc15; border-color: #eab308; color: #1a1030; }
+.claimbtn[aria-pressed="true"]::before { content: "✓"; border-color: #1a1030; background: #1a1030; color: #facc15; font-size: 10px; line-height: 10px; text-align: center; }
+.claimbox { display: flex; flex-direction: column; gap: 6px; margin: 10px 0; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+.claimbox ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.claimbox li { display: grid; grid-template-columns: 1fr auto; gap: 0 10px; padding: 4px 8px; border-left: 4px solid var(--line); border-radius: 4px; background: var(--sunk); }
+.claimbox li small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.claimbox li.ok { border-left-color: #16a34a; } .claimbox li.mid { border-left-color: #eab308; } .claimbox li.bad { border-left-color: var(--bad); }
+.claimbox li.bad b { color: var(--bad); }
+.visitchk { align-items: flex-start; margin-top: 8px; padding: 8px 10px; border: 1px dashed color-mix(in srgb, #f59e0b 60%, transparent); border-radius: 10px; }
+.visitchk input { margin-top: 3px; } .visitchk span { display: flex; flex-direction: column; gap: 2px; } .visitchk small { color: var(--muted); font-size: 12px; }
+.visits, .visitask { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 12px; background: color-mix(in srgb, #f59e0b 9%, var(--surface)); }
+.visits > b, .visitask > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
+.vlist { display: flex; flex-direction: column; gap: 6px; }
+.visit, .vrow { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; text-align: left; }
+.visit { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.visit:hover { border-color: #f59e0b; } .visit:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.visit .num, .vrow .num { font-size: 15px; } .vtext { min-width: 0; overflow-wrap: anywhere; }
+.visit small, .vrow small { grid-column: 2; color: var(--muted); font-size: 12px; }
 .qual { white-space: nowrap; }
 .rec { white-space: nowrap; font-variant-numeric: tabular-nums; }
 .qual small { display: block; color: var(--muted); font-size: 12px; }
@@ -1303,10 +1339,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <button id="showAvail" aria-pressed="false">Available</button>
           <button id="showAll" aria-pressed="true">All</button>
         </div>
+        <button type="button" class="btn" id="tierBtn" aria-pressed="false" title="Sort teams into your own Tier 1, 2, 3 or don't pick. Everyone's lists are combined (the Tiers sort).">My tiers</button>
         <button class="btn" id="exportBtn">Copy CSV</button>
         <button type="button" class="btn" id="printBtn" data-print title="A paper copy of the pick list, in case the Wi-Fi goes down at selection">Print pick list</button>
         <label class="sortphone" id="sortPhoneBox">Sort <select id="sortPhone" aria-label="Sort the pick list by">
-          <option value="fit">Pick score</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
+          <option value="fit">Pick score</option><option value="tier">Scouts' tiers</option><option value="scout">Scout rating</option><option value="exp">Expected points</option><option value="rank">Qual rank</option>
           <option value="auto">Auto</option><option value="teleop">TeleOp</option><option value="endgame">Endgame</option><option value="pen">Fewest penalties</option><option value="scouted">Scouted OPR</option></select></label>
       </div>
       <details class="colkey" id="colKey"><summary>What do these numbers mean?</summary>
@@ -1317,6 +1354,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <dt>OPR</dt><dd>Offensive power rating: the points a team adds to its alliance per match.</dd>
           <dt>Penalties</dt><dd>Penalty points the team gives away per match. On phones it only shows when it's high.</dd>
           <dt>Scouts</dt><dd>Our scouts' average rating out of 10, and how many scouts rated them.</dd>
+          <dt>Tier chip</dt><dd>Every scout makes their own pick list (tap <b>My tiers</b>): Tier 1, 2, 3 or don't pick. The chip is the middle of everyone's answers, so one scout way off doesn't move it, then how many scouts voted. Sort by it with <b>Tiers</b>.</dd>
           <dt>Expected pts</dt><dd>Points we'd expect them to add to our alliance, scaled by how reliable our scouts rated them.</dd>
           <dt>Pick score</dt><dd>How well they fit with us (from the Weights), blended with scout ratings and 25% qualification rank. The list is sorted by it.</dd>
           <dt>Ranking pts</dt><dd>Ranking points from FIRST's standings; they decide the qualification rank.</dd>
@@ -1370,7 +1408,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
             <th class="r"><button class="sort" data-sort="teleop">TeleOp</button></th>
             <th class="r"><button class="sort" data-sort="endgame">Endgame</button></th>
             <th class="r"><button class="sort" data-sort="pen" title="Penalty points this team gives away per match">Penalties</button></th>
-            <th><button class="sort" data-sort="scout">Scouts</button></th>
+            <th><button class="sort" data-sort="scout">Scouts</button> <button class="sort" data-sort="tier" title="Sort by the scouts' combined pick lists (tier 1 first)">Tiers</button></th>
             <th class="r"><button class="sort" data-sort="exp" title="Points we'd expect this team to add to our alliance, scaled by how reliable scouts rated them">Expected pts</button></th>
             <th><button class="sort" data-sort="fit" title="Fit for your robot, blended with scout ratings and 25% qualification rank">Pick score</button></th>
             <th class="r">Draft</th>
@@ -1398,6 +1436,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
           <li><b>Leads:</b> on Quals, switch the match list to <b>Coverage</b>, tick who's scouting today and tap <b>Assign</b>. Every qual's robots get handed out at random and evenly. Run it again if people come or go; played quals keep their record.</li>
           <li><b>Scouts:</b> <b>Your quals</b> on the Quals tab lists the robot to watch in each of your quals: ✓ written up, ! played but not written up yet, ○ still to come. Tap one to write it up.</li>
           <li>Tap any team number to open it. <b>Scouting</b> is where you write: pick the qual or the pits, count what it scored, add a note and your 1–10 numbers. <b>Notes</b> gathers everyone's scouting. Ratings from all scouts are averaged.</li>
+          <li><b>In the pits:</b> tick what the team says its robot can do. The Notes page then shows how often our scouts actually saw it in quals. Teams under <b>Go talk to them</b> on the Quals tab are ones a scout wants checked on; writing a pit note clears them.</li>
+          <li><b>Before selection:</b> everyone taps <b>My tiers</b> on the pick list and sorts teams into Tier 1, 2, 3 or don't pick. Sort by <b>Tiers</b> to see the whole team's combined list.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
         <div class="railrow"><button type="button" class="btn" data-print>Print pick list</button><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
@@ -1501,6 +1541,10 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   const r2 = (v) => Math.round(n(v) * 100) / 100;
   const fmt = (v) => (Math.round(v * 10) / 10).toFixed(1);
   const PHASES = [["auto", "Auto", "a"], ["teleop", "TeleOp", "t"], ["endgame", "Endgame", "e"]];
+  // what a team says its robot can do (ticked on a pit note); checked later against our qual counts
+  const CLAIMS = [["auto", "Scores in auto"], ["hive", "Scores in the hive"], ["flower", "Scores in a flower"], ["leave", "Leaves start in auto"], ["park", "Parks at the end"]];
+  // each scout's own pick list: tier 1 to 3, or don't pick (4); everyone's are combined on the pick list
+  const TIERS = [[1, "Tier 1"], [2, "Tier 2"], [3, "Tier 3"], [4, "Don't pick"]];
   const CATS = [["auto", "Auto"], ["teleop", "TeleOp scoring"], ["endgame", "Endgame"], ["driving", "Driving"], ["reliability", "Reliability"], ["defense", "Defense"]];
   const DINO = "data:image/webp;base64,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";
   // Barney Jr., the 2026-27 mascot, cut out of the team's own Instagram posts (@cams_ftc51)
@@ -1577,6 +1621,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     if (x.counts) { const c = cleanCounts(x.counts); if (c) o.counts = c; }
     if (typeof x.state === "string") o.state = x.state;
     if (Array.isArray(x.photos)) o.photos = x.photos.filter(u => typeof u === "string").slice(0, 6);
+    if (isRec(x.claims)) { const c = Object.fromEntries(CLAIMS.filter(([k]) => x.claims[k] === true).map(([k]) => [k, true])); if (Object.keys(c).length) o.claims = c; }
+    if (x.visit === true) o.visit = true;
     return o;
   }
   const cleanNotes = (n) => isRec(n) ? Object.fromEntries(Object.entries(n).map(([k, v]) => [k, cleanNote(v)])) : {};
@@ -1590,6 +1636,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     x.tags = Array.isArray(x.tags) ? x.tags.map(v => txt(v, 40)).filter(Boolean).slice(0, 30) : [];
     x.ratings = isRec(x.ratings) ? Object.fromEntries(Object.entries(x.ratings).filter(([, r]) => isRec(r)).map(([k, r]) => [k, { ...numRec(r), ...(typeof r.note === "string" ? { note: r.note.slice(0, 2000) } : {}) }])) : {};
     x.notes = cleanNotes(x.notes);
+    x.tiers = isRec(x.tiers) ? Object.fromEntries(Object.entries(x.tiers).filter(([k, v]) => /^s_[A-Za-z0-9_-]{1,40}$/.test(k) && [1, 2, 3, 4].includes(v))) : {};
     x.assigned = isRec(x.assigned) ? Object.fromEntries(Object.entries(x.assigned).filter(([k, v]) => /^s_[A-Za-z0-9_-]{1,40}$/.test(k) && isRec(v)).map(([k, v]) => [k, { by: txt(v.by, 60), at: numOr(v.at, 0), quals: Array.isArray(v.quals) ? v.quals.filter(q => typeof q === "string" && /^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(q)).slice(0, 40) : null }])) : {};
     x.mobility = isRec(x.mobility) ? { ok: x.mobility.ok === true, by: txt(x.mobility.by, 60), at: numOr(x.mobility.at, 0) } : null;
     x.photo = isRec(x.photo) && typeof x.photo.url === "string" ? { url: x.photo.url, by: txt(x.photo.by, 60), at: numOr(x.photo.at, 0) } : null;
@@ -1612,9 +1659,9 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const t = teams.get(num); if (!t) return;
     const merged = { ...t, ...patch };
     // mirror the store's nested merge locally so the screen updates before the save lands
-    for (const f of ["ratings", "notes", "assigned"]) if (patch[f]) {
+    for (const f of ["ratings", "notes", "assigned", "tiers"]) if (patch[f]) {
       merged[f] = { ...(t[f] || {}) };
-      for (const [k, v] of Object.entries(patch[f])) merged[f][k] = v === null ? null : { ...((t[f] || {})[k] || {}), ...v };
+      for (const [k, v] of Object.entries(patch[f])) merged[f][k] = v === null ? null : typeof v !== "object" ? v : { ...((t[f] || {})[k] || {}), ...v };
     }
     teams.set(num, merged); render();
     if (!db || !current) return;
@@ -2823,7 +2870,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const sideTxt = (m) => { const red = m.red.some(t => t.n === us); const mine = (red ? m.red : m.blue).filter(t => t.n !== us).map(t => t.n), opp = (red ? m.blue : m.red).map(t => t.n);
       return `${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(", ")}`; };
     const left = ours.filter(m => !m.played), expW = left.reduce((a, m) => { const pr = P.out.get(matchKey(m)); return a + (m.red.some(t => t.n === us) ? pr.pRed : 1 - pr.pRed); }, 0);
-    $("myTeamsQ").innerHTML = myTeamsHtml(compute());
+    $("myTeamsQ").innerHTML = myTeamsHtml(compute()) + visitsHtml();
     $("qualSum").innerHTML = ours.length
       ? `<b>Team ${esc(us)}</b><span>${ours.length} match${ours.length === 1 ? "" : "es"} · <span class="rec">${w}-${l}-${tie}</span> so far${ours.some(surOf) ? ` (${ours.filter(surOf).length} surrogate not counted)` : ""}</span>${left.length ? `<span>Predicted to win about ${Math.round(expW)} of ${left.length} left</span>` : ""}${next ? `<span class="nextm"><button type="button" class="btn primary briefbtn" data-brief="${esc(matchKey(next))}">Briefing for ${label(next)}</button><span>Next: <b>${label(next)}</b>${next.scheduled ? " at " + esc(fmtT(next.scheduled)) : ""} · ${esc(sideTxt(next))}</span></span>` : `<span class="nextm">All our matches are played.</span>`}`
       : `<b>Team ${esc(us)}</b><span>${list.length ? "isn't in this competition's match schedule." : ""}</span>`;
@@ -3147,17 +3194,22 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     if (q) list = list.filter(t => String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q) || (t.tags || []).join(" ").toLowerCase().includes(q));
     if (view.sort !== "fit") {
       const k = view.sort;
-      const val = (t) => k === "exp" ? expected(t) : k === "rank" ? (t.ev?.rank || 999) : k === "scout" ? (scoutAgg(t).overall ?? 0) : k === "scouted" ? (scoutedOpr(t) ?? -1) : stats(t)[k];
-      const dir = (k === "rank" || k === "pen") ? 1 : -1;
+      const val = (t) => k === "tier" ? (tierAgg(t)?.med ?? 9) : k === "exp" ? expected(t) : k === "rank" ? (t.ev?.rank || 999) : k === "scout" ? (scoutAgg(t).overall ?? 0) : k === "scouted" ? (scoutedOpr(t) ?? -1) : stats(t)[k];
+      const dir = (k === "rank" || k === "pen" || k === "tier") ? 1 : -1;
       list.sort((a, b) => (a === c.us ? -1 : b === c.us ? 1 : 0) || (val(a) - val(b)) * dir);
     }
     const fitRank = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    const talk = new Set(openVisits().map(x => x.t.number));
+    $("tierBtn").setAttribute("aria-pressed", String(!!view.tierMode)); $("tierBtn").hidden = readOnly || !uid || view.tab !== "pick";
     if (!list.length) { $("rows").innerHTML = `<tr><td colspan="11">${dinoEmpty(c.all.length ? "No teams match" : current && teamsReadyKey === current ? "Teams not posted yet" : current ? "Waiting for teams…" : "No competition loaded yet", c.all.length || !current || teamsReadyKey !== current ? "" : "They fill in by themselves once FIRST publishes who's registered, usually close to the event.", "sm", c.all.length ? "lying" : "sleep")}</td></tr>`; return; }
     const dis = readOnly ? "disabled" : "";
     $("rows").innerHTML = list.map(t => {
       const isUs = t === c.us, s = stats(t), sc = scoutAgg(t);
       const cls = isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : "";
-      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
+      const cc = claimCheck(t), mineTier = (t.tiers || {})[uid] || 0;
+      const tags = [tierTag(t), ...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
+        talk.has(t.number) ? `<span class="tag talk" title="A scout asked for someone to go talk to them in the pits">talk to them</span>` : "",
+        cc && cc.doubt.length ? `<span class="tag warn" title="Said in the pits, but rarely seen in quals: ${esc(cc.doubt.map(r => `${r.l} (${r.seen} of ${r.n})`).join(", "))}">pit claims doubtful</span>` : "",
         s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
       const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
       const so = scoutedOpr(t), soTxt = so != null ? `<small class="sopr1" title="Scouted OPR: points per match from our scouts' qual counts">scouted ${fmt(so)} pts</small>` : "";
@@ -3168,7 +3220,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
          <button type="button" data-pick="${t.number}" class="${t.status === "partner" ? "on-pick" : ""}" aria-pressed="${t.status === "partner"}" ${dis}>${t.status === "partner" ? "Picked" : "Pick"}</button>`;
       return `<tr class="${cls}">
         <td class="rk c-rk">${isUs || t.status === "taken" ? "" : (fitRank.get(t.number) ?? "")}</td>
-        <td class="c-team"><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}</div></td>
+        <td class="c-team"><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}
+          ${view.tierMode && !isUs && uid ? `<div class="tiersel" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) => `<button type="button" data-tier="${t.number}" data-v="${v}" title="${l}" aria-pressed="${mineTier === v}" ${dis}>${v === 4 ? "✕" : v}</button>`).join("")}</div>` : ""}</div></td>
         <td class="c-stat" data-l="Qual">${qual}</td>
         <td class="r num c-stat" data-l="Auto">${fmt(s.auto)}</td><td class="r num c-stat" data-l="TeleOp">${fmt(s.teleop)}</td><td class="r num c-stat" data-l="Endgame">${fmt(s.endgame)}</td>
         <td class="r num c-stat ${s.pen > 8 ? "pen" : ""}" data-l="Penalties">${fmt(s.pen)}</td>
@@ -3454,7 +3507,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     renderHeader(); renderHome(); renderCrew(); renderCountCheck(); renderNext(c); renderPickBar(c); renderNeeds(c); renderRows(c); renderRankings(c); renderNotes(c); renderQuals(c); renderLive();
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
-    $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick";
+    $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick"; $("tierBtn").hidden = readOnly || !uid || view.tab !== "pick";
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
   }
 
@@ -3471,9 +3524,9 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const cache = allNotes.cache || (allNotes.cache = new WeakMap()), keep = t && typeof t === "object";
     if (keep && cache.has(t)) return cache.get(t);
     const out = [];
-    for (const [nid, x] of Object.entries(t.notes || {})) if (x && (x.text || x.counts)) out.push({ id: nid, by: x.by, text: x.text || "", at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [],
+    for (const [nid, x] of Object.entries(t.notes || {})) if (x && (x.text || x.counts || x.ctx === "pit")) out.push({ id: nid, by: x.by, text: x.text || "", at: x.at || 0, changed: !!x.changed, nums: x.nums || null, photos: Array.isArray(x.photos) ? x.photos.filter(okPhotoUrl) : [],
       ctx: x.ctx === "qual" || x.ctx === "pit" ? x.ctx : "", match: typeof x.match === "string" ? x.match : "", counts: x.counts && typeof x.counts === "object" ? x.counts : null,
-      state: PIT_STATES.some(([k]) => k === x.state) ? x.state : "" });
+      state: PIT_STATES.some(([k]) => k === x.state) ? x.state : "", claims: x.claims && typeof x.claims === "object" ? x.claims : null, visit: x.visit === true });
     for (const [id, r] of Object.entries(t.ratings || {})) if (r && r.note) out.push({ id: "legacy:" + id, by: id, text: r.note, at: r.at || 0 });   // notes saved before history existed
     // number them oldest-first: n = order on this team, mine = order among this scout's notes
     out.sort((a, b) => a.at - b.at);
@@ -3551,6 +3604,61 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   const PIT_STATES = [["good", "Working well"], ["minor", "Minor issues"], ["major", "Major repairs"], ["down", "Not running"]];
   const pitStateName = (v) => (PIT_STATES.find(([k]) => k === v) || [])[1] || "";
   const CNT_FLAGS = { a: [["leave", "Left start", "didn't leave"], ["park", "Parked", "didn't park"]], t: [["park", "Parked at end", "didn't park at end"]] };
+  // did this qual's counts show the robot doing what its team claimed?
+  // hive and flower count pollen and nectar together, in auto or teleop
+  const claimSeen = (k, c) => { const a = (c && c.a) || {}, t = (c && c.t) || {};
+    const zone = (z) => CNT_SCORE.filter(([, l]) => l === z).some(([f]) => (Number(a[f]) || 0) + (Number(t[f]) || 0) > 0);
+    return k === "auto" ? CNT_SCORE.some(([f]) => Number(a[f]) > 0) : k === "leave" ? !!a.leave : k === "park" ? !!t.park : k === "hive" ? zone("Hive") : k === "flower" ? zone("Flower") : false; };
+  // the newest pit note's claims, each with how many scouted quals showed it (any scout on that qual seeing it counts)
+  function claimCheck(t) {
+    const x = allNotes(t).find(n => n.ctx === "pit" && n.claims && CLAIMS.some(([k]) => n.claims[k])); if (!x) return null;
+    const byMatch = new Map();
+    for (const n of allNotes(t)) if (n.ctx === "qual" && n.counts && n.match) { if (!byMatch.has(n.match)) byMatch.set(n.match, []); byMatch.get(n.match).push(n.counts); }
+    const q = [...byMatch.values()];
+    const rows = CLAIMS.filter(([k]) => x.claims[k]).map(([k, l]) => { const seen = q.filter(list => list.some(c => claimSeen(k, c))).length; return { k, l, seen, n: q.length, pct: q.length ? seen / q.length : null }; });
+    return { by: x.by, at: x.at, rows, doubt: rows.filter(r => r.n >= 3 && r.pct < 0.4) };
+  }
+  function claimsBox(t) {
+    const cc = claimCheck(t); if (!cc) return "";
+    const cls = (r) => r.n < 3 ? "" : r.pct >= 0.7 ? "ok" : r.pct >= 0.4 ? "mid" : "bad";
+    const word = (r) => r.pct == null ? "no quals counted yet" : `seen in ${r.seen} of ${r.n} qual${r.n === 1 ? "" : "s"}${r.n < 3 ? " · too few to tell" : r.pct < 0.4 ? " · doubtful" : ""}`;
+    return `<div class="claimbox"><span class="mlabel">Pit claims vs. what we counted</span>
+      <ul>${cc.rows.map(r => `<li class="${cls(r)}"><span class="cl">${esc(r.l)}</span><b class="num">${r.pct == null ? "–" : Math.round(r.pct * 100) + "%"}</b><small>${word(r)}</small></li>`).join("")}</ul>
+      <small class="hint">What the team told ${esc(cc.by === uid ? "you" : nameOf(cc.by))} in the pits (${esc(when(cc.at))}), checked against every qual our scouts counted.</small></div>`;
+  }
+  // qual notes asking for someone to go talk to a team; a pit note on that team written afterwards answers them
+  function openVisits(only) {
+    const out = [];
+    for (const t of only ? [only] : teams.values()) {
+      const ns = allNotes(t), lastPit = ns.find(n => n.ctx === "pit");
+      for (const n of ns) if (n.ctx === "qual" && n.visit && !(lastPit && lastPit.at > n.at)) out.push({ t, n });
+    }
+    return out.sort((a, b) => b.n.at - a.n.at);
+  }
+  const visitLine = ({ t, n }) => `<b class="num">${esc(t.number)}</b><span class="vtext">${esc(n.text)}</span><small>${esc(n.by === uid ? "you" : nameOf(n.by))} · ${n.match ? esc(matchLabelOf(n.match)) + " · " : ""}${esc(when(n.at))}</small>`;
+  function visitsHtml() {
+    const v = openVisits(); if (!v.length) return "";
+    return `<div class="visits"><b>Go talk to them</b><span class="hint">Scouts in the stands want someone in the pits to check on these teams. Tap one to write the pit note; that clears it.</span>
+      <div class="vlist">${v.slice(0, 10).map(x => `<button type="button" class="visit" data-visit="${x.t.number}">${visitLine(x)}</button>`).join("")}</div></div>`;
+  }
+  function visitAsk(t) {
+    const v = openVisits(t); if (!v.length) return "";
+    return `<div class="visitask" role="status"><b>Someone wants a pit visit</b>${v.map(x => `<div class="vrow">${visitLine(x)}</div>`).join("")}
+      <small class="hint">Go talk to them, then write a pit note here to clear it.</small></div>`;
+  }
+  // everyone's tiers for one team: the median, so one scout way off doesn't move it
+  function tierAgg(t) {
+    const votes = Object.values(t.tiers || {}).filter(v => [1, 2, 3, 4].includes(v)).sort((a, b) => a - b);
+    if (!votes.length) return null;
+    const m = votes.length % 2 ? votes[(votes.length - 1) / 2] : (votes[votes.length / 2 - 1] + votes[votes.length / 2]) / 2;
+    return { med: m, n: votes.length, votes };
+  }
+  const tierName = (v) => v >= 4 ? "Don't pick" : `Tier ${v}`;
+  const tierWord = (m) => Number.isInteger(m) ? tierName(m) : `${tierName(Math.floor(m))}–${Math.ceil(m) >= 4 ? "don't pick" : Math.ceil(m)}`;
+  function tierTag(t) {
+    const a = tierAgg(t); if (!a) return "";
+    return `<span class="tag tier t${Math.min(4, Math.round(a.med))}" title="Scouts' pick lists: the middle of ${a.n} scout${a.n === 1 ? "" : "s"}' tiers (${a.votes.map(tierName).join(", ")})">${esc(tierWord(a.med))} · ${a.n}</span>`;
+  }
   const blankCounts = () => { const z = Object.fromEntries(CNT_SCORE.map(([f]) => [f, 0])); return { a: { ...z, leave: false, park: false }, t: { ...z, park: false } }; };
   const qualTag = (x) => x.ctx === "qual" && x.match ? `<span class="ctxtag qual" title="Notes from this qual">${esc(matchLabelOf(x.match))}</span>`
     : x.ctx === "pit" ? `<span class="ctxtag pit" title="Notes from the pits">Pits</span>${x.state ? `<span class="ctxtag state ${esc(x.state)}">${esc(pitStateName(x.state))}</span>` : ""}` : "";
@@ -3768,7 +3876,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const mine = (uid && t.ratings && t.ratings[uid]) || {};
     const nums = Object.fromEntries(CATS.map(([k]) => [k, score(mine, k) || 0]));
     const hasNums = CATS.some(([k]) => nums[k]);
-    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts(), state: "" };
+    draft = { ...nums, hasNums, upd: true, tags: (t.tags || []).join(", "), dnp: !!t.dnp, moves: t.mobility ? (t.mobility.ok ? "yes" : "no") : "", ctx: "", match: "", counts: blankCounts(), state: "",
+      claims: { ...((allNotes(t).find(n => n.ctx === "pit" && n.claims) || {}).claims || {}) }, visit: false, tier: (uid && (t.tiers || {})[uid]) || 0 };
     if (current && (quals.key !== current || !quals.list)) loadQuals(false).then(refreshQualPick, () => {});   // the qual list needs the schedule
     $("teamForm").innerHTML = "";   // don't carry the last team's half-typed note over
     // every visit starts fresh (no qual picked, nothing counted); an unsaved note from before is only offered
@@ -3955,7 +4064,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const seExtra = t.season ? `<dt>World OPR rank</dt><dd>${t.season.worldRank ? "#" + t.season.worldRank + (t.season.count ? " / " + t.season.count : "") : "–"}</dd>` : "";
     const prof = c0().skills.map.get(t.number) || {};
     const breakdown = CATS.map(([k, l]) => { const x = prof[k] || {}; return `<div class="hb"><span>${l}</span><b class="num">${x.value == null ? "–" : x.value.toFixed(1)}</b><small>${x.scout != null ? "scouts " + x.scout.toFixed(1) : "no scout rating"}${x.comp != null ? " · comp " + x.comp.toFixed(1) : k === "defense" ? "" : " · no comp data"}</small></div>`; }).join("");
-    const flags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
+    const flags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), tierTag(t), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
       t.mobility ? (t.mobility.ok ? `<span class="tag src">robot moves</span>` : `<span class="tag dnp">can't move</span>`) : ""].join("");
     const c = c0(), pos = c.ranked.filter(x => x.status !== "taken").findIndex(x => x === t);
     const count = allNotes(t).length;
@@ -3982,7 +4091,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <details class="hexdetail"><summary>How each corner is worked out</summary><div class="hbgrid">${breakdown}</div>
         <p class="hint">Each corner is 75% the scouts' average rating and 25% where the team stands in this competition's data (percentile in the field): phase OPR for Auto, TeleOp and Endgame, total OPR for Driving, qualification rank for Reliable. Defense comes from scouts only.</p></details>
       ${flags ? `<div class="tags">${flags}</div>` : ""}
-      ${pitCheck(t)}${formBox(t)}${scoutedBox(t)}
+      ${visitAsk(t)}${pitCheck(t)}${claimsBox(t)}${formBox(t)}${scoutedBox(t)}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes` : "What scouts said"}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
         ${peopleBoxes(t)}${noteList(t, "view" + t.number, 6, dlgBy)}</div>
       <section class="statsbottom" aria-label="Results from FTCScout"><h3>Results</h3>
@@ -4035,9 +4144,13 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
         `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
-      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}<p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
+      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}
+        <label class="check visitchk"><input type="checkbox" id="dVisit" ${draft.visit ? "checked" : ""} ${canRate ? "" : "disabled"}><span>Someone should <b>go talk to them</b> in the pits<small>Say why in the note (it broke, auto failed…). It shows on everyone's Quals tab until someone writes a pit note.</small></span></label>
+        <p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
       ${draft.ctx === "pit" ? `<span class="mlabel">Robot's condition <span class="req">Required</span></span>
-        <div class="statepick" role="group" aria-label="Robot's condition">${PIT_STATES.map(([v, l]) => `<button type="button" class="stbtn ${v}" data-state="${v}" aria-pressed="${draft.state === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>` : ""}</div>`;
+        <div class="statepick" role="group" aria-label="Robot's condition">${PIT_STATES.map(([v, l]) => `<button type="button" class="stbtn ${v}" data-state="${v}" aria-pressed="${draft.state === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
+        <span class="mlabel">What they say it can do <small class="hint">optional · we check it against the qual counts</small></span>
+        <div class="claimpick" role="group" aria-label="What they say the robot can do">${CLAIMS.map(([k, l]) => `<button type="button" class="claimbtn" data-pclaim="${k}" aria-pressed="${!!draft.claims[k]}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>` : ""}</div>`;
   }
   function renderTeamEdit(t) {
     const sc = scoutAgg(t);
@@ -4049,7 +4162,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}${assignBox(t)}
+      ${teamPages()}${visitAsk(t)}${assignBox(t)}
       <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${canRate ? "" : `<p class="hint">${!db ? "Notes save only when the board is open on claude.ai." : !uid ? "Enter your scout code to add notes and numbers." : "View-only access can't add notes."}</p>`}
       ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
@@ -4070,6 +4183,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       </div>
       <div class="row2"><label class="fld">Tags (shared)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
         <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}> Do not pick</label></div>
+      <div class="movebox"><span class="mlabel">Your pick list <small class="hint">just your opinion · everyone's are combined on the pick list</small></span>
+        <div class="seg3 tierseg" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) =>
+          `<button type="button" data-dtier="${v}" class="${v === 4 ? "mno" : ""}" aria-pressed="${draft.tier === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
+        ${tierAgg(t) ? `<small class="hint">Scouts so far: ${tierTag(t)}</small>` : ""}</div>
       <div class="movebox"><span class="mlabel">Can their robot move?</span>
         <div class="seg3" role="group" aria-label="Can their robot move?">${[["yes", "Yes"], ["no", "No"], ["", "Not sure"]].map(([v, l]) =>
           `<button type="button" data-moves="${v}" class="${v === "no" ? "mno" : v === "yes" ? "myes" : ""}" aria-pressed="${draft.moves === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
@@ -4126,7 +4243,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const b = e.target.closest("[data-usedraft],[data-dropdraft]"); if (!b) return;
     const d = offeredDraft; offeredDraft = null;
     if (b.hasAttribute("data-dropdraft") || !d) { dropDraft(dlgTeam); renderTeamDlg(); return; }
-    draft = { ...draft, ...d.draft, counts: { ...blankCounts(), ...(d.draft.counts || {}) } }; dlgDirty = true;
+    draft = { ...draft, ...d.draft, counts: { ...blankCounts(), ...(d.draft.counts || {}) }, claims: { ...(d.draft.claims || draft.claims || {}) } }; dlgDirty = true;
     renderTeamDlg(); if ($("dNote")) $("dNote").value = d.text || ""; $("ctxBox")?.scrollIntoView({ block: "nearest" });
   });
   $("teamForm").addEventListener("click", async (e) => {
@@ -4140,6 +4257,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.state) { draft.state = draft.state === b.dataset.state ? "" : b.dataset.state; dlgDirty = true; $("ctxBox")?.classList.remove("need");
       b.parentElement.querySelectorAll("[data-state]").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.state === draft.state))); return; }
+    if (b.dataset.pclaim) { const k = b.dataset.pclaim; draft.claims[k] = !draft.claims[k]; dlgDirty = true; b.setAttribute("aria-pressed", String(!!draft.claims[k])); return; }
+    if (b.dataset.dtier) { const v = Number(b.dataset.dtier); draft.tier = draft.tier === v ? 0 : v; dlgDirty = true;
+      b.parentElement.querySelectorAll("[data-dtier]").forEach(x => x.setAttribute("aria-pressed", String(Number(x.dataset.dtier) === draft.tier))); return; }
     if (b.dataset.flag) { const [k, f] = b.dataset.flag.split("."); draft.counts[k][f] = !draft.counts[k][f]; dlgDirty = true; b.setAttribute("aria-pressed", String(draft.counts[k][f])); if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.moves !== undefined) { draft.moves = b.dataset.moves; dlgDirty = true;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-pressed", String(x.dataset.moves === draft.moves))); return; }
@@ -4149,6 +4269,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   });
   $("teamForm").addEventListener("change", (e) => {
     if (e.target.id === "dMatch") { draft.match = e.target.value; draft.autoMatch = false; document.querySelector(".autopick")?.remove(); dlgDirty = true; $("ctxBox")?.classList.remove("need"); return; }
+    if (e.target.id === "dVisit") { draft.visit = e.target.checked; dlgDirty = true; return; }
     if (e.target.id !== "dUpd") return;
     draft.upd = e.target.checked;
     // keep what's typed; just switch the number buttons on or off
@@ -4177,20 +4298,24 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (isQual && !draft.match) { toast("Pick which qual these notes are from."); $("ctxBox")?.classList.add("need"); $("dMatch")?.focus(); return; }
     const isPit = draft.ctx === "pit";
     if (isPit && !draft.state) { toast("Pick the robot's condition."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
-    if (!writesNote && !numsChanged && !tagsChanged && !movesChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    if (isQual && draft.visit && !text) { toast("Say in the note what the pit crew should ask them about."); $("dNote")?.focus(); return; }
+    const tierNow = (t.tiers || {})[uid] || 0, tierChanged = draft.tier !== tierNow;
+    if (!writesNote && !numsChanged && !tagsChanged && !movesChanged && !tierChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
     if (photos.length) { savePhotoNote(t, text, photos); return; }
     const now = Date.now(), patch = { tags, dnp };
     if (movesChanged) patch.mobility = draft.moves ? { ok: draft.moves === "yes", by: uid, at: now } : null;
+    if (tierChanged) patch.tiers = { [uid]: draft.tier || null };
+    const claims = isPit ? Object.fromEntries(CLAIMS.filter(([k]) => draft.claims[k]).map(([k]) => [k, true])) : {};
     if (numsChanged) patch.ratings = { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])), scale: 10, at: now } };
     const withPhotos = photoUrlsForSave || []; photoUrlsForSave = null;
-    if (text || withPhotos.length || isQual) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || (withPhotos.length ? "Photo" : ""), at: now, changed: numsChanged, ctx: draft.ctx,
-      ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}), ...(isPit ? { state: draft.state } : {}),
+    if (text || withPhotos.length || isQual || isPit) patch.notes = { ["n" + now.toString(36) + Math.random().toString(36).slice(2, 6)]: { by: uid, text: text || (withPhotos.length ? "Photo" : ""), at: now, changed: numsChanged, ctx: draft.ctx,
+      ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}), ...(isPit ? { state: draft.state, ...(Object.keys(claims).length ? { claims } : {}) } : {}), ...(isQual && draft.visit ? { visit: true } : {}),
       ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
     if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
     patchTeam(dlgTeam, patch);
     clearTimeout(stashT); dropDraft(dlgTeam);
     dlgDirty = false; $("teamDlg").close();
-    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : `Saved for ${dlgTeam}`);
+    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}${draft.visit ? " · the pit crew will see it" : ""}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : tierChanged && !tagsChanged && !movesChanged ? (draft.tier ? `${dlgTeam} is ${tierName(draft.tier)} on your pick list` : `${dlgTeam} is off your pick list`) : `Saved for ${dlgTeam}`);
   });
   $("teamDlg").addEventListener("close", () => { if (dlgDirty) stashDraft(); dlgDirty = false; });
   window.addEventListener("pagehide", () => { if ($("teamDlg").open) stashDraft(); });   // phone locks or the tab is swiped away
@@ -4496,6 +4621,18 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("search").addEventListener("keydown", (e) => { if (e.key === "Enter") e.target.blur(); });
   $("showAvail").onclick = () => { view.filter = "available"; $("showAvail").setAttribute("aria-pressed", "true"); $("showAll").setAttribute("aria-pressed", "false"); render(); };
   $("showAll").onclick = () => { view.filter = "all"; $("showAll").setAttribute("aria-pressed", "true"); $("showAvail").setAttribute("aria-pressed", "false"); render(); };
+  $("tierBtn").onclick = () => { view.tierMode = !view.tierMode; if (view.tierMode && view.sort === "fit") toast("Tap 1, 2, 3 or ✕ on each team for your own pick list. Sort by Tiers to see everyone's combined."); render(); };
+  $("rows").addEventListener("click", (e) => {
+    const b = e.target.closest("[data-tier]"); if (!b || !uid || readOnly) return;
+    const num = Number(b.dataset.tier), v = Number(b.dataset.v), t = teams.get(num); if (!t) return;
+    const was = (t.tiers || {})[uid] || 0;
+    patchTeam(num, { tiers: { [uid]: was === v ? null : v } });
+  });
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-visit]"); if (!b) return;
+    openTeam(Number(b.dataset.visit));
+    if ($("teamDlg").open && uid && !readOnly) { draft.ctx = "pit"; renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); }
+  });
   document.querySelectorAll("th button.sort").forEach(b => b.onclick = () => { view.sort = view.sort === b.dataset.sort ? "fit" : b.dataset.sort; render(); });
   $("sortPhone").onchange = (e) => { view.sort = e.target.value; render(); };
   $("sliders").addEventListener("input", (e) => {

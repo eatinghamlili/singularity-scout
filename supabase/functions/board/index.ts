@@ -35,7 +35,7 @@ const KEYS: [RegExp, string[] | null][] = [
   [/^settings\/main$/, ["us", "event", "size", "weights"]],
   [/^scouts\//, ["name", "lead", "color", "createdAt", "hash", "pending"]],
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
-  [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo", "assigned"]],
+  [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo", "assigned", "tiers"]],
   [/\/matches\//, ["label", "notes"]],
   [/^events\/[^/]+$/, ["season", "code", "name", "start", "end", "city", "regionCode", "type", "teamCount", "hasUs", "source", "loadedAt", "loadedBy", "live", "starred", "starredBy", "starredAt"]],
 ];
@@ -125,7 +125,9 @@ function badCounts(c: unknown) {
 }
 // every field the board saves has a type; anything else is refused, so nothing odd can reach teammates' screens
 const RATING_KEYS = ["auto", "teleop", "endgame", "driving", "reliability", "defense"];
-const NOTE_FIELDS = ["by", "text", "at", "changed", "ctx", "match", "counts", "state", "nums", "photos"];
+const NOTE_FIELDS = ["by", "text", "at", "changed", "ctx", "match", "counts", "state", "nums", "photos", "claims", "visit"];
+// what a team can say its robot does, ticked on a pit note
+const CLAIM_KEYS = ["auto", "hive", "flower", "leave", "park"];
 const isNum = (v: unknown) => typeof v === "number" && Number.isFinite(v);
 const isStr = (v: unknown, max: number) => typeof v === "string" && v.length <= max;
 const numOrNull = (v: unknown) => v === null || isNum(v);
@@ -200,6 +202,8 @@ function checkNotes(notes: unknown, existing: Record<string, any> | undefined, m
     if (v.match !== undefined && (typeof v.match !== "string" || !/^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(v.match))) return "That qual isn't on the schedule.";
     if (v.counts !== undefined && badCounts(v.counts)) return "Those counts couldn't be saved.";
     if (v.state !== undefined && !PIT_STATES.includes(v.state)) return "Pick the robot's condition.";
+    if (v.claims !== undefined && !(isObj(v.claims) && Object.entries(v.claims).every(([k, x]) => CLAIM_KEYS.includes(k) && x === true))) return "Those pit claims couldn't be saved.";
+    if (v.visit !== undefined && typeof v.visit !== "boolean") return "That note couldn't be saved.";
     if (old && old.by !== me) return "You can only edit your own notes.";
     if (!old && v.by !== me) return "Notes are saved under your own name.";
     if (old && v.by !== undefined && v.by !== me) return "Notes are saved under your own name.";
@@ -525,6 +529,14 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
         if (v.quals !== undefined && v.quals !== null && !(Array.isArray(v.quals) && v.quals.length <= 40 && v.quals.every((q: unknown) => typeof q === "string" && /^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(q))))
           return "Those quals couldn't be saved.";
         if (k !== uid && !(await getDoc(`scouts/${k.slice(2)}`))) return "That scout isn't on the roster.";
+      }
+    }
+    // each scout's own pick list tier: 1 to 3, or 4 for don't pick
+    if (data.tiers !== undefined) {
+      if (!isObj(data.tiers)) return "That pick list tier couldn't be saved.";
+      for (const [k, v] of Object.entries(data.tiers)) {
+        if (k !== uid) return "You can only change your own pick list.";
+        if (v !== null && ![1, 2, 3, 4].includes(v as number)) return "Tiers are 1, 2, 3 or don't pick.";
       }
     }
     if ("label" in data && !isStr(data.label, 20)) return "That match label isn't valid.";
