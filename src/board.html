@@ -47,7 +47,11 @@ button, input, select, textarea { font: inherit; color: inherit; }
 /* iPhone: no double-tap zoom on fast taps (counters), no grey tap flash, no text blow-up on rotate, no zoom-on-focus on touch screens */
 html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
 button, a, select, label, summary, [role="button"], [data-team], [data-match] { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
-@media (pointer: coarse) { input, select, textarea { font-size: max(16px, 1em); } }
+/* no double-tap zoom anywhere, even on controls whose "all: unset" wipes the rule above (pinch zoom still works) */
+html { touch-action: manipulation; }
+/* iPhone/iPad zoom the page into any text box under 16px: on every touch screen (also sideways phones and iPads,
+   which the phone-width rules don't reach) no box may be smaller, whatever other rule sizes it */
+@media (pointer: coarse) { input:not([type="range"]):not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: max(16px, 1em) !important; } }
 /* iPhone: the page behind an open window doesn't scroll, and holding a button doesn't pop up the copy/select menu */
 @media (pointer: coarse) { html:has(dialog[open]) { overflow: hidden; } }
 button, [role="button"], .tabs, .seg, .seg3, .tiersel, .claimpick, .statepick, .cntflags { -webkit-touch-callout: none; -webkit-user-select: none; user-select: none; }
@@ -1124,7 +1128,15 @@ input, textarea { caret-color: var(--accent); }
    Touch screens: every control gets at least a 44pt tap area (Apple's minimum) without growing how it looks:
    an invisible margin around small chips, team numbers and links catches the near-misses. */
 @media (pointer: coarse) {
-  .mteam, .nnum, .linkbtn, .qhelp, .btn, .btn-band, .pthumb button, .achip .ax { position: relative; }
+  /* the invisible margin must stay attached to its own button: a more specific "all: unset" (like .mcard .nnum)
+     used to drop position, so the margin spread over the whole window and every tap opened the last team */
+  .mteam, .nnum, .linkbtn, .qhelp, .btn, .btn-band, .achip .ax { position: relative !important; }
+  /* a 14px picker makes iPhone zoom the whole page when it's tapped */
+  #allianceSize { font-size: 16px !important; }
+  /* short team numbers (51, 49) and small links were hard to hit */
+  .teamcell button { min-width: 44px; text-align: left; }
+  .dlghead small a { position: relative; } .dlghead small a::after { content: ""; position: absolute; inset: -12px -6px; }
+  .brand { padding-block: 6px; margin-block: -6px; }
   .mteam::after, .nnum::after, .linkbtn::after, .qhelp::after, .btn::after, .btn-band::after, .pthumb button::after, .achip .ax::after {
     content: ""; position: absolute; inset: -5px; }
   .qhelp::after, .pthumb button::after, .achip .ax::after { inset: -10px; }
