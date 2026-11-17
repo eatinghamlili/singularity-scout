@@ -1238,6 +1238,28 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 @media (max-width: 560px) {
   body.typing .panel .toolbar .tabs { display: none; }
 }
+
+/* ---- random qual handout ---- */
+.cvassign { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.cvassign > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
+.cvpool { display: flex; flex-wrap: wrap; gap: 6px; }
+.cvpick { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; opacity: .65; }
+.cvpick.on { opacity: 1; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cvpick input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
+@media (pointer: coarse) { .cvpick { min-height: 44px; } }
+/* ---- Your quals ---- */
+.myqlist { display: flex; flex-direction: column; gap: 6px; }
+.myqual { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 4px 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.myqual:hover { border-color: var(--accent); } .myqual:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
+.myqual .mq { font-weight: 700; font-size: 15px; } .myqual .mqt { color: var(--muted); font-size: 12.5px; }
+.myqual .mqteam { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
+.myqual .mqteam small { color: var(--muted); }
+.myqual .mqside { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; }
+.myqual .mqside.r { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; } .myqual .mqside.b { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
+.myqual.late { border-color: color-mix(in srgb, #dc2626 45%, var(--line)); } .myqual.late .mq { color: #b91c1c; }
+:root[data-theme="dark"] .myqual .mqside.r, :root[data-theme="dark"] .myqual.late .mq { color: #fca5a5; } :root[data-theme="dark"] .myqual .mqside.b { color: #93c5fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .myqual .mqside.r, :root:not([data-theme="light"]) .myqual.late .mq { color: #fca5a5; } :root:not([data-theme="light"]) .myqual .mqside.b { color: #93c5fd; } }
+@media (pointer: coarse) { .myqual { min-height: 44px; } }
 </style>
 
 <header class="top">
@@ -1397,7 +1419,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
         <h2>How to use it</h2>
         <ol>
           <li>Pick the competition from <b>All competitions</b>. Its teams, OPR and match schedule load by themselves.</li>
-          <li>Tap <b>I'll scout this team</b> on a team to claim it. Under <b>Your teams</b> on Quals, each of your quals shows ✓ written up, ! played but not written up yet, or ○ still to come.</li>
+          <li><b>Leads:</b> on Quals, switch the match list to <b>Coverage</b>, tick who's scouting today and tap <b>Assign</b>. Every qual's robots get handed out at random and evenly. Run it again if people come or go; played quals keep their record.</li>
+          <li><b>Scouts:</b> <b>Your quals</b> on the Quals tab lists the robot to watch in each of your quals: ✓ written up, ! played but not written up yet, ○ still to come. Tap one to write it up.</li>
           <li>Tap any team number to open it. <b>Scouting</b> is where you write: pick the qual or the pits, count what it scored, add a note and your 1–10 numbers. <b>Notes</b> gathers everyone's scouting. Ratings from all scouts are averaged.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
@@ -2784,16 +2807,17 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       }
       if (!m.played) for (const [k, c] of per) if (c > 1) twice.push(`${esc(nameOf(k))} has ${c} robots in ${esc(label(m))}`);
     }
+    const handout = coverPlayed ? "" : handoutHtml(randomPlan([], list).up.length);
     const toggle = `<div class="seg cvtoggle" role="group" aria-label="Which quals"><button type="button" data-cvp="0" aria-pressed="${!coverPlayed}">Coming up · ${upcoming.length}</button><button type="button" data-cvp="1" aria-pressed="${coverPlayed}">Already played · ${played.length}</button></div>`;
-    if (!rows.length) return toggle + (q ? dinoEmpty("No quals match", "Try a different team number.", "sm", "lying")
+    if (!rows.length) return toggle + handout + (q ? dinoEmpty("No quals match", "Try a different team number.", "sm", "lying")
       : coverPlayed ? dinoEmpty("No quals played yet", "Come back once matches start.", "sm", "sleep") : dinoEmpty("Every qual is played", "Switch to Already played to see which ones got written up.", "sm", "sleep"));
     const loads = [...load.entries()].sort((a, b) => b[1] - a[1]);
     const sum = `<div class="cvsum">
       <p><b>${got} of ${total}</b> robots ${coverPlayed ? "were written up" : "have a scout"}${total - got ? ` · <span class="${coverPlayed ? "qlate" : "qtodo"}">${total - got} ${coverPlayed ? "not written up" : "with nobody yet"}</span>` : ` · <span class="qdone">all covered ✓</span>`}</p>
       ${loads.length ? `<div class="cvload">${loads.map(([k, c]) => `${who(k, k === uid ? "You" : null)}<span class="num">${c}</span>`).join("")}</div>` : ""}
       ${twice.length ? `<p class="hint cvwarn">Two robots in one match is hard to watch: ${twice.slice(0, 4).join("; ")}${twice.length > 4 ? "…" : ""}.</p>` : ""}
-      <p class="hint">${coverPlayed ? "Tap a team to see its notes." : `Tap a team to claim it${canManage() ? " or assign a scout" : ""}.`}</p></div>`;
-    return toggle + sum + `<div class="cvlist">${rows.map(m => `<div class="cvrow">
+      <p class="hint">${coverPlayed ? "Tap a robot to see its notes." : "Tap a robot to open it."}</p></div>`;
+    return toggle + handout + sum + `<div class="cvlist">${rows.map(m => `<div class="cvrow">
       <div class="cvq"><b>${esc(label(m))}</b><small>${m.scheduled ? esc(fmtT(m.scheduled)) : ""}</small></div>
       <div class="cvside">${m.red.map(x => chip(m, x, "red")).join("")}</div>
       <div class="cvside">${m.blue.map(x => chip(m, x, "blue")).join("")}</div></div>`).join("")}</div>`;
@@ -3801,6 +3825,85 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   function takeDraft(num) { const x = readDrafts()[draftKey(num)]; return x && x.draft ? x : null; }
   function dropDraft(num) { const o = readDrafts(); delete o[draftKey(num)]; writeDrafts(o); }
+  /* ---------- handing out quals at random ----------
+     A lead ticks who's scouting today; every qual not played yet then gets its robots (not ours) handed out:
+     the scouts with the fewest robots so far go first, nobody gets two robots in one match, nobody scouts two
+     quals in a row when there are enough scouts, and the robots watched least so far are covered first.
+     Ties are broken at random. Quals already played keep their record. */
+  function randomPlan(pool, list) {
+    const us = settings.us, up = list.filter(m => m.level === "Quals" && !m.played).sort((a, b) => a.id - b.id);
+    // the qual already under way stays as it is, so nobody's robot changes while they're watching it
+    const live = up.length && Date.parse(up[0].time || up[0].scheduled || "") <= Date.now() ? up.shift() : null;
+    const load = new Map(pool.map(k => [k, 0])), lastAt = new Map(), seen = new Map(), plan = new Map();
+    const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+    up.forEach((m, i) => {
+      const key = matchKey(m);
+      const robots = shuffle([...m.red, ...m.blue].map(x => x.n).filter(n => n !== us)).sort((a, b) => (seen.get(a) || 0) - (seen.get(b) || 0));
+      const ready = shuffle(pool.slice()).sort((a, b) => load.get(a) - load.get(b) || (lastAt.get(a) === i - 1) - (lastAt.get(b) === i - 1));
+      const n = Math.min(robots.length, ready.length), who = shuffle(ready.slice(0, n));
+      robots.slice(0, n).forEach((team, j) => {
+        const k = who[j]; if (!plan.has(team)) plan.set(team, new Map());
+        const pm = plan.get(team); pm.set(k, [...(pm.get(k) || []), key]);
+        load.set(k, load.get(k) + 1); lastAt.set(k, i); seen.set(team, (seen.get(team) || 0) + 1);
+      });
+    });
+    return { plan, up: up.map(matchKey), load, live: live ? "Q" + live.id : "" };
+  }
+  // write a plan: each scout's quals on each team = what they had in played quals + what the plan gives them now
+  function applyPlan(plan, upKeys) {
+    const up = new Set(upKeys), now = Date.now();
+    let writes = 0;
+    for (const t of teams.values()) {
+      const cur = t.assigned || {}, mine = plan.get(t.number) || new Map(), patch = {};
+      for (const k of new Set([...Object.keys(cur).filter(k => cur[k]), ...mine.keys()])) {
+        const had = cur[k] ? (qualsOf(t, k) || teamQuals(t.number).map(matchKey)) : [];
+        const next = [...new Set([...had.filter(q => !up.has(q)), ...(mine.get(k) || [])])].slice(0, 40);
+        const same = cur[k] && qualsOf(t, k) && next.length === had.length && next.every(q => had.includes(q));
+        if (same) continue;
+        patch[k] = next.length ? { by: uid, at: now, quals: next } : null;
+      }
+      if (Object.keys(patch).length) { patchTeam(t.number, { assigned: patch }); writes++; }
+    }
+    return writes;
+  }
+  // who's scouting today (per competition, remembered on this device)
+  var coverPool = null, coverPoolFor = null;
+  function poolNow() {
+    if (coverPoolFor !== current) {
+      coverPoolFor = current; coverPool = null;
+      try { const v = JSON.parse(localStorage.getItem("ss51-pool-" + current) || "null"); if (Array.isArray(v)) coverPool = new Set(v); } catch {}
+      if (!coverPool) coverPool = new Set([...scouts.entries()].filter(([, x]) => !x.pending).map(([id]) => "s_" + id));
+    }
+    return [...coverPool].filter(k => scouts.has(k.slice(2)) && !scouts.get(k.slice(2)).pending);
+  }
+  function savePool() { try { localStorage.setItem("ss51-pool-" + current, JSON.stringify([...coverPool])); } catch {} }
+  function handoutHtml(upCount) {
+    if (!canManage()) return "";
+    const pool = poolNow(), roster = [...scouts.entries()].filter(([, x]) => !x.pending).sort((a, b) => nameOf("s_" + a[0]).localeCompare(nameOf("s_" + b[0])));
+    return `<div class="cvassign"><b>Hand out quals</b>
+      <span class="hint">Tick who's scouting today, then assign. Every qual not played yet gets its robots (not ours) handed out at random and evenly. Run it again if people come or go; played quals keep their record.</span>
+      <div class="cvpool" role="group" aria-label="Who's scouting today">${roster.map(([id]) => { const k = "s_" + id; return `<label class="cvpick ${pool.includes(k) ? "on" : ""}"><input type="checkbox" data-cvpool="${esc(k)}" ${pool.includes(k) ? "checked" : ""}> ${who(k, k === uid ? "You" : null)}</label>`; }).join("")}</div>
+      <div class="abtns"><button type="button" class="btn primary" data-cvassign ${upCount && pool.length ? "" : "disabled"}>Assign ${upCount} qual${upCount === 1 ? "" : "s"} to ${pool.length} scout${pool.length === 1 ? "" : "s"}</button>
+        <button type="button" class="btn" data-cvclear ${upCount ? "" : "disabled"}>Clear coming-up quals</button></div></div>`;
+  }
+  document.addEventListener("change", (e) => {
+    const box = e.target.closest && e.target.closest("[data-cvpool]"); if (!box) return;
+    poolNow(); box.checked ? coverPool.add(box.dataset.cvpool) : coverPool.delete(box.dataset.cvpool); savePool(); render();
+  });
+  document.addEventListener("click", async (e) => {
+    const a = e.target.closest && e.target.closest("[data-cvassign],[data-cvclear]"); if (!a || !canManage()) return;
+    const list = quals.key === current ? quals.list || [] : [];
+    if (a.hasAttribute("data-cvclear")) {
+      const { up, live } = randomPlan([], list);
+      if (!(await confirmBox("Clear coming-up quals?", `Nobody will be down for the ${up.length} qual${up.length === 1 ? "" : "s"} still to come. Played quals keep their record${live ? `, and ${live}, already under way, stays as it is` : ""}.`, "Clear"))) return;
+      applyPlan(new Map(), up); toast("Coming-up quals cleared"); return;
+    }
+    const pool = poolNow(), { plan, up, load, live } = randomPlan(pool, list);
+    if (!(await confirmBox("Hand out the quals?", `${pool.length} scout${pool.length === 1 ? "" : "s"} share the robots in the ${up.length} qual${up.length === 1 ? "" : "s"} still to come (about ${Math.round(Math.max(...load.values(), 0))} each). This replaces who's down for those quals; played quals keep their record${live ? `, and ${live}, already under way, stays as it is` : ""}.`, "Assign"))) return;
+    const n = applyPlan(plan, up);
+    toast(`Quals handed out to ${pool.length} scout${pool.length === 1 ? "" : "s"}${n ? "" : " (nothing changed)"}`);
+  });
+
   /* ---------- who's scouting which team ----------
      Any scout can sign up for a team (and step off it); leads can also assign anyone. Each scout then sees
      their teams and each one's next qual at the top of the Scouting notes and Quals tabs. */
@@ -3840,33 +3943,31 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   var aqualOpen = null;   // whose quals are being picked in the open team window (var: render() can run before this line)
   function assignBox(t) {
     if (!uid || readOnly) return "";
-    const on = scoutsOn(t), lead = canManage();
-    const canEdit = (k) => lead || k === uid;
-    const chip = (k) => `<span class="achip">${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small>
-      ${canEdit(k) ? `<button type="button" class="linkbtn" data-aqual="${esc(k)}" aria-expanded="${aqualOpen === k}">Quals</button><button type="button" class="ax" data-unassign="${esc(k)}" aria-label="Take ${esc(k === uid ? "yourself" : nameOf(k))} off this team">×</button>` : ""}</span>`;
-    const list = teamQuals(t.number), picked = aqualOpen && on.includes(aqualOpen) ? qualsOf(t, aqualOpen) : null;
-    const editor = aqualOpen && on.includes(aqualOpen) && canEdit(aqualOpen) ? `<div class="aqedit" role="group" aria-label="Quals ${esc(aqualOpen === uid ? "you're" : nameOf(aqualOpen) + " is")} scouting">
-        <span class="hint">Which quals ${aqualOpen === uid ? "are you" : esc(nameOf(aqualOpen)) + " is"} scouting ${esc(t.number)} in?</span>
-        ${list.length ? `<label class="aqall"><input type="checkbox" data-aqall ${picked ? "" : "checked"}> All of them</label>
-        <div class="aqgrid">${list.map(m => { const k = matchKey(m), red = m.red.some(x => x.n === t.number), tm = m.time || m.scheduled;
-          return `<label class="${m.played ? "played" : ""}"><input type="checkbox" value="${esc(k)}" data-aqbox ${!picked || picked.includes(k) ? "checked" : ""}> <b>Q${esc(m.id)}</b> <small>${tm ? esc(new Date(tm).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })) + " · " : ""}${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</small></label>`; }).join("")}</div>
-        <div class="abtns"><button type="button" class="btn" data-aqcancel>Cancel</button><button type="button" class="btn primary" data-aqsave="${esc(aqualOpen)}">Save quals</button></div>`
-        : `<span class="hint">The match schedule isn't posted yet, so this covers all of their quals for now.</span>`}</div>` : "";
-    const free = lead ? [...scouts.entries()].filter(([id, x]) => !x.pending && !on.includes("s_" + id)).sort((a, b) => nameOf("s_" + a[0]).localeCompare(nameOf("s_" + b[0]))) : [];
+    const on = scoutsOn(t);
     return `<div class="assignbox"><span class="mlabel">Scouting this team</span>
-      <div class="achips">${on.length ? on.map(chip).join("") : `<span class="hint">Nobody yet</span>`}</div>${editor}
-      <div class="abtns">${iScout(t) ? "" : `<button type="button" class="btn" data-claim>I'll scout this team</button>`}
-        ${lead && free.length ? `<select data-assignpick aria-label="Assign a scout to this team"><option value="">Assign a scout…</option>${free.map(([id]) => `<option value="s_${esc(id)}">${esc(nameOf("s_" + id))}</option>`).join("")}</select>` : ""}</div></div>`;
+      <div class="achips">${on.length ? on.map(k => `<span class="achip">${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small></span>`).join("")
+        : `<span class="hint">Nobody yet. ${canManage() ? "Hand out quals on Quals › Coverage." : "Leads hand out quals at the start of quals."}</span>`}</div></div>`;
   }
+  // the scout's own quals in order: the robot to watch in each, with ✓ written up / ! not yet / ○ to come
   function myTeamsHtml(c) {
     if (!uid || !current) return "";
-    const mine = c.all.filter(iScout);
-    if (!mine.length) return `<div class="myteams none"><b>Your teams</b><span class="hint">You're not scouting a team yet. Open a team and tap "I'll scout this team".</span></div>`;
-    const rows = mine.map(t => { const mq = qualsOf(t, uid), left = leftQuals(t, uid), finished = teamQuals(t.number).length && !left.length, nq = finished ? null : nextQualOf(t.number, left);
-      return `<button type="button" class="myteam ${finished ? "finished" : ""}" data-team="${t.number}"><b class="num">${esc(t.number)}</b><span>${esc(t.name || "")}</span>
-        <small>${finished ? `<span class="qdone">all scouted ✓</span>` : nq ? `next <b>${esc(nq.label)}</b>${nq.when ? " at " + esc(nq.when) : ""} · ${nq.side}` : teamQuals(t.number).length ? "quals left to write up" : "no schedule yet"}${mq && !finished ? ` · ${qualsHtml(t, uid)}` : ""}</small></button>`; });
-    const free = c.all.filter(t => t !== c.us && !scoutsOn(t).length).length;
-    return `<div class="myteams"><b>Your teams</b><div class="myrow">${rows.join("")}</div>${canManage() && free ? `<span class="hint">${free} team${free === 1 ? "" : "s"} with no scout yet. Switch the match list below to Coverage to see which quals need one.</span>` : ""}</div>`;
+    const byKey = new Map((quals.key === current && quals.list ? quals.list : []).map(m => [matchKey(m), m]));
+    const rows = [];
+    for (const t of teams.values()) {
+      if (!(t.assigned || {})[uid]) continue;
+      const done = doneQuals(t, uid);
+      for (const k of qualsOf(t, uid) || teamQuals(t.number).map(matchKey)) { const m = byKey.get(k); if (m) rows.push({ t, m, k, done: done.has(k) }); }
+    }
+    rows.sort((a, b) => a.m.id - b.m.id);
+    if (!rows.length) return `<div class="myteams none"><b>Your quals</b><span class="hint">${canManage() ? "No quals handed out to you yet. Hand them out on Coverage below." : "No quals handed out to you yet. A lead hands them out at the start of quals."}</span></div>`;
+    const late = rows.filter(r => r.m.played && !r.done), next = rows.filter(r => !r.m.played).slice(0, 3), doneN = rows.filter(r => r.done).length;
+    const tm = (m) => { const x = m.time || m.scheduled; return x ? new Date(x).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; };
+    const row = (r) => { const red = r.m.red.some(x => x.n === r.t.number), cls = r.done ? "done" : r.m.played ? "late" : "";
+      return `<button type="button" class="myqual ${cls}" data-team="${r.t.number}" title="Open ${esc(r.t.number)} to write up Q${esc(r.m.id)}">
+        <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt">${esc(tm(r.m))}</span>
+        <span class="mqteam">watch <b class="num">${esc(r.t.number)}</b> <small>${esc(r.t.name || "")}</small></span><span class="mqside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span></button>`; };
+    return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up !</span>` : ""}</span>
+      <div class="myqlist">${[...late, ...next].map(row).join("") || `<span class="hint qdone">All your quals are written up ✓</span>`}</div></div>`;
   }
   // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
   const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button></div>`;
