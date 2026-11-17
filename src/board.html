@@ -2561,7 +2561,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
      Read straight from the stats source each time (it's public), never saved. Refreshes every
      2 minutes while the tab is open. */
   let quals = { key: null, at: 0, list: null, err: "", loading: false }, qualOurs = true;
-  var qualCover = false, coverPlayed = false;   // Quals: the coverage board, and whether it looks back at played quals
+  var qualCover = true, coverPlayed = false, pendingCover = null;   // Quals: the coverage board (where a competition opens), and whether it looks back at played quals
   async function loadQuals(force) {
     const ev = current && events.get(current); if (!ev || quals.loading) return;
     if (!force && quals.key === current && Date.now() - quals.at < 60000) return;
@@ -3435,6 +3435,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     render();
     // opening a competition starts on its Quals tab
     const fresh = !!current && current !== routedKey; routedKey = current;
+    // a competition opens on Quals > Coverage (who's watching what, and the lead's handout), unless a button asked for our matches
+    if (fresh) { qualCover = pendingCover == null ? true : pendingCover; coverPlayed = false; pendingCover = null; }
     if (current && (pendingTab || fresh)) { const t = pendingTab || "quals"; pendingTab = null; setTab(t); }
   }
   var routedKey = null;   // the competition the board last opened (var: route() can run before this line)
@@ -4252,7 +4254,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-today],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
     if (b.dataset.more) { expanded[b.dataset.more] = !expanded[b.dataset.more]; render(); }
     else if (b.dataset.open) goTo(b.dataset.open);
-    else if (b.dataset.today) { pendingTab = "quals"; qualOurs = true; goTo(b.dataset.today); }
+    else if (b.dataset.today) { pendingTab = "quals"; qualOurs = true; pendingCover = false; goTo(b.dataset.today); }
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
     else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
