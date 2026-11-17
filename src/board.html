@@ -56,7 +56,8 @@ a { color: var(--accent-ink); }
 /* header band */
 .top { background: var(--band); color: var(--band-ink); }
 .top .wrap { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; padding-block: 14px; }
-.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+.brand { display: flex; align-items: center; gap: 12px; margin-right: auto; color: inherit; text-decoration: none; border-radius: 10px; }
+.brand:hover h1 { color: #fff; } .brand:focus-visible { outline: 2px solid var(--glow); outline-offset: 4px; }
 .hole { width: 40px; height: 40px; border-radius: 50%; flex: none;
   background: radial-gradient(circle at 50% 50%, #000 0 34%, #3b0764 40%, #a855f7 47%, #f0abfc 50%, #7c3aed 56%, transparent 68%);
   box-shadow: 0 0 18px rgb(192 38 211 / .45); }
@@ -1239,8 +1240,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 
 <header class="top">
   <div class="wrap">
-    <div class="brand"><img class="brandlogo" id="brandDino" alt="" width="66" height="46">
-      <div><h1>Singularity Scout</h1><small><b>Team 51</b> · NerdHerd Singularity · alliance selection</small></div></div>
+    <a class="brand" id="brandHome" href="#" title="All competitions" aria-label="Singularity Scout: all competitions"><img class="brandlogo" id="brandDino" alt="" width="66" height="46">
+      <div><h1>Singularity Scout</h1><small><b>Team 51</b> · NerdHerd Singularity · alliance selection</small></div></a>
     <div class="evrow" id="evNav" hidden>
       <div class="hfield"><span>Scouting</span><b class="evname" id="evName"></b></div>
       <button class="btn-band ghost" id="homeBtn">All competitions</button>
@@ -3065,8 +3066,9 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const el = $("next");
     if (!current || !c.all.length) {
       const ev = current && events.get(current);
-      el.innerHTML = `<div><div class="eyebrow">${ev ? "Loading teams" : "Start here"}</div>
-        <div class="bigname">${ev ? `Getting teams for ${esc(ev.name)}…` : "Load a competition from FTCScout to rank its teams for Team " + esc(settings.us) + "."}</div>
+      const none = ev && teamsReadyKey === current;   // loaded, and there are no teams on it yet
+      el.innerHTML = `<div><div class="eyebrow">${none ? "Teams not posted yet" : ev ? "Loading teams" : "Start here"}</div>
+        <div class="bigname">${none ? `FIRST hasn't posted who's in ${esc(ev.name)} yet. Teams fill in by themselves once registrations are published, usually close to the event.` : ev ? `Getting teams for ${esc(ev.name)}…` : "Load a competition from FTCScout to rank its teams for Team " + esc(settings.us) + "."}</div>
         ${ev ? "" : `<div class="why">Pick your region and the event. Teams, qualification rankings and OPR come in automatically; your scouts add ratings on top.</div>
         <div class="nextActions"><button type="button" class="btn primary" data-act="load" ${readOnly || offline ? "disabled" : ""}>Load a competition</button></div>`}</div><div></div>`;
       return;
@@ -3150,7 +3152,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       list.sort((a, b) => (a === c.us ? -1 : b === c.us ? 1 : 0) || (val(a) - val(b)) * dir);
     }
     const fitRank = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
-    if (!list.length) { $("rows").innerHTML = `<tr><td colspan="11">${dinoEmpty(c.all.length ? "No teams match" : current ? "Waiting for teams…" : "No competition loaded yet", "", "sm", c.all.length ? "lying" : "sleep")}</td></tr>`; return; }
+    if (!list.length) { $("rows").innerHTML = `<tr><td colspan="11">${dinoEmpty(c.all.length ? "No teams match" : current && teamsReadyKey === current ? "Teams not posted yet" : current ? "Waiting for teams…" : "No competition loaded yet", c.all.length || !current || teamsReadyKey !== current ? "" : "They fill in by themselves once FIRST publishes who's registered, usually close to the event.", "sm", c.all.length ? "lying" : "sleep")}</td></tr>`; return; }
     const dis = readOnly ? "disabled" : "";
     $("rows").innerHTML = list.map(t => {
       const isUs = t === c.us, s = stats(t), sc = scoutAgg(t);
@@ -4478,6 +4480,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("notesOnly").addEventListener("change", () => render());
   $("notesWho").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
+  // the logo and name go home too (to the competitions page), the way most sites work
+  $("brandHome").addEventListener("click", (e) => { e.preventDefault(); if ($("teamDlg").open) $("teamDlg").close(); if ($("matchDlg").open) $("matchDlg").close(); goTo(null); window.scrollTo(0, 0); });
   window.addEventListener("hashchange", route);
 
   $("allianceSize").addEventListener("change", (e) => { if (!canManage()) { e.target.value = String(settings.size || 2); return; } settings.size = parseInt(e.target.value, 10); saveSettings(true); render(); });
