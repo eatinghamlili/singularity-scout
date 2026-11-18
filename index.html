@@ -4118,7 +4118,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const late = rows.filter(r => r.m.played && !r.done), next = rows.filter(r => !r.m.played).slice(0, 3), doneN = rows.filter(r => r.done).length;
     const tm = (m) => { const x = m.time || m.scheduled; return x ? new Date(x).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; };
     const row = (r) => { const red = r.m.red.some(x => x.n === r.t.number), cls = r.done ? "done" : r.m.played ? "late" : "";
-      return `<button type="button" class="myqual ${cls}" data-team="${r.t.number}" title="Open ${esc(r.t.number)} to write up Q${esc(r.m.id)}">
+      return `<button type="button" class="myqual ${cls}" data-team="${r.t.number}" data-wq="${esc(r.k)}" title="Open ${esc(r.t.number)} to write up Q${esc(r.m.id)}">
         <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt">${esc(tm(r.m))}</span>
         <span class="mqteam">watch <b class="num">${esc(r.t.number)}</b> <small>${esc(r.t.name || "")}</small></span><span class="mqside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span></button>`; };
     return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up !</span>` : ""}</span>
@@ -4458,7 +4458,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.today) { pendingTab = "quals"; qualOurs = true; pendingCover = false; goTo(b.dataset.today); }
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
-    else if (b.dataset.team) openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
+    else if (b.dataset.team) {
+      openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
+      // a "Your quals" row says which qual to write up: open straight on it
+      if (b.dataset.wq && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") { draft.ctx = "qual"; draft.match = b.dataset.wq; draft.autoMatch = false; renderTeamDlg(); }
+    }
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
     else if (b.dataset.loadreq) loadRequests([b.dataset.loadreq]);
