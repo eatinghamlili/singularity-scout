@@ -1247,8 +1247,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 }
 
 /* ---- count check ---- */
-.crew.cc div { align-items: baseline; } .crew.cc span { color: var(--muted); font-size: 12.5px; text-align: right; }
-.crew.cc span b { font-size: 12.5px; }
+.crew.cc div { align-items: baseline; } .crew.cc span:not(.who) { color: var(--muted); font-size: 12.5px; text-align: right; }
+.crew.cc span:not(.who) b { font-size: 12.5px; }
 .ccflags { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .ccflags > b { font-size: 13px; }
 .ccflag { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px;
@@ -2078,9 +2078,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const sid = String(id).slice(2), s = scouts.get(sid);
     return (s && /^#[0-9a-fA-F]{6}$/.test(s.color || "") && s.color) || PALETTE[hashIdx(sid)];
   }
+  // text on a scout's colour: white or near-black, whichever reads better (WCAG contrast, not a brightness guess)
   function inkOn(hex) {
-    const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#140b26" : "#ffffff";
+    const n = parseInt(hex.slice(1), 16), lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255), Ldark = 0.0049;   // #140b26
+    return (1.05 / (L + 0.05)) >= ((L + 0.05) / (Ldark + 0.05)) ? "#ffffff" : "#140b26";
   }
   const who = (id, label) => { const c = colorOf(id); return `<span class="who" style="--c:${c};--t:${inkOn(c)}">${esc(label || nameOf(id))}</span>`; };
   function nameOf(id) {

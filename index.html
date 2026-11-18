@@ -18,7 +18,7 @@
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,-apple-system,"Segoe UI",sans-serif}img{max-width:100%}[hidden]{display:none!important}</style>
 <script>/* the light/dark choice saved on this device, applied before anything draws */try{var t=localStorage.getItem("ss51-theme");if(t==="light"||t==="dark")document.documentElement.setAttribute("data-theme",t)}catch(e){}</script>
 <script>/* if a script fails to load (a GitHub or CDN hiccup), reload once instead of showing "Not connected" */window.ssRetry=function(){try{if(sessionStorage.getItem("ss51-retry"))return;sessionStorage.setItem("ss51-retry","1")}catch(e){return}setTimeout(function(){location.reload()},1500)};</script>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js" onerror="ssRetry()"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js?v=3" integrity="sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT" crossorigin="anonymous" onerror="ssRetry()"></script>
 <script src="supabase-config.js" onerror="ssRetry()"></script>
 <script src="platform.js" onerror="ssRetry()"></script>
 </head>
@@ -1272,8 +1272,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 }
 
 /* ---- count check ---- */
-.crew.cc div { align-items: baseline; } .crew.cc span { color: var(--muted); font-size: 12.5px; text-align: right; }
-.crew.cc span b { font-size: 12.5px; }
+.crew.cc div { align-items: baseline; } .crew.cc span:not(.who) { color: var(--muted); font-size: 12.5px; text-align: right; }
+.crew.cc span:not(.who) b { font-size: 12.5px; }
 .ccflags { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
 .ccflags > b { font-size: 13px; }
 .ccflag { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 2px; padding: 8px 10px; border-radius: 10px;
@@ -2103,9 +2103,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const sid = String(id).slice(2), s = scouts.get(sid);
     return (s && /^#[0-9a-fA-F]{6}$/.test(s.color || "") && s.color) || PALETTE[hashIdx(sid)];
   }
+  // text on a scout's colour: white or near-black, whichever reads better (WCAG contrast, not a brightness guess)
   function inkOn(hex) {
-    const n = parseInt(hex.slice(1), 16), r = n >> 16 & 255, g = n >> 8 & 255, b = n & 255;
-    return (0.299 * r + 0.587 * g + 0.114 * b) > 150 ? "#140b26" : "#ffffff";
+    const n = parseInt(hex.slice(1), 16), lin = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    const L = 0.2126 * lin(n >> 16 & 255) + 0.7152 * lin(n >> 8 & 255) + 0.0722 * lin(n & 255), Ldark = 0.0049;   // #140b26
+    return (1.05 / (L + 0.05)) >= ((L + 0.05) / (Ldark + 0.05)) ? "#ffffff" : "#140b26";
   }
   const who = (id, label) => { const c = colorOf(id); return `<span class="who" style="--c:${c};--t:${inkOn(c)}">${esc(label || nameOf(id))}</span>`; };
   function nameOf(id) {

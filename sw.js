@@ -4,9 +4,9 @@
 // rarely change, so they come from the saved copy first. FTCScout's public data is saved as it's
 // read, so the last schedule and stats still show offline. Database requests are left alone:
 // platform.js keeps its own copy of the data and an outbox for changes.
-const VERSION = "ss51-v2";
+const VERSION = "ss51-v3";   // v3: the Supabase library is checked against its fingerprint, so old saved copies are dropped
 const SHELL = ["./", "index.html", "platform.js", "supabase-config.js", "manifest.webmanifest", "icon-192.png", "icon-512.png",
-  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js"];
+  "https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js?v=3"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(VERSION).then((c) => Promise.all(SHELL.map((u) => c.add(u).catch(() => {})))).then(() => self.skipWaiting()));
@@ -34,7 +34,9 @@ async function networkFirst(req, ms, fresh) {
 }
 async function cacheFirst(req) {
   const cache = await caches.open(VERSION);
-  const hit = await cache.match(req);
+  let hit = await cache.match(req);
+  // a copy saved without CORS can't pass the page's fingerprint check: fetch a fresh one instead
+  if (hit && hit.type === "opaque" && req.mode === "cors") hit = null;
   const fresh = fetch(req).then((res) => { if (res && (res.ok || res.type === "opaque")) cache.put(req, res.clone()); return res; }).catch(() => null);
   return hit || (await fresh) || Response.error();
 }
