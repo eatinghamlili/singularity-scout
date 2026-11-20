@@ -617,7 +617,8 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .tiersel button { min-width: 34px; min-height: 34px; border: 1px solid var(--line); border-radius: 8px; background: var(--sunk); font-weight: 700; cursor: pointer; touch-action: manipulation; color: var(--ink); }
 .tiersel button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
 .tiersel button[data-v="4"][aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: #fff; }
-.tierseg { display: grid; grid-template-columns: repeat(4, 1fr); }
+.tierseg { display: grid; grid-template-columns: repeat(4, 1fr); width: 100%; }
+.tierhint { display: block; margin: -2px 0 6px; }
 .tierseg button { padding: 8px 6px; }
 .tierseg button.mno[aria-pressed="true"] { background: var(--bad); color: #fff; }
 .claimpick { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 6px; margin-top: 4px; }
@@ -634,7 +635,7 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .claimbox li.ok { border-left-color: #16a34a; } .claimbox li.mid { border-left-color: #eab308; } .claimbox li.bad { border-left-color: var(--bad); }
 .claimbox li.bad b { color: var(--bad); }
 .visitchk { align-items: flex-start; margin-top: 8px; padding: 8px 10px; border: 1px dashed color-mix(in srgb, #f59e0b 60%, transparent); border-radius: 10px; }
-.visitchk input { margin-top: 3px; } .visitchk span { display: flex; flex-direction: column; gap: 2px; } .visitchk small { color: var(--muted); font-size: 12px; }
+.visitchk input { margin-top: 3px; } .visitchk > span { display: flex; flex-direction: column; gap: 2px; } .visitchk small { color: var(--muted); font-size: 12px; }
 .visits, .visitask { display: flex; flex-direction: column; gap: 6px; margin: 0 0 12px; padding: 10px 12px; border: 1px solid #f59e0b; border-radius: 12px; background: color-mix(in srgb, #f59e0b 9%, var(--surface)); }
 .visits > b, .visitask > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .03em; }
 .vlist { display: flex; flex-direction: column; gap: 6px; }
@@ -642,6 +643,7 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .visit { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; align-items: baseline; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 @media (hover: hover) { .visit:hover { border-color: #f59e0b; } } .visit:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .visit .num, .vrow .num { font-size: 15px; } .vtext { min-width: 0; overflow-wrap: anywhere; }
+.visit .vtext { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }   /* the whole note is one tap away */
 .visit small, .vrow small { grid-column: 2; color: var(--muted); font-size: 12px; }
 .qual { white-space: nowrap; }
 .rec { white-space: nowrap; font-variant-numeric: tabular-nums; }
@@ -826,6 +828,8 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .photoadd { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .photoadd label.busy { opacity: .6; pointer-events: none; }
 .toastbtn { all: unset; cursor: pointer; margin-left: 10px; font-weight: 700; color: #f0abfc; text-decoration: underline; text-underline-offset: 3px; }
+/* phones: the toast's action ("Next: Q4 · 38782 ›", "Undo") is a real button, easy to hit with a thumb */
+@media (pointer: coarse) { .toastbtn { display: inline-block; margin: 6px 0 0; padding: 8px 14px; min-height: 20px; border-radius: 999px; background: rgb(240 171 252 / .18); text-decoration: none; } }
 .toastbtn:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--band); color: var(--band-ink); padding: 9px 16px; border-radius: 8px; font-size: 14px; max-width: calc(100vw - 32px); z-index: 50; }
 
@@ -869,8 +873,8 @@ dialog::backdrop { background: rgb(14 6 30 / .55); backdrop-filter: blur(3px); }
   .dots button { width: auto; height: 34px; }
   #search { width: 100%; order: 5; }
   .evname { max-width: none; }
-  .evrow { flex: 1 1 100%; }
-  .evrow .hfield { flex: 1; }
+  .evrow { flex: 1 1 calc(100% - 56px); min-width: 0; }   /* the competition shares its row with the theme button only; lead controls go below */
+  .evrow .hfield { flex: 1; min-width: 0; }
 }
 @media (prefers-reduced-motion: no-preference) { .fit .track span, .stack span, .progress span { transition: width .25s ease; } }
 /* purple means "you can do something here" or "this is selected"; plain information stays in ink */
@@ -944,7 +948,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   #storePill.live { display: none; }   /* all good: say nothing; offline and errors still show */
   #exportBtn { display: none; }
   #rosterBtn { order: 6; }
-  #themeBtn { order: 6; margin-left: auto; min-height: 40px; }
+  #themeBtn { order: 3; min-height: 40px; }
   .btn-band { min-height: 40px; }
   .hfield select { min-height: 40px; }
   /* live updates and alliance selection: one line each */
@@ -1301,7 +1305,13 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .myqlist { display: flex; flex-direction: column; gap: 6px; }
 .myqual { all: unset; box-sizing: border-box; cursor: pointer; display: grid; grid-template-columns: auto auto 1fr auto; align-items: center; gap: 4px 10px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
 @media (hover: hover) { .myqual:hover { border-color: var(--accent); } } .myqual:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
-.myqual .mq { font-weight: 700; font-size: 15px; } .myqual .mqt { color: var(--muted); font-size: 12.5px; }
+.myqual .mq { font-weight: 700; font-size: 15px; }
+.myqual .mqsoon { color: var(--accent-ink); font-weight: 700; white-space: nowrap; }
+#tabQuals { position: relative; }
+#tabQuals[data-late]:not([data-late=""])::after { content: attr(data-late); position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
+  border-radius: 999px; background: #dc2626; color: #fff; font: 700 11px/18px system-ui, sans-serif; text-align: center; letter-spacing: 0; pointer-events: none; }
+.hshort { display: none; }
+@media (max-width: 560px) { .hlong { display: none; } .hshort { display: inline; } } .myqual .mqt { color: var(--muted); font-size: 12.5px; }
 .myqual .mqteam { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
 .myqual .mqteam small { color: var(--muted); }
 .myqual .mqside { font-size: 11px; font-weight: 700; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; }
@@ -1318,7 +1328,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       <div><h1>Singularity Scout</h1><small><b>Team 51</b> · NerdHerd Singularity · alliance selection</small></div></a>
     <div class="evrow" id="evNav" hidden>
       <div class="hfield"><span>Scouting</span><b class="evname" id="evName"></b></div>
-      <button class="btn-band ghost" id="homeBtn">All competitions</button>
+      <button class="btn-band ghost" id="homeBtn" aria-label="All competitions"><span class="hlong">All competitions</span><span class="hshort" aria-hidden="true">‹ All</span></button>
     </div>
     <div class="hfield"><span>Our team</span><b class="ourteam" id="ourTeam" title="This board is for Team 51 only for now">51</b></div>
     <label class="hfield"><span>Alliance</span><select id="allianceSize"><option value="2">2 teams</option><option value="3">3 teams</option></select></label>
@@ -3232,6 +3242,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
   function renderRows(c) {
     const q = view.q.trim().toLowerCase();
     let list = view.filter === "available" ? c.ranked.filter(t => t.status !== "taken") : c.ranked.slice();
+    list.sort((a, b) => (a.status === "taken") - (b.status === "taken"));   // taken teams sink, so who's left stays on top (order kept otherwise)
     if (c.us) list = [c.us, ...list];
     if (q) list = list.filter(t => String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q) || (t.tags || []).join(" ").toLowerCase().includes(q));
     if (view.sort !== "fit") {
@@ -3284,7 +3295,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     $("homeView").hidden = gate || !!current; $("boardView").hidden = gate || !current;
     $("evNav").hidden = gate || !current;
     $("meBox").hidden = gate || offline;
-    $("ourTeam").parentElement.hidden = gate; $("allianceSize").parentElement.hidden = gate || !current;   // nothing to set before signing in or choosing a competition
+    $("ourTeam").parentElement.hidden = gate; $("allianceSize").parentElement.hidden = gate || !current || !canManage();   // a lead setting: scouts don't need it in their header   // nothing to set before signing in or choosing a competition
     const ms = meScout();
     if (ms) { $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(nameOf(uid))}<span class="mesw"> · ${ACCOUNTS() ? "Account" : "Switch"}</span>`; $("meBtn").setAttribute("aria-label", `Scouting as ${nameOf(uid)}. ${ACCOUNTS() ? "Your account" : "Switch scout"}`); }
     $("rosterBtn").hidden = !canManage();
@@ -3550,8 +3561,16 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     if (document.activeElement?.dataset?.w === undefined) renderSliders();
     document.querySelectorAll("th button.sort").forEach(b => b.setAttribute("aria-sort", b.dataset.sort === view.sort ? "active" : "none"));
     $("sortPhone").value = view.sort; $("sortPhoneBox").hidden = view.tab !== "pick"; $("tierBtn").hidden = readOnly || !uid || view.tab !== "pick";
+    // your write-ups that are overdue, on the Quals tab so they show from any tab
+    const late = current ? myLateCount() : 0; $("tabQuals").dataset.late = late ? String(late) : "";
+    $("tabQuals").setAttribute("aria-label", late ? `Quals, ${late} of your write-ups overdue` : "Quals");
     if ($("teamDlg").open && !dlgDirty && !aiBusy) renderTeamDlg();
   }
+
+  // "in 4 min" counts down on its own (the rest of the page only redraws when data changes)
+  setInterval(() => { if (document.hidden || !current || !uid) return;
+    if ($("myTeamsQ") && $("myTeamsQ").offsetParent) $("myTeamsQ").innerHTML = myTeamsHtml() + visitsHtml();
+    if ($("myTeamsN") && $("myTeamsN").offsetParent) $("myTeamsN").innerHTML = myTeamsHtml(); }, 30000);
 
   /* ---------- team dialog: stats, numbers, note history ----------
      Notes live in team.notes as {id: {by, text, at, changed}} so several scouts can add
@@ -4073,8 +4092,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         : `<span class="hint">Nobody yet. ${canManage() ? "Hand out quals on Quals › Coverage." : "Leads hand out quals at the start of quals."}</span>`}</div></div>`;
   }
   // the scout's own quals in order: the robot to watch in each, with ✓ written up / ! not yet / ○ to come
-  function myTeamsHtml(c) {
-    if (!uid || !current) return "";
+  // every qual this scout was handed at this competition, in match order, and whether it's written up
+  function myQualRows() {
+    if (!uid || !current) return [];
     const byKey = new Map((quals.key === current && quals.list ? quals.list : []).map(m => [matchKey(m), m]));
     const rows = [];
     for (const t of teams.values()) {
@@ -4082,13 +4102,32 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const done = doneQuals(t, uid);
       for (const k of qualsOf(t, uid) || teamQuals(t.number).map(matchKey)) { const m = byKey.get(k); if (m) rows.push({ t, m, k, done: done.has(k) }); }
     }
-    rows.sort((a, b) => a.m.id - b.m.id);
+    return rows.sort((a, b) => a.m.id - b.m.id);
+  }
+  const myLateCount = () => myQualRows().filter(r => r.m.played && !r.done).length;
+  // what to write up next: anything overdue first, then the next qual to come
+  const myNextQual = (skipTeam, skipKey) => myQualRows().find(r => !r.done && !(r.t.number === skipTeam && r.k === skipKey));
+  // "due now" once its slot has started (schedules run late, so not "on the field"), "in 4 min" within the hour
+  function qualSoon(m) {
+    if (m.played) return "";
+    const at = Date.parse(m.time || m.scheduled || ""); if (!at) return "";
+    const mins = Math.ceil((at - Date.now()) / 60000);
+    return mins <= 0 ? "due now" : mins <= 60 ? `in ${mins} min` : "";
+  }
+  // open a team's Scouting page ready to write up one qual
+  function openWriteUp(num, key) {
+    openTeam(num, "edit");
+    if (key && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") { draft.ctx = "qual"; draft.match = key; draft.autoMatch = false; renderTeamDlg(); }
+  }
+  function myTeamsHtml(c) {
+    if (!uid || !current) return "";
+    const rows = myQualRows();
     if (!rows.length) return `<div class="myteams none"><b>Your quals</b><span class="hint">${canManage() ? "No quals handed out to you yet. Hand them out on Quals › Coverage." : "No quals handed out to you yet. A lead hands them out at the start of quals."}</span></div>`;
     const late = rows.filter(r => r.m.played && !r.done), next = rows.filter(r => !r.m.played).slice(0, 3), doneN = rows.filter(r => r.done).length;
     const tm = (m) => { const x = m.time || m.scheduled; return x ? new Date(x).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" }) : ""; };
     const row = (r) => { const red = r.m.red.some(x => x.n === r.t.number), cls = r.done ? "done" : r.m.played ? "late" : "";
       return `<button type="button" class="myqual ${cls}" data-team="${r.t.number}" data-wq="${esc(r.k)}" title="Open ${esc(r.t.number)} to write up Q${esc(r.m.id)}">
-        <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt">${esc(tm(r.m))}</span>
+        <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt" title="${esc(tm(r.m))}">${qualSoon(r.m) ? `<b class="mqsoon">${esc(qualSoon(r.m))}</b>` : esc(tm(r.m))}</span>
         <span class="mqteam">watch <b class="num">${esc(r.t.number)}</b> <small>${esc(r.t.name || "")}</small></span><span class="mqside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span></button>`; };
     return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up !</span>` : ""}</span>
       <div class="myqlist">${[...late, ...next].map(row).join("") || `<span class="hint qdone">All your quals are written up ✓</span>`}</div></div>`;
@@ -4190,7 +4229,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
         `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
       ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}
-        <label class="check visitchk"><input type="checkbox" id="dVisit" ${draft.visit ? "checked" : ""} ${canRate ? "" : "disabled"}><span>Someone should <b>go talk to them</b> in the pits<small>Say why in the note (it broke, auto failed…). It shows on everyone's Quals tab until someone writes a pit note.</small></span></label>
+        <label class="check visitchk"><input type="checkbox" id="dVisit" ${draft.visit ? "checked" : ""} ${canRate ? "" : "disabled"}><span><span>Someone should <b>go talk to them</b> in the pits</span><small>Say why in the note (it broke, auto failed…). It shows on everyone's Quals tab until someone writes a pit note.</small></span></label>
         <p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
       ${draft.ctx === "pit" ? `<span class="mlabel">Robot's condition <span class="req">Required</span></span>
         <div class="statepick" role="group" aria-label="Robot's condition">${PIT_STATES.map(([v, l]) => `<button type="button" class="stbtn ${v}" data-state="${v}" aria-pressed="${draft.state === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
@@ -4228,7 +4267,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       </div>
       <div class="row2"><label class="fld">Tags (shared)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
         <label class="check" style="align-self:end;padding-bottom:8px"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}> Do not pick</label></div>
-      <div class="movebox"><span class="mlabel">Your pick list <small class="hint">just your opinion · everyone's are combined on the pick list</small></span>
+      <div class="movebox"><span class="mlabel">Your pick list</span><small class="hint tierhint">Just your opinion. Everyone's are combined on the pick list.</small>
         <div class="seg3 tierseg" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) =>
           `<button type="button" data-dtier="${v}" class="${v === 4 ? "mno" : ""}" aria-pressed="${draft.tier === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         ${tierAgg(t) ? `<small class="hint">Scouts so far: ${tierTag(t)}</small>` : ""}</div>
@@ -4360,7 +4399,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     patchTeam(dlgTeam, patch);
     clearTimeout(stashT); dropDraft(dlgTeam);
     dlgDirty = false; $("teamDlg").close();
-    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}${draft.visit ? " · the pit crew will see it" : ""}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : tierChanged && !tagsChanged && !movesChanged ? (draft.tier ? `${dlgTeam} is ${tierName(draft.tier)} on your pick list` : `${dlgTeam} is off your pick list`) : `Saved for ${dlgTeam}`);
+    const savedTeam = dlgTeam, nextUp = isQual ? myNextQual(savedTeam, draft.match) : null;
+    toast(isQual ? `${matchLabelOf(draft.match)} notes saved for ${dlgTeam}${draft.visit ? " · the pit crew will see it" : ""}` : isPit ? `Pit check saved for ${dlgTeam}: ${pitStateName(draft.state)}` : withPhotos.length ? `Note and ${withPhotos.length} photo${withPhotos.length === 1 ? "" : "s"} saved for ${dlgTeam}` : text ? (numsChanged ? `Note and numbers saved for ${dlgTeam}` : `Note saved for ${dlgTeam}`) : tierChanged && !tagsChanged && !movesChanged ? (draft.tier ? `${dlgTeam} is ${tierName(draft.tier)} on your pick list` : `${dlgTeam} is off your pick list`) : `Saved for ${dlgTeam}`,
+      nextUp ? { label: `Next: Q${nextUp.m.id} · ${nextUp.t.number} ›`, run: () => openWriteUp(nextUp.t.number, nextUp.k) } : null);
   });
   $("teamDlg").addEventListener("close", () => { if (dlgDirty) stashDraft(); dlgDirty = false; });
   window.addEventListener("pagehide", () => { if ($("teamDlg").open) stashDraft(); });   // phone locks or the tab is swiped away
@@ -4428,9 +4469,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
     else if (b.dataset.pick) setStatus(Number(b.dataset.pick), "partner");
     else if (b.dataset.team) {
-      openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
       // a "Your quals" row says which qual to write up: open straight on it
-      if (b.dataset.wq && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") { draft.ctx = "qual"; draft.match = b.dataset.wq; draft.autoMatch = false; renderTeamDlg(); }
+      if (b.dataset.wq) openWriteUp(Number(b.dataset.team), b.dataset.wq);
+      else openTeam(Number(b.dataset.team), b.closest("#notesWrap,#next,#pickBar,#needs,.mscout") ? "view" : "edit");
     }
     else if (b.dataset.act === "load") openLoad();
     else if (b.dataset.act === "loadall") loadRequests([...requests.keys()]);
