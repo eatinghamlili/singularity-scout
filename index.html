@@ -1524,16 +1524,17 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       <div id="installBody"></div>
     </section>
     <section class="phonesec">
-      <h3>Next-match widget <span class="tag">iPhone</span></h3>
-      <p class="hint">On match days it shows our next match, the time, our alliance color, partner and opponents. Between events it shows our next competition. Works on the home screen and the lock screen, and refreshes on its own.</p>
+      <h3>Match widget <span class="tag">iPhone</span></h3>
+      <p class="hint">On match days it shows our next match, the time, our alliance color, partner and opponents, and <b>your quals</b>: the robots a lead handed you, when they play, and any you still need to write up. Between events it shows our next competition. Works on the home screen and the lock screen, and refreshes on its own.</p>
       <ol class="phonesteps">
         <li>Get <a href="https://apps.apple.com/app/scriptable/id1405459188" target="_blank" rel="noopener">Scriptable</a> from the App Store (free).</li>
         <li><button type="button" class="btn primary" id="copyWidget">Copy widget script</button> <span class="hint" id="copyNote" aria-live="polite"></span></li>
         <li>Open Scriptable, tap <b>+</b>, paste, then tap the title at the top and name it <b>Scout 51</b>. Tap <b>Done</b>.</li>
         <li><b>Home screen:</b> press and hold an empty spot → <b>Edit</b> → <b>Add Widget</b> → <b>Scriptable</b> → Small or Medium → <b>Add Widget</b>. Then press and hold the new widget → <b>Edit Widget</b> → Script: <b>Scout 51</b>.</li>
-        <li><b>Lock screen (optional):</b> press and hold the lock screen → <b>Customize</b> → <b>Lock Screen</b> → tap the widget row → <b>Scriptable</b> → the wide one. Tap it → Script: <b>Scout 51</b>.</li>
+        <li><b>Your quals:</b> in the same <b>Edit Widget</b> screen, type your name in <b>Parameter</b><span id="widgetName"></span>. Leave it empty to see only Team 51's matches.</li>
+        <li><b>Lock screen (optional):</b> press and hold the lock screen → <b>Customize</b> → <b>Lock Screen</b> → tap the widget row → <b>Scriptable</b> → the wide one. Tap it → Script: <b>Scout 51</b>, Parameter: your name. It shows your next qual.</li>
       </ol>
-      <p class="hint">Tapping the widget opens this board. It only reads public FTCScout data, so no scout code is needed. <a href="widget/scout-widget.js" target="_blank" rel="noopener">See the script</a>.</p>
+      <p class="hint">Tapping the widget opens this board. It only reads public data (FTCScout, and who's handed which quals), so no scout code or password goes in it. <a href="widget/scout-widget.js" target="_blank" rel="noopener">See the script</a>.</p>
     </section>
     <div class="dlgfoot"><button type="button" class="btn" data-phoneclose>Close</button></div>
   </div>
@@ -4518,7 +4519,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   let widgetSrc = null;
   async function openPhone() {
-    renderInstall(); $("copyNote").textContent = ""; $("phoneDlg").showModal();
+    renderInstall(); $("copyNote").textContent = "";
+    // the name the widget looks for: exactly what teammates see on the board
+    $("widgetName").innerHTML = uid && scouts.size ? `: <b>${esc(nameOf(uid))}</b>` : " (as it shows on the board)";
+    $("phoneDlg").showModal();
     // fetch the script now, so the tap on Copy can write it straight away (iPhones only allow copying right after a tap)
     if (!widgetSrc) try { const r = await fetch("widget/scout-widget.js", { cache: "no-cache" }); if (r.ok) widgetSrc = await r.text(); } catch {}
   }
