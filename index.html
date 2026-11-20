@@ -3350,11 +3350,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
       ${canManage() ? `<p class="hint" style="margin-top:10px">Give new scouts a code in Team roster.</p>` : ""}`;
   }
 
-  /* Count check: our scouts' qual counts against FIRST's official alliance scores. Scouts don't count hive tips,
-     so a little under is normal; counting MORE than the alliance scored means something was counted twice
-     (or the wrong robot or qual was picked). Leads see every scout; everyone else sees their own counts. */
-  var TIP_PTS = 20;   // a hive tip, which scouts don't count
-  var OVER = 6;   // (var: render can run before this line) points of slack before a count looks too high (penalty points and rounding)
+  /* Count check: everything our scouts count for an alliance (balls 2 each, leaving the start 3, parking 5 in auto and
+     at the end) is real points, so it can never add up to more than that alliance's whole score (which also has hive
+     tips and penalty points scouts don't count). When it does, something was counted twice, or the wrong robot or qual
+     was picked. Leads see every scout; everyone else sees their own counts. */
+  const countBalls = (c) => { const a = (c && c.a) || {}, t = (c && c.t) || {}; return CNT_SCORE.reduce((n, [f]) => n + Math.max(0, Number(a[f]) || 0) + Math.max(0, Number(t[f]) || 0), 0); };
   function countCheck() {
     const list = quals.key === current && quals.list ? quals.list : [];
     const per = new Map(), flags = [];
@@ -3362,23 +3362,22 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     for (const m of list) {
       if (!m.played || m.level !== "Quals" || m.redScore == null) continue;
       const key = matchKey(m);
-      for (const [side, color, score, foul, tips] of [[m.red, "Red", m.redScore, m.redFoul, m.redTips], [m.blue, "Blue", m.blueScore, m.blueFoul, m.blueTips]]) {
-        // what scouts can count: the score without penalty points and without hive tips (20 each), when the results say
-        const official = (foul != null ? score - foul : score) - (tips != null ? tips * TIP_PTS : 0);
+      for (const [side, color, score] of [[m.red, "Red", m.redScore], [m.blue, "Blue", m.blueScore]]) {
+        // each robot's counted points and balls (several scouts on one robot are averaged), then the alliance's together
         const robots = side.map(x => {
           const t = teams.get(x.n), ns = t ? allNotes(t).filter(z => z.ctx === "qual" && z.match === key && z.counts) : [];
-          return { n: x.n, ns, pts: ns.length ? ns.reduce((a, z) => a + countPts(z.counts).total, 0) / ns.length : null };
+          const avg = (fn) => ns.reduce((a, z) => a + fn(z.counts), 0) / ns.length;
+          return { n: x.n, ns, pts: ns.length ? avg((c) => countPts(c).total) : null, balls: ns.length ? avg(countBalls) : 0 };
         }).filter(r => r.pts != null);
         if (!robots.length) continue;
         alliances++;
-        const sum = robots.reduce((a, r) => a + r.pts, 0), full = robots.length === side.length, over = sum > official + OVER;
+        const pts = robots.reduce((a, r) => a + r.pts, 0), balls = robots.reduce((a, r) => a + r.balls, 0), over = pts > score;
         for (const r of robots) for (const z of r.ns) {
-          const x = per.get(z.by) || { n: 0, over: new Set(), full: 0, gap: 0 };
+          const x = per.get(z.by) || { n: 0, over: new Set() };
           x.n++; if (over) x.over.add(key + color);   // alliances, not notes
-          if (full) { x.full++; x.gap += official - sum; }
           per.set(z.by, x);
         }
-        if (over) flags.push({ key, label: matchLabelOf(key), color, official, sum, robots });
+        if (over) flags.push({ key, label: matchLabelOf(key), color, score, pts, balls, robots });
       }
     }
     return { per, flags, alliances };
@@ -3390,15 +3389,16 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     const { per, flags, alliances } = countCheck(), lead = canManage();
     const rows = [...per.entries()].filter(([id]) => lead || id === uid).sort((a, b) => b[1].over.size - a[1].over.size || b[1].n - a[1].n);
     const mineFlags = flags.filter(f => lead || f.robots.some(r => r.ns.some(z => z.by === uid)));
-    const line = ([id, x]) => `<div>${who(id, id === uid ? "You" : null)}<span>${x.n} count${x.n === 1 ? "" : "s"}${x.full ? ` · about ${Math.round(Math.abs(x.gap / x.full))} ${x.gap >= 0 ? "under" : "over"} the real score` : ""}${x.over.size ? ` · <b class="qlate">${x.over.size} alliance${x.over.size === 1 ? "" : "s"} too high !</b>` : ""}</span></div>`;
+    const line = ([id, x]) => `<div>${who(id, id === uid ? "You" : null)}<span>${x.n} count${x.n === 1 ? "" : "s"}${x.over.size ? ` · <b class="qlate">${x.over.size} alliance${x.over.size === 1 ? "" : "s"} too high !</b>` : " · OK"}</span></div>`;
+    const n1 = (v) => Math.round(v * 10) / 10, b1 = (v) => `${n1(v)} ball${n1(v) === 1 ? "" : "s"}`;
     el.innerHTML = `<h2>Count check</h2>
-      <p class="sub">Qual counts added up per alliance and checked against the official score, leaving out penalty points and hive tips (scouts don't count those). A few points under means pieces were missed; over means something was counted twice.</p>
+      <p class="sub">Everything counted for an alliance (balls 2 points each, leaving the start 3, parking 5 in auto and at the end) can't add up to more than the alliance's score. If it does, something was counted twice, or the wrong robot or qual was picked.</p>
       ${!alliances ? `<p class="hint">Nothing to check yet. Counts are checked once a qual is played and a scout picked it on the Scouting page.</p>`
         : `${rows.length ? `<div class="crew cc">${rows.map(line).join("")}</div>` : `<p class="hint">You haven't counted a played qual yet.</p>`}
         ${mineFlags.length ? `<div class="ccflags"><b>Looks too high</b>${mineFlags.slice(-6).reverse().map(f => `<button type="button" class="ccflag" data-match="${esc(f.key)}">
-            <span><b>${esc(f.label)} ${f.color}</b>: counted ${Math.round(f.sum)}, scored ${Math.round(f.official)}</span>
-            <small>${f.robots.map(r => `${esc(r.n)}: ${Math.round(r.pts)} (${r.ns.map(z => esc(z.by === uid ? "you" : nameOf(z.by))).join(", ")})`).join(" · ")}</small></button>`).join("")}</div>`
-          : `<p class="hint qdone">No counts above the real score ✓</p>`}`}`;
+            <span><b>${esc(f.label)} ${f.color}</b>: counted ${n1(f.pts)} pts (${b1(f.balls)}, leave and park), but they only scored ${f.score}</span>
+            <small>${f.robots.map(r => `${esc(r.n)}: ${n1(r.pts)} pts (${[...new Set(r.ns.map(z => z.by))].map(k => esc(k === uid ? "you" : nameOf(k))).join(", ")})`).join(" · ")}</small></button>`).join("")}</div>`
+          : `<p class="hint qdone">No alliance has more points counted than it scored ✓</p>`}`}`;
   }
 
   let noteCounts = {}, countsAt = 0, countsBusy = false;
