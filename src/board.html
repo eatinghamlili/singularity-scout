@@ -3579,10 +3579,11 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
     window.scrollTo(0, 0);
     render();
     // opening a competition starts on its Quals tab
-    const fresh = !!current && current !== routedKey; routedKey = current;
+    const fresh = !!current && current !== routedKey, cameHome = !current && !!routedKey; routedKey = current;
     // a competition opens on Quals > Coverage (who's watching what, and the lead's handout), unless a button asked for our matches
     if (fresh) { qualCover = pendingCover == null ? true : pendingCover; coverPlayed = false; pendingCover = null; }
     if (fresh && splashGone) showOpening(current);   // the opening screen already covers a competition opened straight from a link
+    if (cameHome && splashGone) showHome();
     if (current && (pendingTab || fresh)) { const t = pendingTab || "quals"; pendingTab = null; setTab(t); }
   }
   var routedKey = null;   // the competition the board last opened (var: route() can run before this line)
@@ -3597,38 +3598,45 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 
   /* The opening screen: stays at least SPLASH_MIN so it reads as a welcome, not a flicker, then fades once the
      board's data is in. It can't get stuck (gone after SPLASH_MAX whatever happens) and a tap skips it. */
-  var SPLASH_MIN = matchMedia("(prefers-reduced-motion: reduce)").matches ? 500 : 1400, SPLASH_MAX = 5000, splashGone = false, splashStep = 0;   // var: render can run before this line
+  var SPLASH_MIN = matchMedia("(prefers-reduced-motion: reduce)").matches ? 400 : 1000, SPLASH_MAX = 5000, splashGone = false, splashStep = 0;   // var: render can run before this line
   var SPLASH_MSGS = ["Warming up the scouting board…", "Connecting to Team 51's board…", "Loading competitions and scouts…", "Getting the latest scores…", "Almost ready…"];
   var splashStart = Date.now(), splashTimer = setInterval(() => {
     if (!$("splash")) return;
     splashStep = Math.min(splashStep + 1, SPLASH_MSGS.length - 1);
     $("splashMsg").textContent = SPLASH_MSGS[splashStep]; $("splashBar").style.width = Math.min(90, 12 + splashStep * 20) + "%";
-  }, 300);   // four messages fit in the 1.4 s
+  }, 220);   // four messages fit in the 1 s
   function hideSplash(now) {
     const el = $("splash"); if (splashGone || !el) return;
     splashGone = true;
     // the messages keep going until just before it fades; "Ready!" is the last thing on screen
-    const wait = now ? 0 : Math.max(350, SPLASH_MIN - (Date.now() - splashStart));
-    setTimeout(() => { clearInterval(splashTimer); $("splashBar").style.width = "100%"; $("splashMsg").textContent = "Ready!"; }, Math.max(0, wait - 350));
+    const wait = now ? 0 : Math.max(280, SPLASH_MIN - (Date.now() - splashStart));
+    setTimeout(() => { clearInterval(splashTimer); $("splashBar").style.width = "100%"; $("splashMsg").textContent = "Ready!"; }, Math.max(0, wait - 280));
     setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 450); }, wait);
   }
   setTimeout(() => hideSplash(), SPLASH_MAX);
   if ($("splash")) $("splash").addEventListener("click", () => hideSplash(true));
-  // opening a competition: a short "Opening …" screen while its teams load (0.8 s at least, 3 s at most; a tap skips it)
-  function showOpening(key) {
-    const ev = events.get(key), el = document.createElement("div");
+  // a short screen when moving around: opening a competition (until its teams load) or going back to all
+  // competitions. 0.6 s at least, 3 s at most, and a tap skips it.
+  function showTransition(lead, title, msg, ready) {
+    document.querySelectorAll(".splash.opening").forEach(x => x.remove());   // a quick second tap replaces the first
+    const el = document.createElement("div");
     el.className = "splash opening"; el.setAttribute("role", "status"); el.setAttribute("aria-live", "polite");
     el.innerHTML = `<div class="spl-in"><div class="spl-orbit" aria-hidden="true"><span class="hole spl-hole"></span><img class="spl-dino" src="${BARNEY.logo}" alt=""></div>
-      <span class="spl-team">Opening</span><b class="spl-title">${esc(ev && ev.name ? ev.name : "the competition")}</b>
-      <div class="spl-bar" aria-hidden="true"><i></i></div><span class="spl-msg">Loading teams and the match schedule…</span></div>`;
+      <span class="spl-team">${esc(lead)}</span><b class="spl-title">${esc(title)}</b>
+      <div class="spl-bar" aria-hidden="true"><i></i></div><span class="spl-msg">${esc(msg)}</span></div>`;
     document.body.appendChild(el);
-    const bar = el.querySelector(".spl-bar i"), t0 = Date.now(), min = matchMedia("(prefers-reduced-motion: reduce)").matches ? 300 : 800;
+    const bar = el.querySelector(".spl-bar i"), t0 = Date.now(), min = matchMedia("(prefers-reduced-motion: reduce)").matches ? 250 : 600;
     requestAnimationFrame(() => requestAnimationFrame(() => { bar.style.width = "75%"; }));
     let shut = false;
-    const done = () => { if (shut) return; shut = true; clearInterval(poll); bar.style.width = "100%"; setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 450); }, 120); };
-    const poll = setInterval(() => { const waited = Date.now() - t0; if (waited >= min && (teamsReadyKey === key || current !== key || waited > 3000)) done(); }, 100);
+    const done = () => { if (shut) return; shut = true; clearInterval(poll); bar.style.width = "100%"; setTimeout(() => { el.classList.add("out"); setTimeout(() => el.remove(), 450); }, 100); };
+    const poll = setInterval(() => { const waited = Date.now() - t0; if (waited >= min && (ready() || waited > 3000)) done(); }, 80);
     el.addEventListener("click", done);
   }
+  function showOpening(key) {
+    const ev = events.get(key);
+    showTransition("Opening", ev && ev.name ? ev.name : "the competition", "Loading teams and the match schedule…", () => teamsReadyKey === key || current !== key);
+  }
+  const showHome = () => showTransition("Back to", "All competitions", "Loading competitions…", () => true);
 
   function render() {
     const c = compute();
