@@ -1648,6 +1648,75 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
+
+  /* Smooth redraws. The page redraws its lists by writing new HTML, which used to throw away every element and
+     build it again, so on a phone each tap made the team photos and dinos blink out and back. These containers
+     now update in place instead: elements that didn't change (pictures above all) stay exactly as they are, only
+     what changed is touched, and list items follow their team or match when the order changes. */
+  const nativeHtml = Object.getOwnPropertyDescriptor(Element.prototype, "innerHTML");
+  const ownKey = (n) => n.nodeType !== 1 ? "" : n.id || n.getAttribute("data-team") || n.getAttribute("data-match") || n.getAttribute("data-key") || "";
+  function topKeyer() {   // a list row is known by the first team or match inside it
+    const seen = new Map();
+    return (n) => {
+      if (n.nodeType !== 1) return "";
+      if (seen.has(n)) return seen.get(n);
+      let k = ownKey(n);
+      if (!k) { const d = n.querySelector("[data-team],[data-match]"); k = d ? "~" + (d.getAttribute("data-team") || "") + "|" + (d.getAttribute("data-match") || "") : ""; }
+      seen.set(n, k); return k;
+    };
+  }
+  function syncAttrs(a, b) {
+    for (const { name, value } of [...b.attributes]) if (a.getAttribute(name) !== value) a.setAttribute(name, value);
+    for (const { name } of [...a.attributes]) if (!b.hasAttribute(name)) a.removeAttribute(name);
+  }
+  function morphNode(a, b) {
+    if (a.nodeType !== 1) { if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue; return; }
+    syncAttrs(a, b);
+    const typing = a === document.activeElement;   // never yank what someone is typing
+    if (a.nodeName === "TEXTAREA") { if (!typing && a.value !== b.value) a.value = b.value; if (a.defaultValue !== b.defaultValue) a.defaultValue = b.defaultValue; return; }
+    morphKids(a, b, ownKey);
+    if (a.nodeName === "INPUT" && !typing) {
+      if (a.type === "checkbox" || a.type === "radio") a.checked = b.hasAttribute("checked");
+      else if (a.value !== (b.getAttribute("value") || "")) a.value = b.getAttribute("value") || "";
+    } else if (a.nodeName === "SELECT" && !typing) {
+      const o = b.querySelector("option[selected]"); a.value = o ? o.value : (a.options[0] ? a.options[0].value : "");
+    }
+  }
+  function morphKids(from, to, key) {
+    const old = new Map(), used = new Set(), keep = new Set();
+    for (let c = from.firstChild; c; c = c.nextSibling) { const k = key(c); if (k && !old.has(k)) old.set(k, c); }
+    for (let c = to.firstChild; c; c = c.nextSibling) { const k = key(c); if (k) keep.add(k); }
+    let cur = from.firstChild;
+    for (let want = to.firstChild, nx; want; want = nx) {
+      nx = want.nextSibling;
+      const k = key(want);
+      let m = cur && cur.nodeType === want.nodeType && cur.nodeName === want.nodeName && key(cur) === k ? cur : k ? old.get(k) : null;
+      if (m && (m.parentNode !== from || m.nodeName !== want.nodeName || used.has(m))) m = null;
+      // nothing with that key here: reuse the element in this spot if its own key is gone too (a section whose first
+      // match moved on is still the same section)
+      if (!m && cur && cur.nodeType === want.nodeType && cur.nodeName === want.nodeName && !keep.has(key(cur))) m = cur;
+      if (!m) { from.insertBefore(want, cur); continue; }   // new: use the freshly built node
+      used.add(m);
+      if (m === cur) cur = cur.nextSibling; else from.insertBefore(m, cur);
+      morphNode(m, want);
+    }
+    while (cur) { const x = cur.nextSibling; from.removeChild(cur); cur = x; }
+  }
+  function morph(el, html) {
+    const t = document.createElement("template"); t.innerHTML = html;
+    morphKids(el, t.content, topKeyer());
+  }
+  // the redraws of these containers go through morph (the editing page of the team window still rebuilds:
+  // it is a form whose choices should start fresh each time it opens)
+  for (const id of ["noteHits", "noteCards", "myTeamsN", "myTeamsQ", "qualSum", "matchList", "rows", "rankRows", "crew", "countCheck",
+                    "needs", "next", "evRequests", "evUpcoming", "evPast", "evToday", "liveBar", "matchForm", "teamForm"]) {
+    const el = document.getElementById(id); if (!el) continue;
+    Object.defineProperty(el, "innerHTML", { configurable: true, get() { return nativeHtml.get.call(el); }, set(h) {
+      let rebuild = false;
+      if (id === "teamForm") { try { rebuild = dlgMode === "edit"; } catch (e) { rebuild = true; } }
+      if (rebuild) nativeHtml.set.call(el, h); else morph(el, String(h));
+    } });
+  }
   // also drops invisible text-direction controls, so nobody can make a note or name read backwards
   const esc = (s) => String(s ?? "").replace(/[\u202A-\u202E\u2066-\u2069]/g, "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const n = (v) => { const x = parseFloat(v); return Number.isFinite(x) ? x : 0; };
