@@ -37,10 +37,10 @@ REPLACE = [
      '    const live = ev.live || null;\n'),
     ('  let liveOn = false, liveEvery = 3,',
      '  let liveAutoFor = null;\n  let liveOn = false, liveEvery = 3,'),
-    ('They resume when the board owner\'s Claude desktop app has this competition open.',
-     'They resume as soon as any scout has this competition open.'),
+    (' Turn on updates from this device below, or open this competition in the Claude desktop app.',
+     ' Tap Options and turn on updates from this device. Any scout\'s phone can do it.'),
     ('${isOwner ? "" : " Live updates aren\'t running."}', ' Open during the event to keep them current.'),
-    ('const ownerCtl = isOwner && !readOnly ?', 'const ownerCtl = uid && !readOnly ?'),
+    ('const canRun = isOwner && !readOnly;', 'const canRun = !!uid && !readOnly;'),
     ('Turn on live updates (board owner, desktop app) to keep them current.',
      'They update automatically while any scout has this competition open.'),
     # wording that only made sense on claude.ai
