@@ -39,7 +39,11 @@ REPLACE = [
      '  let liveAutoFor = null;\n  let liveOn = false, liveEvery = 3,'),
     (' Turn on updates from this device below, or open this competition in the Claude desktop app.',
      ' Tap Options and turn on updates from this device. Any scout\'s phone can do it.'),
-    ('${isOwner ? "" : " Live updates aren\'t running."}', ' Open during the event to keep them current.'),
+    ('${isOwner ? "" : " Live updates aren\'t running."}', '${canRun ? " Use Update from here to keep them current." : ""}'),
+    # leaving a competition resets the automatic start, so coming back to it starts updating again
+    # (a scout who taps Stop and stays put isn't restarted)
+    ('  window.addEventListener("hashchange", () => setTimeout(() => { if (liveOn && liveKey !== current) stopLive(); }, 0));',
+     '  window.addEventListener("hashchange", () => setTimeout(() => { if (liveAutoFor !== current) liveAutoFor = null; if (liveOn && liveKey !== current) stopLive(); }, 0));'),
     ('const canRun = isOwner && !readOnly;', 'const canRun = !!uid && !readOnly;'),
     ('Turn on live updates (board owner, desktop app) to keep them current.',
      'They update automatically while any scout has this competition open.'),

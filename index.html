@@ -422,7 +422,8 @@ a { color: var(--accent-ink); }
 .mstate.res.r { box-shadow: inset 3px 0 0 #dc2626; } .mstate.res.b { box-shadow: inset 3px 0 0 #2563eb; }
 .mpred.past { gap: 6px; color: var(--muted); font-size: 12.5px; }
 .mpred.past .pscore { color: var(--muted); }
-.mres.won { color: var(--good); } .mres.lost { color: var(--bad); }
+.mres { white-space: nowrap; } .mres.won { color: var(--good); } .mres.lost { color: var(--bad); }
+.malli .alli.played .mscore { font-size: 20px; color: var(--ink); } .malli .alli.played:not(.won) .mscore { font-weight: 500; }
 .alli.won { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent); }
 .mteams { display: flex; flex-wrap: wrap; gap: 6px; }
 .mscore { font-family: var(--f-mono); font-size: 17px; color: var(--muted); min-width: 32px; text-align: right; }
@@ -2618,7 +2619,7 @@ input, textarea { caret-color: var(--accent); }
     renderLive();
   }
   // a competition switch stops the loop; coming back to a hidden tab catches up right away
-  window.addEventListener("hashchange", () => setTimeout(() => { if (liveOn && liveKey !== current) stopLive(); }, 0));
+  window.addEventListener("hashchange", () => setTimeout(() => { if (liveAutoFor !== current) liveAutoFor = null; if (liveOn && liveKey !== current) stopLive(); }, 0));
   document.addEventListener("visibilitychange", () => {
     const live = events.get(current)?.live;
     if (liveOn && !document.hidden && live && Date.now() - (live.at || 0) > liveEvery * 60000) liveTick();
@@ -2638,12 +2639,13 @@ input, textarea { caret-color: var(--accent); }
     const canRun = !!uid && !readOnly;   // who can keep the standings updated from their own device
     let state, text, more = "";
     if (liveOn && liveBusy) { state = "busy"; text = `Checking ${SOURCE.name} for new results…`; }
+    else if (liveOn && !fresh) { state = "on"; text = `Live standings · this device is updating them`; more = `, every ${liveEvery} min${live && live.at ? ` · last change ${ago(live.at)}` : ""}`; }
     else if (fresh) { state = "on"; text = `Live standings · updated ${ago(live.at)}`; more = `, checking every ${live.every} min${live.changed ? ` · ${live.changed} team${live.changed === 1 ? "" : "s"} changed` : ""}`; }
     else if (live && live.on) {   // only the owner can do anything about it, so only the owner gets the warning
       if (canRun) { state = "stale"; text = `Standings are ${ago(live.at).replace(/ ago$/, "")} old · nothing is updating them.`; more = " Tap Options and turn on updates from this device. Any scout's phone can do it."; }
       else { state = "off"; text = `Standings from ${ago(live.at)}.`; }
     }
-    else { state = "off"; text = ev.loadedAt ? `Standings from ${ago(live?.at || ev.loadedAt)}. Open during the event to keep them current.` : ""; }
+    else { state = "off"; text = ev.loadedAt ? `Standings from ${ago(live?.at || ev.loadedAt)}.${canRun ? " Use Update from here to keep them current." : ""}` : ""; }
     const ownerCtl = canRun ? `<div class="livectl" id="liveCtl">
       <label class="livesel">Every <select id="liveEvery" aria-label="Update interval">${LIVE_CHOICES.map(m => `<option value="${m}" ${m === liveEvery ? "selected" : ""}>${m} min</option>`).join("")}</select></label>
       <button type="button" class="btn" id="liveNow" ${liveBusy ? "disabled" : ""}>Refresh now</button>
@@ -3260,7 +3262,8 @@ input, textarea { caret-color: var(--accent); }
     const notes = [...matchNotes(key), ...qualTeamNotes(key)].sort((a, b) => (a.at || 0) - (b.at || 0));
     const canWrite = !!(db && uid && !readOnly);
     const us = settings.us;
-    const side = (list, color) => list.length ? `<div class="alli ${color}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
+    const played = !!(m && m.played && m.redScore != null), winner = played ? (m.redScore > m.blueScore ? "red" : m.blueScore > m.redScore ? "blue" : "") : "";
+    const side = (list, color) => list.length ? `<div class="alli ${color} ${winner === color ? "won" : ""} ${played ? "played" : ""}"><div class="mteams">${list.map(t => `<button type="button" class="mteam ${t.n === us ? "me" : ""}" data-team="${t.n}">${t.n}</button>`).join("")}</div><span class="mscore">${m && m.played && m.redScore != null ? (color === "red" ? m.redScore : m.blueScore) : "–"}</span></div>` : "";
     const keep = $("mNote") ? $("mNote").value : (renderMatchDlg.draft || "");
     renderMatchDlg.draft = keep;
     const ours = isOurMatch(m);
