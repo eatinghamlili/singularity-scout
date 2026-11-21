@@ -35,8 +35,8 @@ REPLACE = [
      '    const shift = (d, n) => new Date(Date.parse(d + "T12:00:00") + n * dayMs).toISOString().slice(0, 10);\n'
      '    if (!liveOn && uid && !readOnly && liveAutoFor !== current && ev.start && today >= shift(ev.start, -1) && today <= shift(ev.end || ev.start, 1)) { liveAutoFor = current; setTimeout(startLive, 0); }\n'
      '    const live = ev.live || null;\n'),
-    ('  let liveOn = false, liveEvery = 3,',
-     '  let liveAutoFor = null;\n  let liveOn = false, liveEvery = 3,'),
+    ('  let liveOn = false, liveEvery = 5,',
+     '  let liveAutoFor = null;\n  let liveOn = false, liveEvery = 5,'),
     (' Turn on updates from this device below, or open this competition in the Claude desktop app.',
      ' Tap Options and turn on updates from this device. Any scout\'s phone can do it.'),
     ('${isOwner ? "" : " Live updates aren\'t running."}', '${canRun ? " Use Update from here to keep them current." : ""}'),

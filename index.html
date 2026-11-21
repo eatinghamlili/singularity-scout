@@ -2639,7 +2639,7 @@ input, textarea { caret-color: var(--accent); }
      current rankings. */
   const LIVE_CHOICES = [2, 3, 5, 10];
   let liveAutoFor = null;
-  let liveOn = false, liveEvery = 3, liveTimer = null, liveBusy = false, liveErr = "", liveKey = null;
+  let liveOn = false, liveEvery = 5, liveTimer = null, liveBusy = false, liveErr = "", liveKey = null;
   const EV_FIELDS = ["auto", "teleop", "endgame", "pen", "total", "rank", "rp", "w", "l", "t", "played"];
   const sameEv = (a, b) => (!a && !b) || (!!a && !!b && EV_FIELDS.every(k => (a[k] ?? null) === (b[k] ?? null)));
   const ago = (at) => { const m = Math.round((Date.now() - at) / 60000); return m <= 0 ? "just now" : m === 1 ? "1 min ago" : m < 60 ? `${m} min ago` : `${Math.round(m / 60)} h ago`; };
@@ -2704,7 +2704,7 @@ input, textarea { caret-color: var(--accent); }
     const shift = (d, n) => new Date(Date.parse(d + "T12:00:00") + n * dayMs).toISOString().slice(0, 10);
     if (!liveOn && uid && !readOnly && liveAutoFor !== current && ev.start && today >= shift(ev.start, -1) && today <= shift(ev.end || ev.start, 1)) { liveAutoFor = current; setTimeout(startLive, 0); }
     const live = ev.live || null;
-    const fresh = live && live.on && Date.now() - (live.at || 0) < (live.every || 3) * 60000 * 2.5;
+    const fresh = live && live.on && Date.now() - (live.at || 0) < (live.every || 5) * 60000 * 2.5;
     const canRun = !!uid && !readOnly;   // who can keep the standings updated from their own device
     let state, text, more = "";
     if (liveOn && liveBusy) { state = "busy"; text = `Checking ${SOURCE.name} for new results…`; }
@@ -2733,7 +2733,7 @@ input, textarea { caret-color: var(--accent); }
   });
   document.addEventListener("change", (e) => {
     if (e.target.id !== "liveEvery") return;
-    liveEvery = Number(e.target.value) || 3;
+    liveEvery = Number(e.target.value) || 5;
     if (liveOn) { clearInterval(liveTimer); liveTimer = setInterval(liveTick, liveEvery * 60000); }
   });
 
@@ -2918,7 +2918,7 @@ input, textarea { caret-color: var(--accent); }
 
   /* ---------- Quals: the competition's match schedule and results ----------
      Read straight from the stats source each time (it's public), never saved. Refreshes every
-     2 minutes while the tab is open. */
+     5 minutes while the tab is open. */
   let quals = { key: null, at: 0, list: null, err: "", loading: false }, qualOurs = true;
   var qualCover = true, coverPlayed = false, pendingCover = null;   // Quals: the coverage board (where a competition opens), and whether it looks back at played quals
   async function loadQuals(force) {
@@ -2930,7 +2930,7 @@ input, textarea { caret-color: var(--accent); }
     catch (e) { if (quals.key === current) quals.err = e && e.code === "x" ? e.message : explain(e); }
     quals.loading = false; render();
   }
-  setInterval(() => { if (view.tab === "quals" && current && !document.hidden) loadQuals(true); }, 120000);
+  setInterval(() => { if (view.tab === "quals" && current && !document.hidden) loadQuals(true); }, 5 * 60000);   // scores and schedule: every 5 minutes
   document.addEventListener("visibilitychange", () => { if (!document.hidden && view.tab === "quals") loadQuals(false); });
 
   /* Match predictor, in the style of an EPA rating: each team has a strength in points. It starts from
