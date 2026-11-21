@@ -4056,6 +4056,16 @@ input, textarea { caret-color: var(--accent); }
     return `<div class="countsline">${ph("a", "Auto")}${ph("t", "TeleOp")}</div>`;
   }
   // a team's quals from the schedule (only matches this team plays in)
+  /* A qual opens for write-ups 2 matches before it's played: with Q9 next up, Q9, Q10 and Q11 are open, Q12 isn't
+     yet. Played quals stay open. Stops notes landing on a qual that hasn't happened (a wrong pick in the menu). */
+  const QUAL_AHEAD = 2;
+  function nextQualId() {
+    const list = (quals.key === current && quals.list ? quals.list : []).filter(m => m.level === "Quals");
+    const nx = list.find(m => !m.played); return nx ? nx.id : Infinity;
+  }
+  const qualOpen = (m) => !!m && (m.played || m.id <= nextQualId() + QUAL_AHEAD);
+  const qualOpensAt = (m) => `Q${m.id - QUAL_AHEAD}`;
+  const qualByKey = (k) => (quals.key === current && quals.list ? quals.list : []).find(m => matchKey(m) === k);
   const teamQuals = (num) => (quals.key === current && quals.list ? quals.list : []).filter(m => m.level === "Quals" && [...m.red, ...m.blue].some(x => x.n === num));
   // every team note tagged with this qual, for the match window
   function qualTeamNotes(key) {
@@ -4432,7 +4442,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   const myLateCount = () => myQualRows().filter(r => r.m.played && !r.done).length;
   // what to write up next: anything overdue first, then the next qual to come
-  const myNextQual = (skipTeam, skipKey) => myQualRows().find(r => !r.done && !(r.t.number === skipTeam && r.k === skipKey));
+  const myNextQual = (skipTeam, skipKey) => myQualRows().find(r => !r.done && qualOpen(r.m) && !(r.t.number === skipTeam && r.k === skipKey));
   // the qual to write up right now: overdue, or starting within the hour
   const myDueQual = () => { const r = myNextQual(); return r && (r.m.played || qualSoon(r.m)) ? r : null; };
   // "due now" once its slot has started (schedules run late, so not "on the field"), "in 4 min" within the hour
@@ -4445,7 +4455,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // open a team's Scouting page ready to write up one qual
   function openWriteUp(num, key) {
     openTeam(num, "edit");
-    if (key && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") { draft.ctx = "qual"; draft.match = key; draft.autoMatch = false; renderTeamDlg(); }
+    if (key && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") {
+      const m = qualByKey(key);
+      if (m && !qualOpen(m)) { toast(`Q${m.id} opens for write-ups at ${qualOpensAt(m)}, 2 matches before it's played.`); return; }
+      draft.ctx = "qual"; draft.match = key; draft.autoMatch = false; renderTeamDlg();
+    }
   }
   function myTeamsHtml(c) {
     if (!uid || !current) return "";
@@ -4530,7 +4544,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function suggestQual(t) {
     const list = teamQuals(t.number); if (!list.length) return "";
     const done = uid ? doneQuals(t, uid) : new Set(), mine = uid ? qualsOf(t, uid) : null, soon = Date.now() + 60000;
-    const ok = (m) => !done.has(matchKey(m)) && (!mine || mine.includes(matchKey(m)));
+    const ok = (m) => qualOpen(m) && !done.has(matchKey(m)) && (!mine || mine.includes(matchKey(m)));
     const last = list.filter(m => (m.played || (m.time && Date.parse(m.time) <= soon)) && ok(m)).pop();
     if (last) return matchKey(last);
     const next = list.find(m => !m.played && ok(m));
@@ -4544,7 +4558,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return `<label class="fld"><span>Which qual? <span class="req">Required</span></span><select id="dMatch">
       <option value="" ${draft.match ? "" : "selected"} disabled>Pick a qual…</option>
       ${list.map(m => { const k = matchKey(m), red = m.red.some(x => x.n === t.number);
-        return `<option value="${esc(k)}" ${draft.match === k ? "selected" : ""}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : ""}</option>`; }).join("")}</select></label>
+        const open = qualOpen(m);
+        return `<option value="${esc(k)}" ${draft.match === k && open ? "selected" : ""} ${open ? "" : "disabled"}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : open ? "" : ` · opens at ${esc(qualOpensAt(m))}`}</option>`; }).join("")}</select></label>
       ${draft.autoMatch && draft.match ? (() => { const m = list.find(x => matchKey(x) === draft.match); return m ? `<p class="hint autopick">Picked Q${esc(m.id)} for you: ${m.played ? "it was just played" : Date.parse(m.time || "") <= Date.now() ? "it's on the field now" : Date.parse(m.time || "") <= Date.now() + 60000 ? "it's about to start" : "it's this team's next qual"}. Change it if that's wrong.</p>` : ""; })() : ""}`;
   }
   function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t); }
@@ -4714,6 +4729,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const writesNote = !!(text || photos.length || (photoUrlsForSave && photoUrlsForSave.length) || isQual || draft.ctx === "pit");
     if (writesNote && !draft.ctx) { toast("Pick where this note is from first: a qual match or the pits."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
     if (isQual && !draft.match) { toast("Pick which qual these notes are from."); $("ctxBox")?.classList.add("need"); $("dMatch")?.focus(); return; }
+    if (isQual && qualByKey(draft.match) && !qualOpen(qualByKey(draft.match))) { const m = qualByKey(draft.match);
+      toast(`Q${m.id} hasn't happened yet. It opens for write-ups at ${qualOpensAt(m)}.`); $("ctxBox")?.classList.add("need"); $("dMatch")?.focus(); return; }
     const isPit = draft.ctx === "pit";
     if (isPit && !draft.state) { toast("Pick the robot's condition."); $("ctxBox")?.classList.add("need"); $("ctxBox")?.scrollIntoView({ block: "center" }); return; }
     if (isQual && draft.visit && !text) { toast("Say in the note what the pit crew should ask them about."); $("dNote")?.focus(); return; }
