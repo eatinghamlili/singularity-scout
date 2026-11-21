@@ -179,7 +179,7 @@ a { color: var(--accent-ink); }
 .themebtn svg { display: block; }
 /* competition day: the one bold block on the home page */
 .today { max-width: 760px; margin: 18px 0 6px; padding: 16px 18px; border-radius: 16px; background: var(--band); color: var(--band-ink); display: flex; flex-direction: column; gap: 8px; box-shadow: var(--shadow); border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); }
-.today h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: .02em; }
+.today h2 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 17px; letter-spacing: .02em; }
 .tdhead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
 .tdlive { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: #86efac; font-weight: 600; }
 .tdlive .livedot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
@@ -328,8 +328,14 @@ a { color: var(--accent-ink); }
 .pbar i { display: block; height: 100%; background: #dc2626; }
 .pwin { font-weight: 700; white-space: nowrap; font-family: var(--f-mono); }
 .pwin.r { color: #dc2626; } .pwin.b { color: #3b82f6; }
+:root[data-theme="dark"] :is(.pwin.r, .mpred .r) { color: #f87171; } :root[data-theme="dark"] :is(.pwin.b, .mpred .b) { color: #93c5fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.pwin.r, .mpred .r) { color: #f87171; } :root:not([data-theme="light"]) :is(.pwin.b, .mpred .b) { color: #93c5fd; } }
 .pok, .pbad { font-weight: 700; font-size: 12px; white-space: nowrap; padding: 1px 8px; border-radius: 999px; }
 .pok { color: #15803d; background: color-mix(in srgb, #16a34a 14%, transparent); } .pbad { color: #b91c1c; background: color-mix(in srgb, #dc2626 12%, transparent); }
+:root[data-theme="dark"] .pok, :root[data-theme="dark"] .mrole.partner { color: #86efac; } :root[data-theme="dark"] .pbad, :root[data-theme="dark"] .mrole.opponent { color: #fca5a5; }
+:root[data-theme="dark"] .bline .r { color: #f87171; } :root[data-theme="dark"] .bline .b { color: #93c5fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.pok, .mrole.partner) { color: #86efac; } :root:not([data-theme="light"]) :is(.pbad, .mrole.opponent) { color: #fca5a5; }
+  :root:not([data-theme="light"]) .bline .r { color: #f87171; } :root:not([data-theme="light"]) .bline .b { color: #93c5fd; } }
 @media (max-width: 560px) { .trygrid { grid-template-columns: 1fr; } .mpred:not(.past) .ptitle { display: none; } }
 .mfoot { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); }
 .mnotes.has { color: var(--accent-ink); font-weight: 600; }
@@ -422,7 +428,9 @@ a { color: var(--accent-ink); }
 .mstate.res.r { box-shadow: inset 3px 0 0 #dc2626; } .mstate.res.b { box-shadow: inset 3px 0 0 #2563eb; }
 .mpred.past { gap: 6px; color: var(--muted); font-size: 12.5px; }
 .mpred.past .pscore { color: var(--muted); }
-.mres { white-space: nowrap; } .mres.won { color: var(--good); } .mres.lost { color: var(--bad); }
+.mres { white-space: nowrap; }
+.dlghead .mhmeta { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 10px; }
+.mhmeta > * { white-space: nowrap; } .mres.won { color: var(--good); } .mres.lost { color: var(--bad); }
 .malli .alli.played .mscore { font-size: 20px; color: var(--ink); } .malli .alli.played:not(.won) .mscore { font-weight: 500; }
 .alli.won { box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 18%, transparent); }
 .mteams { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -701,6 +709,30 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .status button[data-pick]:not(.on-pick):not(:disabled) { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .status button.on-taken { background: var(--muted); border-color: var(--muted); color: var(--surface); }
 .status button.on-pick { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
+tr.flagged .status button[data-pick]:not(.on-pick):not(:disabled) { border-color: var(--line); color: var(--muted); font-weight: 500; }   /* still the lead's call */
+.offlist { color: var(--muted); font-size: 12.5px; }
+tr.listnote td { color: var(--muted); font-size: 13px; padding: 8px 10px; background: var(--sunk); }
+.btable td.win, .btable td.hi { font-weight: 800; }   /* who's ahead reads without colour too */
+.leadtools h2 { margin: 0 0 8px; }
+.ltrow { display: flex; flex-wrap: wrap; align-items: end; gap: 10px; }
+.ltfield { display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); font-weight: 600; }
+#tabTeam { position: relative; }
+#tabTeam[data-wait]:not([data-wait=""])::after { content: attr(data-wait); position: absolute; top: 2px; right: 0; min-width: 18px; height: 18px; padding: 0 5px; box-sizing: border-box;
+  border-radius: 999px; background: var(--accent); color: var(--on-accent); font: 700 11px/18px system-ui, sans-serif; text-align: center; pointer-events: none; }
+@media (min-width: 561px) { #leadTools { display: none; } }   /* wide screens keep these in the header */
+@media (max-width: 560px) {
+  /* in a competition the header is one row: logo, the competition, All, theme, and who's signed in */
+  .top .wrap:has(#evNav:not([hidden])) { flex-wrap: nowrap; gap: 8px; padding-block: 8px; }
+  .top .wrap:has(#evNav:not([hidden]))::after { display: none; }
+  .top .wrap:has(#evNav:not([hidden])) .brand { flex: 0 0 auto; }
+  .top .wrap:has(#evNav:not([hidden])) .brand > div { display: none; }
+  .top .wrap:has(#evNav:not([hidden])) #evNav { order: 1; flex: 1 1 auto; min-width: 0; align-items: center; }
+  .top .wrap:has(#evNav:not([hidden])) #evName { font-size: 16px; line-height: 1.1; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .top .wrap:has(#evNav:not([hidden])) #themeBtn { order: 2; flex: 0 0 auto; }
+  .top .wrap:has(#evNav:not([hidden])) #meBtn { order: 3; flex: 0 0 auto; font-size: 0; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; max-width: none; }
+  .top .wrap:has(#evNav:not([hidden])) #meBtn .medot { width: 16px; height: 16px; margin: 0; }
+  .top .wrap:has(#evNav:not([hidden])) :is(label.hfield:has(#allianceSize), #rosterBtn) { display: none !important; }
+}
 .status .us { font-family: var(--f-display); font-weight: 800; font-size: 14px; letter-spacing: .08em; padding: 3px 10px; border-radius: 6px; background: var(--band); color: var(--band-ink); }
 /* taken: faded with a readable color instead of see-through (which fell to 2:1) */
 :is(#rows, #rankRows) tr.taken td:not(:last-child), :is(#rows, #rankRows) tr.taken td:not(:last-child) :is(b, small, span, button, .num) { color: var(--muted); }
@@ -1067,7 +1099,7 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   #pickWrap tr::before, #pickWrap tr::after { content: ""; flex-basis: 100%; height: 0; }
   #pickWrap tr::before { order: 2; } #pickWrap tr::after { order: 3; }
   #pickWrap td[data-l]::before { content: attr(data-l); display: block; font-size: 11.5px; letter-spacing: .01em; color: var(--muted); font-weight: 600; font-family: var(--f-body, inherit); }
-  #pickWrap .c-stat[data-l="Penalties"]:not(.pen) { display: none; }   /* only when they're high */
+  #pickWrap .c-stat[data-l="Pen"]:not(.pen) { display: none; }   /* only when they're high */
   #pickWrap td[data-l]::before { font-size: 11.5px; letter-spacing: .01em; white-space: nowrap; }
   #pickWrap tr.us .c-fit, #pickWrap tr.us .c-st { display: none; }
   #pickWrap tr.us .c-rk::before { content: "Us"; font-size: 12px; font-family: var(--f-body); font-weight: 700; color: var(--muted); }
@@ -1256,7 +1288,8 @@ input, textarea { caret-color: var(--accent); }
 .cvchip { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); }
 .cvchip b { font-family: var(--f-display); font-size: 16px; line-height: 1.1; }
 .cvchip small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.cvchip.red { background: color-mix(in srgb, #dc2626 8%, var(--surface)); } .cvchip.blue { background: color-mix(in srgb, #2563eb 8%, var(--surface)); }
+.cvchip.red { background: color-mix(in srgb, #dc2626 8%, var(--surface)); box-shadow: inset 3px 0 0 #dc2626; } .cvchip.blue { background: color-mix(in srgb, #2563eb 8%, var(--surface)); box-shadow: inset 3px 0 0 #2563eb; }
+.cvchip.yours { outline: 2px solid var(--accent); outline-offset: -2px; } .cvchip.yours small { color: var(--accent-ink); font-weight: 700; }   /* robots you're scouting */
 .cvchip.me b { color: var(--accent-ink); } .cvchip.us small { color: var(--accent-ink); font-weight: 600; }
 .cvchip.gap { border: 1.5px dashed #d97706; }
 html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.gap.past small { color: var(--muted); font-weight: 400; }   /* after the match a gap is history, not a to-do */
@@ -1416,6 +1449,36 @@ input, textarea { caret-color: var(--accent); }
   input[type="range"] { min-height: 44px; }
 }
 #teamDlg:focus, #matchDlg:focus { outline: none; }
+@media (max-width: 560px) {
+  /* the pick list card: number, team, pick score and the buttons on one line; the numbers on a short second line */
+  #pickWrap tr { padding: 10px 10px 9px; column-gap: 8px; }
+  #pickWrap .c-rk { flex: 0 0 18px; }
+  #pickWrap .teamcell button { font-size: 20px; min-height: 32px; padding: 2px 0; }
+  #pickWrap .teamcell > small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #pickWrap .c-fit { order: 0; flex: 0 0 auto; margin-top: 0; align-self: flex-start; text-align: right; }
+  #pickWrap .c-fit::before { display: none !important; }
+  #pickWrap .c-fit .track { display: none; }
+  #pickWrap .c-fit .num { font-family: var(--f-display); font-weight: 800; font-size: 24px; line-height: 1; color: var(--ink); }
+  #pickWrap .c-fit .num::after { content: "pick"; display: block; font-family: var(--f-body); font-weight: 600; font-size: 11.5px; color: var(--muted); }
+  #pickWrap .c-st { order: 0; margin-top: 0; align-self: flex-start; }
+  #pickWrap .status { display: flex; gap: 6px; }
+  #pickWrap .status button { padding: 0 10px; min-height: 40px; }
+  #pickWrap .c-stat, #pickWrap .c-scout { order: 3; flex: 0 0 auto; width: auto !important; min-width: 0; margin-right: 10px; margin-top: 6px; font-size: 13.5px; text-align: left; display: inline-flex; align-items: baseline; gap: 4px; }
+  #pickWrap td[data-l]::before { display: inline; font-size: 12px; }
+  #pickWrap .c-scout .scout { display: inline-flex; align-items: baseline; gap: 3px; }
+  #pickWrap .c-scout .scout b { display: inline; font-size: 13.5px; }
+  #pickWrap .c-scout .scout small { display: none; }
+  #pickWrap .c-scout .scout b::after { content: "/10"; font-weight: 400; color: var(--muted); font-size: 12px; }
+  #pickWrap tr::before { order: 2; } #pickWrap tr::after { order: 4; }
+  #pickWrap tr.us .c-scout { display: none; }
+  #pickWrap .c-stat[data-l="Qual"] { flex-grow: 0; }
+  #pickWrap .c-stat[data-l="Qual"]:has(> .hint) { display: none; }   /* no quals played yet: nothing to show */
+  #pickWrap .c-stat, #pickWrap .c-scout { margin-right: 0; font-size: 13px; gap: 3px; }
+  #pickWrap tr { column-gap: 10px; }
+  #pickWrap .c-scout .scout b { font-size: 13px; }
+  #pickWrap .c-scout .scout b::after { content: none; }
+  #pickWrap .c-scout { order: 4; } #pickWrap tr::after { order: 5; }
+}
 .cvli { white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; }
 </style>
 <div class="splash" id="splash" role="status" aria-live="polite" aria-label="Loading Singularity Scout">
@@ -1485,7 +1548,7 @@ input, textarea { caret-color: var(--accent); }
           <button role="tab" id="tabQuals" aria-selected="false">Quals</button>
           <button role="tab" id="tabPick" aria-selected="true">Pick list</button>
           <button role="tab" id="tabRank" aria-selected="false">Rankings</button>
-          <button role="tab" id="tabNotes" aria-selected="false"><span class="tlong">Scouting </span>notes</button>
+          <button role="tab" id="tabNotes" aria-selected="false">Notes</button>
           <button role="tab" id="tabTeam" class="phonetab" aria-selected="false" title="Scouting crew, our hexagon, weights and how to use it">Team</button>
         </div>
         <input id="search" aria-keyshortcuts="/" title="Find team (press / )" type="search" placeholder="Find team…" aria-label="Find team" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" enterkeyhint="search">
@@ -1573,6 +1636,11 @@ input, textarea { caret-color: var(--accent); }
     </section>
 
     <aside class="rail">
+      <section class="panel leadtools" id="leadTools" hidden aria-label="Lead settings">
+        <h2>Lead settings</h2>
+        <div class="ltrow"><label class="ltfield"><span>Alliance size</span><select id="allianceSize2"><option value="2">2 teams</option><option value="3">3 teams</option></select></label>
+          <button type="button" class="btn" id="rosterBtn2">Team roster</button></div>
+      </section>
       <section class="panel" id="crew"></section>
       <section class="panel" id="countCheck"></section>
       <section class="panel" id="needs"></section>
@@ -1591,7 +1659,7 @@ input, textarea { caret-color: var(--accent); }
           <li><b>Scouts:</b> <b>Your quals</b> on the Quals tab lists the robot to watch in each of your quals: ✓ written up, ! played but not written up yet, ○ still to come. Tap one to write it up.</li>
           <li>Tap any team number to open it. <b>Scouting</b> is where you write: pick the qual or the pits, count what it scored, add a note and your 1–10 numbers. <b>Notes</b> gathers everyone's scouting. Ratings from all scouts are averaged.</li>
           <li><b>In the pits:</b> tick what the team says its robot can do. The Notes page then shows how often our scouts actually saw it in quals. Teams under <b>Go talk to them</b> on the Quals tab are ones a scout wants checked on; writing a pit note clears them.</li>
-          <li><b>Before selection:</b> everyone taps <b>My tiers</b> on the pick list and sorts teams into Tier 1, 2, 3 or don't pick. Sort by <b>Tiers</b> to see the whole team's combined list.</li>
+          <li><b>Before selection:</b> everyone taps <b>My tiers</b> on the pick list and sorts teams into Tier 1, 2, 3 or Skip. Sort by <b>Tiers</b> to see the whole team's combined list.</li>
           <li>During selection, tap <b>Taken</b> as captains pick, and <b>Pick</b> on your invite.</li>
         </ol>
         <div class="railrow"><button type="button" class="btn" data-print>Print pick list</button><button class="btn" id="resetDraft">Reset draft</button><button type="button" class="btn" data-phone hidden>Add to your phone</button></div>
@@ -2560,7 +2628,8 @@ input, textarea { caret-color: var(--accent); }
     catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : (err && err.message) || "Couldn't save. Check your connection."; el.hidden = false; } }
   });
   $("meBtn").onclick = () => { gateMsg = ""; window.SITE.signOut && window.SITE.signOut(); setMe(null); };
-  $("rosterBtn").onclick = openRoster;
+  $("rosterBtn").onclick = openRoster; $("rosterBtn2").onclick = openRoster;
+  $("allianceSize2").addEventListener("change", (e) => { $("allianceSize").value = e.target.value; $("allianceSize").dispatchEvent(new Event("change")); e.target.value = $("allianceSize").value; });
   if (ACCOUNTS()) { $("meBtn").onclick = openAccount; $("meBtn").title = "Your account"; }
 
   /* ---------- live updates during a competition ----------
@@ -2689,6 +2758,10 @@ input, textarea { caret-color: var(--accent); }
   }
   // "can their robot move?" is shared for the team: {ok: true/false, by, at}; a robot that can't move sinks to the bottom
   const cantMove = (t) => !!(t.mobility && t.mobility.ok === false);
+  // a team's place on the pick list: taken, do-not-pick and can't-move teams have none (the same rule the list uses)
+  const offList = (t) => !!t.dnp || cantMove(t);
+  const pickNumbers = (c) => new Map(c.ranked.filter(t => t !== c.us && t.status !== "taken" && !offList(t)).map((t, i) => [t.number, i + 1]));
+  const offWhy = (t) => t.dnp ? "do not pick" : "can't move";
   const moveTag = (t) => cantMove(t) ? `<span class="tag dnp" title="A scout marked that this robot can't move">can't move</span>` : "";
   /* Hexagon skill profile, 0-10 on six corners. Each corner is 75% the scouts' average rating and
      25% where the team stands in this competition's data (percentile within the field):
@@ -2811,7 +2884,7 @@ input, textarea { caret-color: var(--accent); }
     renderNoteHits(q);
     const who0 = $("notesWho").value, only = $("notesOnly").checked && who0 === "all";
     $("myTeamsN").innerHTML = myTeamsHtml(c);
-    const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    const pickPos = pickNumbers(c);
     let list = c.all.slice();
     list = list.filter(t => !q || String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q)
       || allNotes(t).some(x => x.text.toLowerCase().includes(q)) || (t.tags || []).join(" ").toLowerCase().includes(q));
@@ -2832,7 +2905,7 @@ input, textarea { caret-color: var(--accent); }
       const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t), t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
       return `<article class="notecard ${t === c.us ? "isus" : ""}">
         <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button>
-          <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
+          <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : offList(t) ? `Off the pick list · ${offWhy(t)}` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
         ${scoutsOn(t).length ? `<div class="assignline"><span class="hint">Scouting:</span> ${scoutsOn(t).map(k => `${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small>`).join(" ")}</div>` : ""}
@@ -3060,7 +3133,7 @@ input, textarea { caret-color: var(--accent); }
       const st = stateOf(m, x.n);
       const sub = st.k === "us" ? "us" : st.k === "gap" ? (m.played ? "nobody" : "no scout") : (st.k === "done" ? "✓ " : st.k === "late" ? "! " : "") + names(st.on);
       const tip = st.k === "us" ? "Our robot" : st.k === "gap" ? (m.played ? "Nobody scouted this robot" : "Nobody is scouting this robot yet") : st.k === "done" ? "Written up by " + names(st.on) : st.k === "late" ? "Played, but no notes saved yet" : "Scouted by " + names(st.on);
-      return `<button type="button" class="cvchip ${st.k} ${color} ${m.played ? "past" : ""} ${x.n === settings.us ? "me" : ""}" data-team="${x.n}" title="${esc(tip)}"><b>${esc(x.n)}</b><small>${sub}</small></button>`;
+      return `<button type="button" class="cvchip ${st.k} ${color} ${m.played ? "past" : ""} ${x.n === settings.us ? "me" : ""} ${uid && st.on.includes(uid) ? "yours" : ""}" data-team="${x.n}" title="${esc(tip)}"><b>${esc(x.n)}</b><small>${sub}</small></button>`;
     };
     // the summary: how many robots have a scout, who's carrying the most, and anyone with two robots in one match
     const load = new Map(), twice = [];
@@ -3193,7 +3266,7 @@ input, textarea { caret-color: var(--accent); }
       ${hexOrPhoto(t, "m" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
       ${(() => { const key = matchKey(m), on = scoutsOnMatch(t, key), done = on.filter(k => doneQuals(t, k).has(key)), todo = on.filter(k => !done.includes(k));
         return on.length ? `<div class="assignline">${todo.length ? (m.played ? `<span class="qlate">Not written up yet !</span> ` : `<span class="qtodo">Scouting this qual ○</span> `) + todo.map(k => who(k, k === uid ? "You" : null)).join(" ") : ""}${done.length ? `<span class="qdone">Scouted ✓</span> ${done.map(k => who(k, k === uid ? "You" : null)).join(" ")}` : ""}</div>`
-          : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
+          : t.number === settings.us ? "" : `<div class="assignline"><span class="hint">Nobody's scouting ${esc(t.number)} in this qual yet.</span></div>`; })()}
       ${noteList(t, "mc" + t.number, 1)}
     </article>`;
   }
@@ -3275,11 +3348,11 @@ input, textarea { caret-color: var(--accent); }
         <button type="button" class="btn" data-mnav="${esc(prevK || "")}" ${prevK ? "" : "disabled"} aria-label="${prevK ? "Previous match: " + esc(shortOf(prevK)) : "No earlier match"}">‹ ${prevK ? esc(shortOf(prevK)) : ""}</button>
         <button type="button" class="btn" data-mnav="${esc(nextK || "")}" ${nextK ? "" : "disabled"} aria-label="${nextK ? "Next match: " + esc(shortOf(nextK)) : "No later match"}">${nextK ? esc(shortOf(nextK)) : ""} ›</button></div>` : "";
     $("matchForm").innerHTML = `
-      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small>${m && m.time ? esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" })) + " · " : ""}${m ? (m.played ? (resultOf(m) ? `<b class="mres ${resultOf(m).cls}">${esc(resultOf(m).text)}</b>` : "Played") : "Not played yet") : ""}${ours ? ` · <span class="ourmatch">★ Our match</span>` : ""}</small></div>
+      <div class="dlghead"><div><h2>${esc(m ? (m.level === "Quals" ? "Q" : "") + m.id : matchLabelOf(key))}</h2><small class="mhmeta">${m && m.time ? `<span>${esc(new Date(m.time).toLocaleString([], { weekday: "short", hour: "numeric", minute: "2-digit" }))}</span>` : ""}${m ? (m.played ? (resultOf(m) ? `<b class="mres ${resultOf(m).cls}">${esc(resultOf(m).text)}</b>` : "<span>Played</span>") : "<span>Not played yet</span>") : ""}${ours ? `<span class="ourmatch">★ Our match</span>` : ""}</small></div>
         ${nav}<button type="button" class="x" data-mclose aria-label="Close">×</button></div>
       ${m ? `<div class="malli">${side(m.red, "red")}${side(m.blue, "blue")}</div>` : ""}
       ${m && lastPred && lastPred.out.get(key) ? predStrip(lastPred.out.get(key), m.played && m.redScore != null && m.redScore !== m.blueScore ? !!lastPred.out.get(key).right : null, !!(m.played && m.redScore != null)) : ""}
-      <div class="pviewsw mpages ${m ? "three" : ""}" role="group" aria-label="Match window page">${m ? `<button type="button" data-mpage="brief" aria-pressed="${matchPage === "brief"}">Briefing</button>` : ""}<button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Scouting</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
+      <div class="pviewsw mpages ${m ? "three" : ""}" role="group" aria-label="Match window page">${m ? `<button type="button" data-mpage="brief" aria-pressed="${matchPage === "brief"}">Briefing</button>` : ""}<button type="button" data-mpage="scout" aria-pressed="${matchPage === "scout"}">Robots</button><button type="button" data-mpage="notes" aria-pressed="${matchPage === "notes"}">Notes${notes.length ? ` · ${notes.length}` : ""}</button></div>
       ${matchPage === "brief" && m ? briefingHtml(m) : matchPage === "scout" ? (m ? `<div class="mscout">
           <h3 class="mside red">Red alliance</h3>${m.red.map(x => matchScoutCard(x.n, "red", m)).join("")}
           <h3 class="mside blue">Blue alliance</h3>${m.blue.map(x => matchScoutCard(x.n, "blue", m)).join("")}
@@ -3323,7 +3396,7 @@ input, textarea { caret-color: var(--accent); }
     const has = c.all.filter(t => t.ev && t.ev.rank).sort((a, b) => a.ev.rank - b.ev.rank);
     const not = c.all.filter(t => !(t.ev && t.ev.rank)).sort((a, b) => a.number - b.number);
     const match = (t) => !q || String(t.number).includes(q) || (t.name || "").toLowerCase().includes(q);
-    const pickPos = new Map(c.ranked.filter(t => t.status !== "taken").map((t, i) => [t.number, i + 1]));
+    const pickPos = pickNumbers(c);
     const row = (t) => {
       const isUs = t === c.us, ev = t.ev || {};
       const status = (isUs ? `<span class="tag src">us</span>` : t.status === "taken" ? `<span class="tag">taken</span>` : t.status === "partner" ? `<span class="tag src">our pick</span>` : t.dnp ? `<span class="tag dnp">do not pick</span>` : "") + (isUs ? "" : moveTag(t));
@@ -3334,7 +3407,7 @@ input, textarea { caret-color: var(--accent); }
         <td class="r num c-stat" data-l="Played">${ev.played || 0}</td>
         <td class="r num c-stat" data-l="Ranking pts">${ev.rp != null ? fmt(ev.rp) : "–"}</td>
         <td class="r num c-stat" data-l="OPR">${ev.played ? fmt(ev.total) : "–"}</td>
-        <td class="r num c-stat" ${isUs ? "" : `data-l="Pick list"`}>${isUs ? "" : (pickPos.get(t.number) ? "#" + pickPos.get(t.number) : "–")}</td>
+        <td class="r num c-stat" ${isUs ? "" : `data-l="Pick list"`}>${isUs ? "" : (pickPos.get(t.number) ? "#" + pickPos.get(t.number) : offList(t) ? `<span class="offlist">off</span>` : "–")}</td>
         <td class="c-tags">${status}</td></tr>`;
     };
     const rows = [...has.filter(match).map(row), ...(not.filter(match).length ? [`<tr><td colspan="8" class="subhead">Not ranked yet</td></tr>`, ...not.filter(match).map(row)] : [])];
@@ -3452,20 +3525,22 @@ input, textarea { caret-color: var(--accent); }
       const dir = (k === "rank" || k === "pen" || k === "tier") ? 1 : -1;
       list.sort((a, b) => (a === c.us ? -1 : b === c.us ? 1 : 0) || (val(a) - val(b)) * dir);
     }
-    const flagged = (t) => !!t.dnp || cantMove(t);   // out of Best pick: no rank number, and the row says so
-    const fitRank = new Map(c.ranked.filter(t => t.status !== "taken" && !flagged(t)).map((t, i) => [t.number, i + 1]));
+    const flagged = offList;   // out of Best pick: no rank number, and the row says so
+    const fitRank = pickNumbers(c);
     const talk = new Set(openVisits().map(x => x.t.number));
     $("tierBtn").setAttribute("aria-pressed", String(!!view.tierMode)); $("tierBtn").hidden = readOnly || !uid || view.tab !== "pick";
     if (!list.length) { $("rows").innerHTML = `<tr><td colspan="11">${dinoEmpty(c.all.length ? "No teams match" : current && teamsReadyKey === current ? "Teams not posted yet" : current ? "Waiting for teams…" : "No competition loaded yet", c.all.length || !current || teamsReadyKey !== current ? "" : "They fill in by themselves once FIRST publishes who's registered, usually close to the event.", "sm", c.all.length ? "lying" : "sleep")}</td></tr>`; return; }
     const dis = readOnly ? "disabled" : "";
-    $("rows").innerHTML = list.map(t => {
+    // when most teams haven't played 3 matches here yet, say "season OPR" once instead of on every row
+    const seasonMost = list.filter(t => stats(t).src === "season").length > list.length / 2;
+    $("rows").innerHTML = (seasonMost ? `<tr class="listnote"><td colspan="11">Season-best OPR until a team has played 3 matches here.</td></tr>` : "") + list.map(t => {
       const isUs = t === c.us, s = stats(t), sc = scoutAgg(t);
       const cls = isUs ? "us" : t.status === "taken" ? "taken" : t.status === "partner" ? "partner" : flagged(t) ? "flagged" : "";
       const cc = claimCheck(t), mineTier = (t.tiers || {})[uid] || 0;
       const tags = [tierTag(t), ...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t),
         talk.has(t.number) ? `<span class="tag talk" title="A scout asked for someone to go talk to them in the pits">talk to them</span>` : "",
         cc && cc.doubt.length ? `<span class="tag warn" title="Said in the pits, but rarely seen in quals: ${esc(cc.doubt.map(r => `${r.l} (${r.seen} of ${r.n})`).join(", "))}">pit claims doubtful</span>` : "",
-        s.src === "season" ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
+        s.src === "season" && !seasonMost ? `<span class="tag src" title="Hasn't played 3 matches here yet; using season-best OPR">season OPR</span>` : ""].join("");
       const qual = t.ev && t.ev.played ? `<div class="qual num">${t.ev.rank ? "#" + t.ev.rank : "–"}<small class="rec">${t.ev.w}-${t.ev.l}-${t.ev.t}</small></div>` : `<span class="hint">–</span>`;
       const so = scoutedOpr(t), soTxt = so != null ? `<small class="sopr1" title="Scouted OPR: points per match from our scouts' qual counts">scouted ${fmt(so)} pts</small>` : "";
       const scout = sc.overall != null ? `<span class="scout"><b>${sc.overall.toFixed(1)}</b><small>/10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>${soTxt}</span>` : `<span class="scout"><span class="none">not rated</span>${soTxt}</span>`;
@@ -3478,11 +3553,11 @@ input, textarea { caret-color: var(--accent); }
         <td class="c-team"><div class="teamcell"><button type="button" data-team="${t.number}">${esc(t.number)}</button><small>${esc(t.name || "")}</small>${tags ? `<div class="tags">${tags}</div>` : ""}
           ${view.tierMode && !isUs && uid ? `<div class="tiersel" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) => `<button type="button" data-tier="${t.number}" data-v="${v}" title="${l}" aria-pressed="${mineTier === v}" ${dis}>${v === 4 ? "✕" : v}</button>`).join("")}</div>` : ""}</div></td>
         <td class="c-stat" data-l="Qual">${qual}</td>
-        <td class="r num c-stat" data-l="Auto">${fmt(s.auto)}</td><td class="r num c-stat" data-l="TeleOp">${fmt(s.teleop)}</td><td class="r num c-stat" data-l="Endgame">${fmt(s.endgame)}</td>
-        <td class="r num c-stat ${s.pen > 8 ? "pen" : ""}" data-l="Penalties">${fmt(s.pen)}</td>
-        <td class="c-scout">${scout}</td>
-        <td class="r num c-stat" data-l="Expected">${fmt(expected(t))}</td>
-        <td class="c-fit" ${isUs ? "" : `data-l="Pick score"`}>${fit}</td>
+        <td class="r num c-stat" data-l="Auto">${fmt(s.auto)}</td><td class="r num c-stat" data-l="Tele">${fmt(s.teleop)}</td><td class="r num c-stat" data-l="End">${fmt(s.endgame)}</td>
+        <td class="r num c-stat ${s.pen > 8 ? "pen" : ""}" data-l="Pen">${fmt(s.pen)}</td>
+        <td class="c-scout" data-l="Scouts">${scout}</td>
+        <td class="r num c-stat" data-l="Exp">${fmt(expected(t))}</td>
+        <td class="c-fit" ${isUs ? "" : `data-l="Pick score"`} ${!isUs && flagged(t) ? `title="Off the pick list: ${offWhy(t)}"` : ""}>${fit}</td>
         <td class="c-st"><div class="status">${status}</div></td></tr>`;
     }).join("");
   }
@@ -3501,11 +3576,13 @@ input, textarea { caret-color: var(--accent); }
     const ms = meScout();
     if (ms) { $("meBtn").innerHTML = `<span class="medot" style="background:${colorOf(uid)}"></span>${esc(nameOf(uid))}<span class="mesw"> · ${ACCOUNTS() ? "Account" : "Switch"}</span>`; $("meBtn").setAttribute("aria-label", `Scouting as ${nameOf(uid)}. ${ACCOUNTS() ? "Your account" : "Switch scout"}`); }
     $("rosterBtn").hidden = !canManage();
-    if (canManage()) { const w = waitingCount(); $("rosterBtn").innerHTML = w ? `Team roster <span class="waitbadge">${w} waiting</span>` : "Team roster"; }
+    if (canManage()) { const w = waitingCount(); $("rosterBtn").innerHTML = w ? `Team roster <span class="waitbadge">${w} waiting</span>` : "Team roster";
+      $("rosterBtn2").innerHTML = $("rosterBtn").innerHTML; $("tabTeam").dataset.wait = w ? String(w) : ""; }
+    $("leadTools").hidden = !current || !canManage();   // phones: the lead settings live on the Team tab, not in the header
     const mode = !loaded ? "loading" : !scouts.size ? (!readOnly ? "setup" : "wait") : "code";
     if (gate && (!wasGate || mode !== gateMode)) { gateMode = mode; renderGate(); }
     $("ourTeam").textContent = settings.us;
-    $("allianceSize").value = String(settings.size || 2);
+    $("allianceSize").value = String(settings.size || 2); $("allianceSize2").value = String(settings.size || 2);
     // alliance size changes the best pick for everyone: leads set it (like the weights)
     $("allianceSize").disabled = readOnly || !canManage(); $("allianceSize").title = canManage() ? "" : "Leads choose the alliance size";
     $("loadBtn").disabled = readOnly || offline;
@@ -3725,7 +3802,7 @@ input, textarea { caret-color: var(--accent); }
       else body = `<p class="tdnote">The match schedule isn't posted yet. It usually appears the morning of the event.</p>`;
     }
     box.innerHTML = `<section class="today" aria-label="Today's competition">
-      <div class="tdhead"><h3>Today · ${esc(e.name)}</h3><span class="tdlive"><span class="livedot" aria-hidden="true"></span>Competing</span></div>
+      <div class="tdhead"><h2>Today · ${esc(e.name)}</h2><span class="tdlive"><span class="livedot" aria-hidden="true"></span>Competing</span></div>
       ${body}
       <div class="tdbtns"><button type="button" class="btn primary" data-today="${esc(k)}">Open our matches</button><button type="button" class="btn" data-open="${esc(k)}">Scout this competition</button></div>
     </section>`;
@@ -4406,14 +4483,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const breakdown = CATS.map(([k, l]) => { const x = prof[k] || {}; return `<div class="hb"><span>${l}</span><b class="num">${x.value == null ? "–" : x.value.toFixed(1)}</b><small>${x.scout != null ? "scouts " + x.scout.toFixed(1) : "no scout rating"}${x.comp != null ? " · comp " + x.comp.toFixed(1) : k === "defense" ? "" : " · no comp data"}</small></div>`; }).join("");
     const flags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), tierTag(t), t.dnp ? `<span class="tag dnp">do not pick</span>` : "",
       t.mobility ? (t.mobility.ok ? `<span class="tag src">robot moves</span>` : `<span class="tag dnp">can't move</span>`) : ""].join("");
-    const c = c0(), pos = c.ranked.filter(x => x.status !== "taken").findIndex(x => x === t);
+    const c = c0(), pos = (pickNumbers(c).get(t.number) || 0) - 1;
     const count = allNotes(t).length;
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
       ${teamPages()}
       <div class="viewtop">
-        <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
+        <div class="bigscore"><b>${sc.overall != null ? sc.overall.toFixed(1) : "–"}</b><span>scout average out of 10</span><small>${sc.count ? `${sc.count} scout${sc.count === 1 ? "" : "s"}` : "Not rated yet"}${t !== c.us && pos >= 0 ? ` · #${pos + 1} on the pick list` : t !== c.us && offList(t) && t.status !== "taken" ? ` · off the pick list (${offWhy(t)})` : ""}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
         ${(() => {
           const cmpNum = dlgCmp === null ? (c.us && t !== c.us ? c.us.number : 0) : dlgCmp;
           const other = cmpNum ? teams.get(cmpNum) : null;
