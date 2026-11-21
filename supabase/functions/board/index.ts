@@ -517,6 +517,9 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
     const cur = await getDoc(path);
     const n = checkNotes(data.notes, cur?.notes, uid); if (n) return n;
     if (path.includes("/teams/")) { const tf = checkTeamFields(data, uid); if (tf) return tf; }
+    // "do not pick" takes a team out of Best pick for the whole team: only leads change it (a scout's save may
+    // carry the current value back unchanged)
+    if ("dnp" in data && !lead && !!data.dnp !== !!cur?.dnp) return "Only leads can mark a team do not pick for everyone. Use Skip on your own pick list.";
     // who's scouting this team: anyone can sign themselves up or step off; only leads assign other scouts
     if (data.assigned !== undefined) {
       if (!isObj(data.assigned) || Object.keys(data.assigned).length > 20) return "That assignment couldn't be saved.";
@@ -531,12 +534,12 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
         if (k !== uid && !(await getDoc(`scouts/${k.slice(2)}`))) return "That scout isn't on the roster.";
       }
     }
-    // each scout's own pick list tier: 1 to 3, or 4 for don't pick
+    // each scout's own pick list tier: 1 to 3, or 4 for skip
     if (data.tiers !== undefined) {
       if (!isObj(data.tiers)) return "That pick list tier couldn't be saved.";
       for (const [k, v] of Object.entries(data.tiers)) {
         if (k !== uid) return "You can only change your own pick list.";
-        if (v !== null && ![1, 2, 3, 4].includes(v as number)) return "Tiers are 1, 2, 3 or don't pick.";
+        if (v !== null && ![1, 2, 3, 4].includes(v as number)) return "Tiers are 1, 2, 3 or skip.";
       }
     }
     if ("label" in data && !isStr(data.label, 20)) return "That match label isn't valid.";
