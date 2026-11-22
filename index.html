@@ -114,7 +114,22 @@ a { color: var(--accent-ink); }
 .ctxbox .mlabel { font-size: 14px; font-weight: 700; color: var(--ink); }
 .req { font-size: 11.5px; font-weight: 700; color: var(--bad); margin-left: 4px; }
 .ctxseg button { min-height: 44px; }
-.cntbox { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cntbox { display: flex; flex-direction: column; gap: 8px; }
+.seg3.cphase { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+.cphase button { min-height: 48px; font-weight: 700; font-size: 16px; }
+.cphase .cpn { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 13px; }
+.cphint { margin: 0; font-size: 13.5px; color: var(--muted); }
+.cphint b { color: var(--ink); }
+.cnttiles { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cnttile { display: flex; flex-direction: column; gap: 6px; }
+.cntadd { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-height: 120px; border-radius: 14px; cursor: pointer;
+  border: 2px solid var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); color: var(--ink); touch-action: manipulation; -webkit-user-select: none; user-select: none; }
+.cntadd .cntname { font-family: var(--f-display); font-weight: 800; font-size: 18px; text-transform: uppercase; letter-spacing: .04em; }
+.cntadd .cntval { font-size: 40px; line-height: 1; font-weight: 700; }
+.cntadd small { font-size: 12.5px; color: var(--muted); }
+.cntadd:active { transform: scale(.97); background: color-mix(in srgb, var(--accent) 22%, var(--surface)); }
+.cntminus { min-height: 40px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font-weight: 700; font-size: 15px; cursor: pointer; touch-action: manipulation; }
+@media (prefers-reduced-motion: reduce) { .cntadd:active { transform: none; } }
 .cntphase { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; }
 .cntphase h4 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 16px; text-transform: uppercase; letter-spacing: .04em; }
 .cntrow { display: grid; grid-template-columns: minmax(0, 1fr) 44px 40px 44px; align-items: center; gap: 6px; }
@@ -4595,13 +4610,26 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ${draft.autoMatch && draft.match ? (() => { const m = list.find(x => matchKey(x) === draft.match); return m ? `<p class="hint autopick">Picked Q${esc(m.id)} for you: ${m.played ? "it was just played" : Date.parse(m.time || "") <= Date.now() ? "it's on the field now" : Date.parse(m.time || "") <= Date.now() + 60000 ? "it's about to start" : "it's this team's next qual"}. Change it if that's wrong.</p>` : ""; })() : ""}`;
   }
   function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t); }
+  /* Counting on a phone: one part of the match at a time (Auto, then TeleOp), and just two things to count in each,
+     the hive and the flower. Pollen and nectar score the same 2 points and are always added together, so they're
+     one count here (saved as pollen; older notes that split them still add up the same). A big tile adds one per
+     tap so a scout can keep their eyes on the field; the small −1 fixes a slip. */
+  const CNT_ZONES = [["hive", "Hive", ["hivePollen", "hiveNectar"]], ["flower", "Flower", ["flowerPollen", "flowerNectar"]]];
+  const zoneVal = (k, z) => { const zz = CNT_ZONES.find(([id]) => id === z); return zz ? zz[2].reduce((a, f) => a + (Number(draft.counts[k][f]) || 0), 0) : 0; };
+  const phaseBalls = (k) => CNT_ZONES.reduce((a, [z]) => a + zoneVal(k, z), 0);
+  function cntInner() {
+    const c = draft.counts, k = draft.cntPhase === "t" ? "t" : "a", ph = k === "a" ? "Auto" : "TeleOp";
+    const tile = ([z, l]) => `<div class="cnttile"><button type="button" class="cntadd" data-cntz="${k}.${z}" data-d="1" aria-label="Add one in the ${l.toLowerCase()} during ${ph}">
+        <span class="cntname">${l}</span><b class="cntval num" id="cnt-${k}-${z}" aria-live="polite">${zoneVal(k, z)}</b><small>tap to add 1</small></button>
+        <button type="button" class="cntminus" data-cntz="${k}.${z}" data-d="-1" aria-label="Take one away from the ${l.toLowerCase()} during ${ph}">−1</button></div>`;
+    const flags = `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
+    return `<div class="seg3 cphase" role="group" aria-label="Which part of the match you're counting">
+        ${[["a", "Auto"], ["t", "TeleOp"]].map(([v, l]) => `<button type="button" data-cphase="${v}" aria-pressed="${k === v}">${l} <span class="cpn num" id="cpn-${v}">${phaseBalls(v)}</span></button>`).join("")}</div>
+      <p class="cphint">${k === "a" ? "Counting <b>Auto</b>. Switch to TeleOp when the drivers take over." : "Counting <b>TeleOp</b>. Auto counts are kept; tap Auto to fix them."}</p>
+      <div class="cntphase"><div class="cnttiles">${CNT_ZONES.map(tile).join("")}</div>${flags}</div>`;
+  }
   function countsHtml() {
-    const c = draft.counts;
-    const row = (k, f, l, sub) => `<div class="cntrow"><span class="cntname">${l}<small>${sub}</small></span>
-      <button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="-1" aria-label="One less ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${f}" aria-live="polite">${c[k][f]}</b><button type="button" class="cntbtn" data-cnt="${k}.${f}" data-d="1" aria-label="One more ${l} ${sub} ${k === "a" ? "in auto" : "in TeleOp"}">+</button></div>`;
-    const flags = (k) => `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
-    const phase = (k, label) => `<div class="cntphase"><h4>${label}</h4>${CNT_SCORE.map(([f, l, sub]) => row(k, f, l, sub)).join("")}${flags(k)}</div>`;
-    return `<div class="cntbox">${phase("a", "Auto")}${phase("t", "TeleOp")}</div><p class="cnttotal" id="cntTotal" aria-live="polite">${cntTotalTxt()}</p>`;
+    return `<div class="cntbox" id="cntBox">${cntInner()}</div><p class="cnttotal" id="cntTotal" aria-live="polite">${cntTotalTxt()}</p>`;
   }
   const cntTotalTxt = () => { const p = countPts(draft.counts); return `This qual: <b class="num">${p.total}</b> pts <small>(${p.auto} auto · ${p.tele} teleop · ${p.end} end park)</small>`; };
   function ctxHtml(t, canRate) {
@@ -4721,6 +4749,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
     if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true;
       if (draft.ctx === "qual" && !draft.match && teams.get(dlgTeam)) { draft.match = suggestQual(teams.get(dlgTeam)); draft.autoMatch = !!draft.match; } renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
+    if (b.dataset.cphase) { draft.cntPhase = b.dataset.cphase; if ($("cntBox")) $("cntBox").innerHTML = cntInner(); return; }
+    if (b.dataset.cntz) {
+      const [k, z] = b.dataset.cntz.split("."), fields = (CNT_ZONES.find(([id]) => id === z) || [])[2] || [], d = Number(b.dataset.d);
+      if (d > 0) draft.counts[k][fields[0]] = Math.min(99, (Number(draft.counts[k][fields[0]]) || 0) + 1);
+      else { const f = [...fields].reverse().find(x => (Number(draft.counts[k][x]) || 0) > 0); if (f) draft.counts[k][f] -= 1; }
+      dlgDirty = true;
+      const out = $(`cnt-${k}-${z}`); if (out) out.textContent = zoneVal(k, z); const pn = $(`cpn-${k}`); if (pn) pn.textContent = phaseBalls(k);
+      if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt();
+      if (d > 0 && navigator.vibrate) try { navigator.vibrate(8); } catch (e) {}
+      return; }
     if (b.dataset.cnt) { const [k, f] = b.dataset.cnt.split("."); draft.counts[k][f] = Math.max(0, Math.min(99, (draft.counts[k][f] || 0) + Number(b.dataset.d))); dlgDirty = true;
       const out = $(`cnt-${k}-${f}`); if (out) out.textContent = draft.counts[k][f]; if ($("cntTotal")) $("cntTotal").innerHTML = cntTotalTxt(); return; }
     if (b.dataset.state) { draft.state = draft.state === b.dataset.state ? "" : b.dataset.state; dlgDirty = true; $("ctxBox")?.classList.remove("need");
