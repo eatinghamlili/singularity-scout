@@ -501,6 +501,28 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .setup.acct h3 { margin: 0; font-family: var(--f-display); font-weight: 800; font-size: 20px; text-transform: uppercase; letter-spacing: .03em; }
 .setup.acct .fld small { font-weight: 400; }
 .acctlinks { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; margin: 0; }
+.gatehow { font-size: 15px; } .gatehow b { color: var(--ink); }
+.gatenocode { font-size: 13.5px; margin: 2px 0 0; }
+.gatemore { margin-top: 10px; text-align: center; }
+.gatemore > summary { cursor: pointer; color: var(--accent-ink); font-weight: 600; font-size: 14px; padding: 10px 6px; list-style: none; }
+.gatemore > summary::-webkit-details-marker { display: none; }
+.gatemore[open] > summary { margin-bottom: 4px; }
+@media (max-width: 560px) {   /* the code box sits above the keyboard */
+  .gate { padding-block: 14px 8px; }
+  .gate .hole.big { width: 56px; height: 56px; margin-bottom: 2px; }
+  .gate .gatedino { width: 84px; }
+  .gate .hometitle { font-size: 28px; }
+  .codebox { min-height: 0; margin-top: 8px; }
+}
+.wuguide { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); font-size: 14px; line-height: 1.4; }
+.opt { font-family: var(--f-body); font-size: 12px; font-weight: 500; color: var(--muted); text-transform: none; letter-spacing: 0; }
+.moreteam { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 12px; }
+.moreteam > summary { cursor: pointer; font-weight: 700; color: var(--accent-ink); padding: 10px 0; min-height: 24px; }
+.moreteam[open] > summary { margin-bottom: 6px; }
+.moreteam > * + * { margin-top: 12px; }
+.wuhelp { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border-radius: 12px; border: 1px dashed var(--accent); background: var(--surface); font-size: 14px; line-height: 1.4; }
+.wuhelp ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; }
+.wuhelp .btn { align-self: flex-start; min-height: 40px; }
 .gatealt { display: flex; flex-direction: column; align-items: center; gap: 10px; margin: 6px 0 0; }
 .gatealt .linkbtn, .acctlinks .linkbtn { font-size: 14px; padding: 6px 0; }
 .scanmsg { display: block; font-size: 13px; min-height: 1.3em; color: var(--muted); }
@@ -1197,7 +1219,7 @@ select:not(.top select):disabled { opacity: .5; cursor: not-allowed; }
 .fld select:not(.top select) { width: 100%; font-weight: 400; }
 .sortphone select:not(.top select) { color: var(--ink); }
 /* the writing page: stats sit below the note on every screen */
-#teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap, #teamForm .statsbottom { order: 1; }
+#teamForm .statgrid, #teamForm #dlgNotes, #teamForm .airecap, #teamForm .statsbottom, #teamForm .moreteam { order: 1; }
 #teamForm .dlgfoot { order: 2; }
 /* browser parts drawn in the board's colors: selection, scrollbars, checkboxes, the text caret */
 ::selection { background: color-mix(in srgb, var(--accent) 32%, transparent); color: var(--ink); }
@@ -2400,10 +2422,11 @@ input, textarea { caret-color: var(--accent); }
       return;
     }
     if (ACCOUNTS() && gateView && gateView !== "code") { body.innerHTML = acctGateHtml(); const f = body.querySelector("input"); setTimeout(() => f && f.focus(), 0); return; }
-    body.innerHTML = `<img class="gatedino" src="${BARNEY.sit}" alt=""><p class="hint">Enter your 4-digit scout code. Everything you rate or note is saved under your name.</p>
+    body.innerHTML = `<img class="gatedino" src="${BARNEY.sit}" alt=""><p class="hint gatehow">Type the <b>4-digit code</b> a team lead gave you. You're signed in as soon as you type the last digit.</p>
       <div class="codebox"><input id="codeIn" class="codein" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" aria-label="Scout code" placeholder="••••">
       <div class="err gateerr" id="gateErr" role="alert" ${gateMsg ? "" : "hidden"}>${esc(gateMsg)}</div></div>
-      ${ACCOUNTS() ? `<p class="gatealt"><button type="button" class="btn" data-gview="login">Use a username and password</button><button type="button" class="linkbtn" data-gview="signup">Got a code from a lead? Make an account</button></p>` : ""}`;
+      <p class="hint gatenocode">No code yet? Ask a Team 51 lead. They hand them out in Team roster.</p>
+      ${ACCOUNTS() ? `<details class="gatemore"><summary>Other ways to sign in</summary><p class="gatealt"><button type="button" class="btn" data-gview="login">Use a username and password</button><button type="button" class="linkbtn" data-gview="signup">Got a code? Make an account with it</button></p></details>` : ""}`;
     const el = $("codeIn"); setTimeout(() => el && el.focus(), 0);
   }
   /* ---------- accounts: a username and password instead of a code (website only) ----------
@@ -2628,6 +2651,9 @@ input, textarea { caret-color: var(--accent); }
     catch (err) { const el = $("sErr"); if (el) { el.textContent = typeof err === "string" ? err : (err && err.message) || "Couldn't save. Check your connection."; el.hidden = false; } }
   });
   $("meBtn").onclick = () => { gateMsg = ""; window.SITE.signOut && window.SITE.signOut(); setMe(null); };
+  document.addEventListener("click", (e) => { if (!e.target.closest("[data-guidedone]")) return;
+    try { localStorage.setItem("ss51-guide-done", "1"); } catch (err) {}
+    e.target.closest(".wuhelp")?.remove(); });
   $("rosterBtn").onclick = openRoster; $("rosterBtn2").onclick = openRoster;
   $("allianceSize2").addEventListener("change", (e) => { $("allianceSize").value = e.target.value; $("allianceSize").dispatchEvent(new Event("change")); e.target.value = $("allianceSize").value; });
   if (ACCOUNTS()) { $("meBtn").onclick = openAccount; $("meBtn").title = "Your account"; }
@@ -4472,12 +4498,18 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt" title="${esc(tm(r.m))}">${qualSoon(r.m) ? `<b class="mqsoon">${esc(qualSoon(r.m))}</b>` : esc(tm(r.m))}</span>
         <span class="mqteam">watch <b class="num">${esc(r.t.number)}</b> <small>${esc(r.t.name || "")}</small></span><span class="mqside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span></button>`; };
     const due = myDueQual(), dueRed = due && due.m.red.some(x => x.n === due.t.number);
+    let guideDone = false; try { guideDone = localStorage.getItem("ss51-guide-done") === "1"; } catch (e) { guideDone = true; }
+    const guide = guideDone ? "" : `<section class="wuhelp" aria-label="How scouting works"><b>How scouting works</b>
+        <ol><li>Each qual below says which robot to watch and its alliance color.</li>
+        <li>Watch that robot during the match.</li>
+        <li>Tap <b>Write up</b>, count what it scored, rate it, and tap <b>Save</b>. The next one is offered right away.</li></ol>
+        <button type="button" class="btn" data-guidedone>Got it</button></section>`;
     const hero = due ? `<button type="button" class="btn primary wuhero" data-team="${due.t.number}" data-wq="${esc(due.k)}">
         <span class="wuline">Write up Q${esc(due.m.id)}<small>${due.m.played ? "played, waiting on you" : esc(qualSoon(due.m))}</small></span>
         <span class="wuwho">watch <b class="num">${esc(due.t.number)}</b> ${esc(due.t.name || "")}<span class="wuside ${dueRed ? "r" : "b"}">${dueRed ? "Red" : "Blue"}</span></span></button>` : "";
     const rest = [...late, ...next].filter(r => !(due && r.t.number === due.t.number && r.k === due.k));
     return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up !</span>` : ""}</span>
-      ${hero}<div class="myqlist">${rest.map(row).join("") || (hero ? "" : `<span class="hint qdone">All your quals are written up ✓</span>`)}</div></div>`;
+      ${guide}${hero}<div class="myqlist">${rest.map(row).join("") || (hero ? "" : `<span class="hint qdone">All your quals are written up ✓</span>`)}</div></div>`;
   }
   // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
   const teamPages = () => `<div class="pviewsw mpages tpages" role="group" aria-label="Team window page"><button type="button" data-tpage="edit" aria-pressed="${dlgMode === "edit"}">Scouting</button><button type="button" data-tpage="view" aria-pressed="${dlgMode === "view"}">Notes</button></div>`;
@@ -4594,8 +4626,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("teamForm").innerHTML = `
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
-      ${teamPages()}${visitAsk(t)}${assignBox(t)}
-      <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
+      ${teamPages()}${visitAsk(t)}${canManage() ? assignBox(t) : ""}
+      ${canRate && draft.ctx === "qual" ? `<p class="wuguide">Count what this robot scores, add a note if anything stood out, rate it 1 to 10, then tap <b>Save</b>. Only the qual is required.</p>` : ""}
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
       ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
@@ -4606,27 +4638,30 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
         <div class="photothumbs" id="dThumbs">${pendingThumbs()}</div></div>` : ""}
       <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
-        <div class="numshead"><h3>Your numbers (1–10)${sc.count ? `<small>team average from ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : ""}</h3>
+        <div class="numshead"><h3>Your numbers (1–10) <small class="opt">optional</small></h3>
 </div>
         ${draft.hasNums ? `<p class="hint">Filled in from your last review. Change any that were different this match and leave the rest.</p>` : ""}
         <div class="rate">${CATS.map(([k, l]) => `<div class="raterow"><span class="rlabel">${l}</span><div class="dots" role="group" aria-label="${l}">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v =>
           `<button type="button" data-rate="${k}" data-v="${v}" aria-pressed="${draft[k] === v}" ${numsOn ? "" : "disabled"}>${v}</button>`).join("")}</div>
-          <span class="avg" title="Team average">${sc.avg[k] != null ? "avg " + sc.avg[k].toFixed(1) : ""}</span></div>`).join("")}</div>
+          </div>`).join("")}</div>
       </div>
-      <div class="row2"><label class="fld">Tags (shared)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
+      <div class="row2"><label class="fld">Tags (shared, optional)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
         ${canManage() ? `<label class="check dnpcheck"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}><span><span>Whole team: <b>do not pick</b></span><small>Takes them out of Best pick for everyone</small></span></label>`
           : t.dnp ? `<p class="dnpnote"><span class="tag dnp">do not pick</span> A lead took them off the team's list.</p>` : ""}</div>
-      <div class="movebox"><span class="mlabel">Your pick list</span><small class="hint tierhint">Just your opinion. Everyone's are combined on the pick list.</small>
+      <div class="movebox"><span class="mlabel">Your pick list <small class="opt">optional</small></span><small class="hint tierhint">Just your opinion. Everyone's are combined on the pick list.</small>
         <div class="seg3 tierseg" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) =>
           `<button type="button" data-dtier="${v}" class="${v === 4 ? "mno" : ""}" aria-pressed="${draft.tier === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         ${tierAgg(t) ? `<small class="hint">Scouts so far: ${tierTag(t)}</small>` : ""}</div>
-      <div class="movebox"><span class="mlabel">Can their robot move?</span>
+      <div class="movebox"><span class="mlabel">Can their robot move? <small class="opt">optional</small></span>
         <div class="seg3" role="group" aria-label="Can their robot move?">${[["yes", "Yes"], ["no", "No"], ["", "Not sure"]].map(([v, l]) =>
           `<button type="button" data-moves="${v}" class="${v === "no" ? "mno" : v === "yes" ? "myes" : ""}" aria-pressed="${draft.moves === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         ${t.mobility ? `<small class="hint">Last set by ${esc(t.mobility.by === uid ? "you" : nameOf(t.mobility.by))} · ${when(t.mobility.at)}</small>` : ""}</div>
+      <details class="moreteam"><summary>More about ${esc(t.number)}: results, who's scouting, everyone's notes</summary>
+      ${canManage() ? "" : assignBox(t)}
+      <div class="statgrid">${statBox("This competition (OPR)", t.ev, evExtra)}${statBox("Season best (OPR)", t.season, seExtra)}</div>
       ${recapBox(t)}
       <div id="dlgNotes"><h3>${dlgBy ? `${esc(dlgBy === uid ? "Your" : nameOf(dlgBy) + "'s")} notes on ${esc(t.number)}` : `Notes on ${esc(t.number)}`}${count ? ` · ${dlgBy ? allNotes(t).filter(x => x.by === dlgBy).length : count}` : ""}</h3>
-        ${peopleBoxes(t)}${noteList(t, "dlg" + t.number, NOTES_SHOWN.dlg, dlgBy)}</div>
+        ${peopleBoxes(t)}${noteList(t, "dlg" + t.number, NOTES_SHOWN.dlg, dlgBy)}</div></details>
       <div class="dlgfoot sticky">${draft.hasNums && canRate ? `<button type="button" class="btn danger left" id="dClear">Clear my numbers</button>` : ""}
         <button type="button" class="btn" data-close>Close</button><button type="submit" class="btn primary" ${canRate ? "" : "disabled"}>Save</button></div>`;
   }
