@@ -115,6 +115,18 @@ a { color: var(--accent-ink); }
 .req { font-size: 11.5px; font-weight: 700; color: var(--bad); margin-left: 4px; }
 .ctxseg button { min-height: 44px; }
 .cntbox { display: flex; flex-direction: column; gap: 8px; }
+.cntbox.desk { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
+.cntbox.desk .cntphase { border-top-width: 5px; }
+.cntbox.desk .ph-a { border-top-color: var(--accent); }
+.cntbox.desk .ph-t { border-top-color: #c026d3; }
+.cntbox.desk .phhead { display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.cntbox.desk .phhead h4 { font-size: 20px; }
+.cntbox.desk .ph-a h4 { color: var(--accent-ink); } .cntbox.desk .ph-t h4 { color: #a21caf; }
+:root[data-theme="dark"] .cntbox.desk .ph-t h4 { color: #f0abfc; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .cntbox.desk .ph-t h4 { color: #f0abfc; } }
+.cntbox.desk .phwhen { grid-column: 1; font-size: 12.5px; color: var(--muted); }
+.cntbox.desk .phhead .cpn { grid-column: 2; grid-row: 1 / span 2; align-self: center; font-size: 15px; font-weight: 700; min-width: 30px; text-align: center; padding: 2px 8px; border-radius: 999px; background: var(--sunk); }
+.cntbox.desk .cntname { font-size: 16px; }
 .seg3.cphase { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
 .cphase button { min-height: 48px; font-weight: 700; font-size: 16px; }
 .cphase .cpn { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 4px; border-radius: 999px; background: color-mix(in srgb, currentColor 14%, transparent); font-size: 13px; }
@@ -4628,7 +4640,19 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <p class="cphint">${k === "a" ? "Counting <b>Auto</b>. Switch to TeleOp when the drivers take over." : "Counting <b>TeleOp</b>. Auto counts are kept; tap Auto to fix them."}</p>
       <div class="cntphase"><div class="cnttiles">${CNT_ZONES.map(tile).join("")}</div>${flags}</div>`;
   }
+  const touchCounting = () => matchMedia("(pointer: coarse)").matches;
+  // computers: Auto on the left and TeleOp on the right, each with Hive and Flower (pollen and nectar together) and − / +
+  function countsHtmlDesk() {
+    const c = draft.counts;
+    const row = (k, [z, l]) => `<div class="cntrow"><span class="cntname">${l}</span>
+      <button type="button" class="cntbtn" data-cntz="${k}.${z}" data-d="-1" aria-label="One less in the ${l.toLowerCase()} ${k === "a" ? "in Auto" : "in TeleOp"}">−</button><b class="cntval num" id="cnt-${k}-${z}" aria-live="polite">${zoneVal(k, z)}</b><button type="button" class="cntbtn" data-cntz="${k}.${z}" data-d="1" aria-label="One more in the ${l.toLowerCase()} ${k === "a" ? "in Auto" : "in TeleOp"}">+</button></div>`;
+    const flags = (k) => `<div class="cntflags">${CNT_FLAGS[k].map(([f, l]) => `<button type="button" class="cntflag" data-flag="${k}.${f}" aria-pressed="${!!c[k][f]}">${l}</button>`).join("")}</div>`;
+    const phase = (k, label, when) => `<section class="cntphase ph-${k}" aria-label="${label}"><div class="phhead"><h4>${label}</h4><span class="phwhen">${when}</span><span class="cpn num" id="cpn-${k}" title="Balls counted">${phaseBalls(k)}</span></div>
+      ${CNT_ZONES.map(zz => row(k, zz)).join("")}${flags(k)}</section>`;
+    return `<div class="cntbox desk">${phase("a", "Auto", "first 30 seconds, robot drives itself")}${phase("t", "TeleOp", "drivers in control, to the end")}</div><p class="cnttotal" id="cntTotal" aria-live="polite">${cntTotalTxt()}</p>`;
+  }
   function countsHtml() {
+    if (!touchCounting()) return countsHtmlDesk();
     return `<div class="cntbox" id="cntBox">${cntInner()}</div><p class="cnttotal" id="cntTotal" aria-live="polite">${cntTotalTxt()}</p>`;
   }
   const cntTotalTxt = () => { const p = countPts(draft.counts); return `This qual: <b class="num">${p.total}</b> pts <small>(${p.auto} auto · ${p.tele} teleop · ${p.end} end park)</small>`; };
