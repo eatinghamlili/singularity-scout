@@ -541,6 +541,23 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
   .gate .hometitle { font-size: 28px; }
   .codebox { min-height: 0; margin-top: 8px; }
 }
+.watchbar { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 8px; margin-top: 10px; padding: 10px 12px; border-radius: 10px; border-left: 6px solid var(--line); background: var(--sunk); }
+.watchbar.red { border-left-color: #dc2626; background: color-mix(in srgb, #dc2626 10%, var(--surface)); }
+.watchbar.blue { border-left-color: #2563eb; background: color-mix(in srgb, #2563eb 10%, var(--surface)); }
+.watchbar .wlabel { font-size: 13px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.watchbar .wside { font-family: var(--f-display); font-weight: 800; font-size: 20px; letter-spacing: .04em; }
+.watchbar.red .wside { color: #b91c1c; } .watchbar.blue .wside { color: #1d4ed8; }
+:root[data-theme="dark"] .watchbar.red .wside { color: #f87171; } :root[data-theme="dark"] .watchbar.blue .wside { color: #93c5fd; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .watchbar.red .wside { color: #f87171; } :root:not([data-theme="light"]) .watchbar.blue .wside { color: #93c5fd; } }
+.watchbar .wnum { font-family: var(--f-display); font-weight: 800; font-size: 22px; }
+.watchbar .wname { font-size: 14px; color: var(--muted); }
+.watchbar .wq { margin-left: auto; font-weight: 700; }
+.wrongbot, .editprev { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; margin-top: 8px; padding: 10px 12px; border-radius: 10px; font-size: 14px; line-height: 1.35; }
+.wrongbot > span, .editprev > span { flex: 1 1 200px; }
+.wrongbot { border: 1px solid #f59e0b; background: color-mix(in srgb, #f59e0b 12%, var(--surface)); }
+.editprev { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
+.editprev.on { border-style: dashed; }
+.wrongbot .btn, .editprev .btn { min-height: 40px; }
 .wuguide { margin: 0; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 9%, var(--surface)); font-size: 14px; line-height: 1.4; }
 .opt { font-family: var(--f-body); font-size: 12px; font-weight: 500; color: var(--muted); text-transform: none; letter-spacing: 0; }
 .moreteam { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 12px; }
@@ -4446,6 +4463,30 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function qualsText(q) { return q ? q.map(matchLabelOf).join(", ") : "all quals"; }
   function scoutsOnMatch(t, key) { return scoutsOn(t).filter(k => { const q = qualsOf(t, k); return !q || q.includes(key); }); }
   // quals this scout already saved qual notes for on this team get a checkmark
+  // this scout's own write-up of one qual for this team (the newest, if somehow there are two)
+  const myQualNote = (t, key) => uid && t && key ? allNotes(t).filter(x => x.by === uid && x.ctx === "qual" && x.match === key).sort((a, b) => b.at - a.at)[0] || null : null;
+  // the robot this scout was handed for a qual, when it's a different one from this team
+  const assignedOther = (num, key) => { const r = myQualRows().find(x => x.k === key); return r && r.t.number !== num ? r : null; };
+  const allianceOf = (m, num) => m && m.red.some(x => x.n === num) ? "red" : m && m.blue.some(x => x.n === num) ? "blue" : "";
+  // put an earlier write-up back in the form so it can be fixed; saving replaces it
+  function loadWriteUp(n) {
+    const b = blankCounts(), c = n.counts || {};
+    draft.editOf = n.id; draft.counts = { a: { ...b.a, ...(c.a || {}) }, t: { ...b.t, ...(c.t || {}) } };
+    if (n.nums) { CATS.forEach(([k]) => { draft[k] = n.nums[k] || 0; }); draft.upd = true; }
+    draft.visit = !!n.visit; if ($("dNote")) $("dNote").value = n.text || ""; draft.note = n.text || ""; dlgDirty = true;
+  }
+  // what the scout is about to write up: the robot and its alliance, a wrong-robot warning, and their earlier write-up
+  function watchHtml(t) {
+    const m = draft.ctx === "qual" ? qualByKey(draft.match) : null; if (!m) return "";
+    const side = allianceOf(m, t.number), other = assignedOther(t.number, draft.match), prev = myQualNote(t, draft.match);
+    let out = `<div class="watchbar ${side}" role="status"><span class="wlabel">Watching</span><b class="wside">${side.toUpperCase()}</b><b class="wnum num">${esc(t.number)}</b><span class="wname">${esc(t.name || "")}</span><span class="wq">Q${esc(m.id)}</span></div>`;
+    if (other) out += `<div class="wrongbot" role="alert"><span><b>Check your robot.</b> You're assigned to watch <b>${esc(other.t.number)}</b> (${allianceOf(m, other.t.number).toUpperCase()}) in Q${esc(m.id)}, not ${esc(t.number)}.</span>
+      <button type="button" class="btn" data-switchwu="${esc(other.t.number)}" data-switchk="${esc(other.k)}">Switch to ${esc(other.t.number)}</button></div>`;
+    if (prev && draft.editOf === prev.id) out += `<div class="editprev on"><span>Editing your Q${esc(m.id)} write-up from ${esc(when(prev.at))}. Saving replaces it.</span></div>`;
+    else if (prev) out += `<div class="editprev"><span>You already wrote up Q${esc(m.id)} for ${esc(t.number)} (${esc(when(prev.at))}).</span>
+      <button type="button" class="btn" data-editnote="${esc(prev.id)}">Open my write-up</button></div>`;
+    return out;
+  }
   function doneQuals(t, k) { return new Set(allNotes(t).filter(x => x.by === k && x.ctx === "qual" && x.match).map(x => x.match)); }
   // what's still to scout: their picked quals (or all of the team's) without the checked ones
   function leftQuals(t, k) { const done = doneQuals(t, k), mine = qualsOf(t, k) || teamQuals(t.number).map(matchKey); return mine.filter(q => !done.has(q)); }
@@ -4511,7 +4552,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (key && $("teamDlg").open && uid && !readOnly && dlgMode === "edit") {
       const m = qualByKey(key);
       if (m && !qualOpen(m)) { toast(`Q${m.id} opens for write-ups at ${qualOpensAt(m)}, 2 matches before it's played.`); return; }
-      draft.ctx = "qual"; draft.match = key; draft.autoMatch = false; renderTeamDlg();
+      draft.ctx = "qual"; draft.match = key; draft.autoMatch = false;
+      const prev = myQualNote(teams.get(num), key); if (prev) loadWriteUp(prev);
+      renderTeamDlg();
     }
   }
   function myTeamsHtml(c) {
@@ -4621,7 +4664,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         return `<option value="${esc(k)}" ${draft.match === k && open ? "selected" : ""} ${open ? "" : "disabled"}>Q${esc(m.id)}${m.time ? " · " + esc(tm(m.time)) : ""} · ${red ? "Red" : "Blue"}${m.played ? " · played" : open ? "" : ` · opens at ${esc(qualOpensAt(m))}`}</option>`; }).join("")}</select></label>
       ${draft.autoMatch && draft.match ? (() => { const m = list.find(x => matchKey(x) === draft.match); return m ? `<p class="hint autopick">Picked Q${esc(m.id)} for you: ${m.played ? "it was just played" : Date.parse(m.time || "") <= Date.now() ? "it's on the field now" : Date.parse(m.time || "") <= Date.now() + 60000 ? "it's about to start" : "it's this team's next qual"}. Change it if that's wrong.</p>` : ""; })() : ""}`;
   }
-  function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t); }
+  function refreshQualPick() { const t = teams.get(dlgTeam), box = $("dQualPick"); if ($("teamDlg").open && t && box) box.innerHTML = qualPickInner(t) + watchHtml(t); }
   /* Counting on a phone: one part of the match at a time (Auto, then TeleOp), and just two things to count in each,
      the hive and the flower. Pollen and nectar score the same 2 points and are always added together, so they're
      one count here (saved as pollen; older notes that split them still add up the same). A big tile adds one per
@@ -4660,7 +4703,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
         `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
-      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}</div>${countsHtml()}
+      ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}${watchHtml(t)}</div>${countsHtml()}
         <label class="check visitchk"><input type="checkbox" id="dVisit" ${draft.visit ? "checked" : ""} ${canRate ? "" : "disabled"}><span><span>Someone should <b>go talk to them</b> in the pits</span><small>Say why in the note (it broke, auto failed…). It shows on everyone's Quals tab until someone writes a pit note.</small></span></label>
         <p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
       ${draft.ctx === "pit" ? `<span class="mlabel">Robot's condition <span class="req">Required</span></span>
@@ -4773,6 +4816,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       const on = $("teamForm").querySelector(`[data-tpage="${dlgMode}"]`); if (on) on.focus(); return; }
     if (b.dataset.ctx) { draft.ctx = draft.ctx === b.dataset.ctx ? "" : b.dataset.ctx; dlgDirty = true;
       if (draft.ctx === "qual" && !draft.match && teams.get(dlgTeam)) { draft.match = suggestQual(teams.get(dlgTeam)); draft.autoMatch = !!draft.match; } renderTeamDlg(); $("ctxBox")?.scrollIntoView({ block: "nearest" }); return; }
+    if (b.dataset.editnote) { const n = allNotes(teams.get(dlgTeam)).find(x => x.id === b.dataset.editnote); if (n) { loadWriteUp(n); renderTeamDlg(); } return; }
+    if (b.dataset.switchwu) { const num = Number(b.dataset.switchwu), k = b.dataset.switchk; clearTimeout(stashT); dlgDirty = false; openWriteUp(num, k); return; }
     if (b.dataset.cphase) { draft.cntPhase = b.dataset.cphase; if ($("cntBox")) $("cntBox").innerHTML = cntInner(); return; }
     if (b.dataset.cntz) {
       const [k, z] = b.dataset.cntz.split("."), fields = (CNT_ZONES.find(([id]) => id === z) || [])[2] || [], d = Number(b.dataset.d);
@@ -4798,7 +4843,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
   });
   $("teamForm").addEventListener("change", (e) => {
-    if (e.target.id === "dMatch") { draft.match = e.target.value; draft.autoMatch = false; document.querySelector(".autopick")?.remove(); dlgDirty = true; $("ctxBox")?.classList.remove("need"); return; }
+    if (e.target.id === "dMatch") { draft.match = e.target.value; draft.autoMatch = false; draft.editOf = null; dlgDirty = true; $("ctxBox")?.classList.remove("need"); refreshQualPick(); return; }
     if (e.target.id === "dVisit") { draft.visit = e.target.checked; dlgDirty = true; return; }
     if (e.target.id !== "dUpd") return;
     draft.upd = e.target.checked;
@@ -4811,7 +4856,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // keep the draft as it's written, so nothing is lost however the window goes away
   let stashT = 0; const queueStash = () => { clearTimeout(stashT); if ($("teamDlg").open) stashT = setTimeout(() => { if ($("teamDlg").open) stashDraft(); }, 400); };
   ["click", "change"].forEach(ev => $("teamForm").addEventListener(ev, () => { if (dlgDirty) queueStash(); }));
-  $("teamForm").addEventListener("submit", (e) => {
+  $("teamForm").addEventListener("submit", async (e) => {
     e.preventDefault(); if (!uid) return;
     const t = teams.get(dlgTeam); if (!t) return;
     const text = $("dNote").value.trim();
@@ -4833,6 +4878,18 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (isQual && draft.visit && !text) { toast("Say in the note what the pit crew should ask them about."); $("dNote")?.focus(); return; }
     const tierNow = (t.tiers || {})[uid] || 0, tierChanged = draft.tier !== tierNow;
     if (!writesNote && !numsChanged && !tagsChanged && !movesChanged && !tierChanged) { toast("Nothing new to save. Write a note or change your numbers."); return; }
+    // qual write-ups: an empty one, the wrong robot, or a second one for the same qual get a question first
+    let replaceId = null;
+    if (isQual) {
+      const lbl = matchLabelOf(draft.match), c = draft.counts;
+      const blank = !text && !photos.length && countBalls(c) === 0 && !c.a.leave && !c.a.park && !c.t.park && !(draft.upd && CATS.some(([k]) => draft[k]));
+      if (blank && !(await confirmBox("Nothing counted", `Nothing is counted or rated for ${t.number} in ${lbl}. Did the robot really not score, leave or park?`, "Save anyway"))) return;
+      const other = assignedOther(t.number, draft.match);
+      if (other && !(await confirmBox("Check your robot", `You're assigned to watch ${other.t.number} in ${lbl}, not ${t.number}. Save this for ${t.number} anyway?`, `Save for ${t.number}`))) return;
+      const prev = myQualNote(t, draft.match);
+      if (prev && draft.editOf !== prev.id && !(await confirmBox("Already written up", `You already wrote up ${lbl} for ${t.number} (${when(prev.at)}). Replace it with this one?`, "Replace it"))) return;
+      if (prev) replaceId = prev.id;
+    }
     if (photos.length) { savePhotoNote(t, text, photos); return; }
     const now = Date.now(), patch = { tags, dnp };
     if (movesChanged) patch.mobility = draft.moves ? { ok: draft.moves === "yes", by: uid, at: now } : null;
@@ -4844,6 +4901,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       ...(isQual ? { match: draft.match, counts: JSON.parse(JSON.stringify(draft.counts)) } : {}), ...(isPit ? { state: draft.state, ...(Object.keys(claims).length ? { claims } : {}) } : {}), ...(isQual && draft.visit ? { visit: true } : {}),
       ...(numsChanged ? { nums: Object.fromEntries(CATS.map(([k]) => [k, draft[k] || 0])) } : {}), ...(withPhotos.length ? { photos: withPhotos } : {}) } };
     if (withPhotos.length && !coverOf(t)) patch.photo = { url: withPhotos[0] };
+    if (replaceId && patch.notes) patch.notes[replaceId] = null;   // one write-up per qual: the new one replaces yours
+    draft.editOf = null;
     patchTeam(dlgTeam, patch);
     clearTimeout(stashT); dropDraft(dlgTeam);
     dlgDirty = false; $("teamDlg").close();
