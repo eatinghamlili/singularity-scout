@@ -116,7 +116,7 @@ a { color: var(--accent-ink); }
 .ctxbox { display: flex; flex-direction: column; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--sunk); }
 .ctxbox.need { border-color: var(--bad); box-shadow: 0 0 0 2px color-mix(in srgb, var(--bad) 25%, transparent); }
 .ctxbox .mlabel { font-size: 14px; font-weight: 700; color: var(--ink); }
-.req { font-size: 11.5px; font-weight: 700; color: var(--bad); margin-left: 4px; }
+.req { font-size: 12.5px; font-weight: 700; color: var(--bad); margin-left: 4px; }
 .ctxseg button { min-height: 44px; }
 .cntbox { display: flex; flex-direction: column; gap: 8px; }
 .cntbox.desk { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; }
@@ -367,7 +367,7 @@ a { color: var(--accent-ink); }
 :root[data-theme="dark"] .bline .r { color: #f87171; } :root[data-theme="dark"] .bline .b { color: #93c5fd; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) :is(.pok, .mrole.partner) { color: #86efac; } :root:not([data-theme="light"]) :is(.pbad, .mrole.opponent) { color: #fca5a5; }
   :root:not([data-theme="light"]) .bline .r { color: #f87171; } :root:not([data-theme="light"]) .bline .b { color: #93c5fd; } }
-@media (max-width: 560px) { .trygrid { grid-template-columns: 1fr; } .mpred:not(.past) .ptitle { display: none; } }
+@media (max-width: 560px) { .trygrid { grid-template-columns: 1fr; } }
 .mfoot { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; color: var(--muted); }
 .mnotes.has { color: var(--accent-ink); font-weight: 600; }
 .mopen { color: var(--accent-ink); font-weight: 600; }
@@ -420,6 +420,8 @@ a { color: var(--accent-ink); }
 .seg3 button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .seg3 button.mno[aria-pressed="true"] { background: var(--bad); color: #fff; }
 .seg3 button.myes[aria-pressed="true"] { background: var(--good); color: #fff; }
+:root[data-theme="dark"] .seg3 button.myes[aria-pressed="true"] { color: #052e16; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .seg3 button.myes[aria-pressed="true"] { color: #052e16; } }
 .seg3 button:disabled { cursor: not-allowed; opacity: .6; }
 .who { display: inline-block; background: var(--c); color: var(--t); font-weight: 600; font-size: 12.5px; line-height: 1.5; padding: 0 8px; border-radius: 999px; white-space: nowrap; }
 .medot { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: 0; box-shadow: 0 0 0 2px rgb(255 255 255 / .5); }
@@ -496,6 +498,10 @@ a { color: var(--accent-ink); }
 .notecards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 320px), 1fr)); gap: 12px; }
 .notecard { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; background: var(--surface); }
 .notecard.isus { background: var(--sunk); }
+.numline { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 0; font-size: 14px; }
+.numline > span { white-space: nowrap; }
+.numline .nl { color: var(--muted); }
+.numline b { font-size: 16px; }
 .notecard header { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 10px; align-items: center; }
 .nnum { all: unset; cursor: pointer; font-family: var(--f-display); font-weight: 800; font-size: 26px; line-height: 1; }
 @media (hover: hover) { .nnum:hover { color: var(--accent-ink); text-decoration: underline; } }
@@ -585,7 +591,7 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .aq { color: var(--muted); font-size: 13.5px; font-family: var(--f-body); letter-spacing: .02em; }
 .aqgrid b { font-family: var(--f-body); }
 .qdone { color: #15803d; font-weight: 600; }
-.qtodo { color: #a16207; font-weight: 600; }
+.qtodo { color: #854d0e; font-weight: 600; }
 .qlate { color: #b91c1c; font-weight: 700; }
 :root[data-theme="dark"] .qtodo { color: #fbbf24; } :root[data-theme="dark"] .qlate { color: #f87171; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .qtodo { color: #fbbf24; } :root:not([data-theme="light"]) .qlate { color: #f87171; } }
@@ -908,7 +914,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .pbox:focus-visible { outline: 2px solid var(--glow); outline-offset: 2px; }
 .pbox[aria-pressed="true"] { background: color-mix(in srgb, var(--c) 18%, var(--surface)); border-color: var(--c); }
 .pbox .pname { font-weight: 600; font-size: 14px; }
-.pbox .pcount { font-size: 11.5px; color: var(--muted); }
+.pbox .pcount { font-size: 12.5px; color: var(--muted); }
 .airecap { border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); border-radius: 12px; padding: 12px 14px;
   background: linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), color-mix(in srgb, var(--glow) 6%, var(--surface))); display: flex; flex-direction: column; gap: 8px; }
 .aihead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
@@ -1354,11 +1360,11 @@ input, textarea { caret-color: var(--accent); }
 .cvrow { display: grid; grid-template-columns: 64px 1fr 1fr; gap: 8px; align-items: stretch; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
 .cvq { display: flex; flex-direction: column; justify-content: center; }
 .cvq b { font-family: var(--f-body); font-weight: 700; font-size: 15px; }
-.cvq small { color: var(--muted); font-size: 11.5px; }
+.cvq small { color: var(--muted); font-size: 12.5px; }
 .cvside { display: grid; gap: 6px; }
 .cvchip { all: unset; box-sizing: border-box; cursor: pointer; display: flex; flex-direction: column; gap: 1px; min-width: 0; padding: 5px 8px; border-radius: 8px; border: 1px solid var(--line); background: var(--sunk); }
 .cvchip b { font-family: var(--f-display); font-size: 16px; line-height: 1.1; }
-.cvchip small { font-size: 11.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cvchip small { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .cvchip.red { background: color-mix(in srgb, #dc2626 8%, var(--surface)); box-shadow: inset 3px 0 0 #dc2626; } .cvchip.blue { background: color-mix(in srgb, #2563eb 8%, var(--surface)); box-shadow: inset 3px 0 0 #2563eb; }
 .cvchip.yours { outline: 2px solid var(--accent); outline-offset: -2px; } .cvchip.yours small { color: var(--accent-ink); font-weight: 700; }   /* robots you're scouting */
 .cvchip.me b { color: var(--accent-ink); } .cvchip.us small { color: var(--accent-ink); font-weight: 600; }
@@ -1429,7 +1435,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .btips .bby { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 /* briefing on every qual: our matches carry a clear mark */
-.ourmatch { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); text-transform: uppercase; letter-spacing: .04em; vertical-align: 1px; white-space: nowrap; }
+.ourmatch { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; background: var(--accent); color: var(--on-accent); text-transform: uppercase; letter-spacing: .04em; vertical-align: 1px; white-space: nowrap; }
 .mrole.red { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; } .mrole.blue { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
 :root[data-theme="dark"] .mrole.red { color: #fca5a5; } :root[data-theme="dark"] .mrole.blue { color: #93c5fd; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mrole.red { color: #fca5a5; } :root:not([data-theme="light"]) .mrole.blue { color: #93c5fd; } }
@@ -1464,18 +1470,28 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .hshort { display: none; }
 @media (max-width: 560px) { .hlong { display: none; } .hshort { display: inline; } } .myqual .mqt { color: var(--muted); font-size: 12.5px; }
 .myqual .mqteam { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; }
-.myqual .mqteam small { color: var(--muted); }
+.myqual .mqteam small { color: var(--muted); font-size: 13px; }
 .myqual .mqside { font-size: 12px; font-weight: 700; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; }
 .myqual .mqside.r { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; } .myqual .mqside.b { background: color-mix(in srgb, #2563eb 14%, transparent); color: #1d4ed8; }
 .myqual.late { border-color: color-mix(in srgb, #dc2626 45%, var(--line)); } .myqual.late .mq { color: #b91c1c; }
 :root[data-theme="dark"] .myqual .mqside.r, :root[data-theme="dark"] .myqual.late .mq { color: #fca5a5; } :root[data-theme="dark"] .myqual .mqside.b { color: #93c5fd; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .myqual .mqside.r, :root:not([data-theme="light"]) .myqual.late .mq { color: #fca5a5; } :root:not([data-theme="light"]) .myqual .mqside.b { color: #93c5fd; } }
 @media (pointer: coarse) { .myqual { min-height: 44px; } }
-.wuhero { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; padding: 12px 14px; text-align: left; border-radius: 12px; min-height: 64px; }
-.wuhero .wuline { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: var(--f-display); font-weight: 800; font-size: 21px; text-transform: uppercase; letter-spacing: .03em; }
-.wuhero .wuline small { font-family: var(--f-body); font-size: 13.5px; font-weight: 600; text-transform: none; letter-spacing: 0; opacity: .92; }
-.wuhero .wuwho { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; min-width: 0; }
-.wuhero .wuwho .num { font-size: 17px; font-weight: 700; }
+.ctxbox.fast #dQualPick { display: contents; }
+.ctxbox.fast #dQualPick > .fld, .ctxbox.fast .autopick { order: 3; }
+.ctxbox.fast .visitchk, .ctxbox.fast > .hint { order: 4; }
+.ctxbox.fast .ctxmini { order: 5; margin: 0; font-size: 14px; color: var(--muted); }
+.ctxbox.fast .watchbar, .ctxbox.fast .wrongbot, .ctxbox.fast .editprev { margin-top: 0; }
+.ctxmini .linkbtn { font-size: 14px; min-height: 44px; }
+.tdwu { margin-top: 4px; }
+.tdmine { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; font-size: 15px; }
+.tdmine .wuside { margin-left: 0; }
+.tdmine .tdopens { flex-basis: 100%; font-size: 14px; color: var(--muted); }
+:is(.wuhero, .tdwu) { display: flex; flex-direction: column; align-items: stretch; gap: 4px; width: 100%; padding: 12px 14px; text-align: left; border-radius: 12px; min-height: 64px; }
+:is(.wuhero, .tdwu) .wuline { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; font-family: var(--f-display); font-weight: 800; font-size: 21px; text-transform: uppercase; letter-spacing: .03em; }
+:is(.wuhero, .tdwu) .wuline small { font-family: var(--f-body); font-size: 13.5px; font-weight: 600; text-transform: none; letter-spacing: 0; opacity: .92; }
+:is(.wuhero, .tdwu) .wuwho { display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 500; min-width: 0; }
+:is(.wuhero, .tdwu) .wuwho .num { font-size: 17px; font-weight: 700; }
 .wuside { margin-left: auto; font-size: 12.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; padding: 2px 10px; border-radius: 999px; color: #fff; }
 .wuside.r { background: #dc2626; } .wuside.b { background: #2563eb; }
 /* ---------- loading screens: opening the site, and opening a competition ---------- */
@@ -2984,7 +3000,8 @@ input, textarea { caret-color: var(--accent); }
           <div class="overall">${sc.overall != null ? `<b class="num">${sc.overall.toFixed(1)}</b><small>out of 10 · ${sc.count} scout${sc.count === 1 ? "" : "s"}</small>` : `<small>Not rated</small>`}</div></header>
         ${tags ? `<div class="tags">${tags}</div>` : ""}
         ${scoutsOn(t).length ? `<div class="assignline"><span class="hint">Scouting:</span> ${scoutsOn(t).map(k => `${who(k, k === uid ? "You" : null)}<small class="aq">${qualsHtml(t, k)}</small>`).join(" ")}</div>` : ""}
-        ${hexOrPhoto(t, "card" + t.number, `<div class="hexwrap small">${hexChart([{ vals: profVals(c.skills.map.get(t.number)), kind: "team", name: "Team " + t.number }], { size: 200, small: true })}</div>`)}
+        ${(() => { const v = profVals(c.skills.map.get(t.number)), cells = CATS.filter(([k]) => v[k] != null).map(([k]) => `<span><span class="nl">${SKILL_LABEL[k] || k}</span> <b class="num">${v[k].toFixed(1)}</b></span>`);
+          return cells.length ? `<p class="numline" aria-label="Skills out of 10">${cells.join("")}</p>` : ""; })()}
         ${t.aiRecap && t.aiRecap.text ? `<details class="cardai"><summary>AI overview</summary><div class="aitext">${esc(t.aiRecap.text)}</div></details>` : ""}
         ${noteList(t, "card" + t.number, NOTES_SHOWN.card)}
       </article>`;
@@ -3725,7 +3742,7 @@ input, textarea { caret-color: var(--accent); }
     const line = ([id, x]) => `<div>${who(id, id === uid ? "You" : null)}<span>${x.n} count${x.n === 1 ? "" : "s"}${x.over.size ? ` · <b class="qlate">${x.over.size} alliance${x.over.size === 1 ? "" : "s"} too high !</b>` : " · OK"}</span></div>`;
     const n1 = (v) => Math.round(v * 10) / 10, b1 = (v) => `${n1(v)} ball${n1(v) === 1 ? "" : "s"}`;
     el.innerHTML = `<h2>Count check</h2>
-      <p class="sub">Everything counted for an alliance (pollen and nectar 2 points each, leaving the start 3, parking 5 in auto and at the end) can't add up to more than the alliance's score. If it does, something was counted twice, or the wrong robot or qual was picked.</p>
+      <p class="sub">Everything counted for an alliance (2 points for each one in the hive or a flower, leaving the start 3, parking 5 in auto and at the end) can't add up to more than the alliance's score. If it does, something was counted twice, or the wrong robot or qual was picked.</p>
       ${!alliances ? `<p class="hint">Nothing to check yet. Counts are checked once a qual is played and a scout picked it on the Scouting page.</p>`
         : `${rows.length ? `<div class="crew cc">${rows.map(line).join("")}</div>` : `<p class="hint">You haven't counted a played qual yet.</p>`}
         ${mineFlags.length ? `<div class="ccflags"><b>Looks too high</b>${mineFlags.slice(-6).reverse().map(f => `<button type="button" class="ccflag" data-match="${esc(f.key)}">
@@ -3841,6 +3858,25 @@ input, textarea { caret-color: var(--accent); }
 
   /* ---------- competition day: our next match, first thing on the home page ---------- */
   let homeDay = { key: null, at: 0, list: null, loading: false, err: false }, pendingTab = null;
+  // the teams this scout was handed at today's competition, read once a minute so the home screen can offer their next qual
+  let homeMine = { key: null, at: 0, teams: null, loading: false }, pendingWU = null;
+  function homeNextQual(k, list) {
+    if (!uid || homeMine.key !== k || !homeMine.teams || !list) return null;
+    const ql = list.filter(m => m.level === "Quals"), nx = (ql.find(m => !m.played) || { id: Infinity }).id, rows = [];
+    for (const t of homeMine.teams) {
+      const done = doneQuals(t, uid), keys = qualsOf(t, uid) || ql.filter(m => [...m.red, ...m.blue].some(x => x.n === t.number)).map(matchKey);
+      for (const q of keys) { const m = ql.find(x => matchKey(x) === q); if (m && !done.has(q)) rows.push({ t, m, k: q, open: m.played || m.id <= nx + QUAL_AHEAD }); }
+    }
+    rows.sort((a, b) => a.m.id - b.m.id);
+    return rows.find(r => r.open) || rows[0] || null;
+  }
+  // after the home button opens the competition, wait for its teams and schedule, then open the write-up
+  function tryPendingWU() {
+    const p = pendingWU; if (!p) return;
+    if (Date.now() > p.until || decodeURIComponent(location.hash.slice(1)) !== p.key) { pendingWU = null; return; }   // gave up, or the scout went somewhere else
+    if (current === p.key && teamsReadyKey === p.key && quals.key === p.key && quals.list && teams.has(p.num)) { pendingWU = null; openWriteUp(p.num, p.q); return; }
+    setTimeout(tryPendingWU, 250);
+  }
   function renderToday(today) {
     const box = $("evToday"); if (!box) return;
     const live = [...events.entries()].filter(([, e]) => e.hasUs && String(e.start) <= today && today <= String(e.end || e.start))
@@ -3852,6 +3888,13 @@ input, textarea { caret-color: var(--accent); }
       SOURCE.eventMatches(season, code)
         .then((list) => { homeDay = { key: k, at: Date.now(), list, loading: false, err: false }; })
         .catch(() => { homeDay = { key: k, at: Date.now(), list: homeDay.key === k ? homeDay.list : null, loading: false, err: true }; })
+        .finally(() => { if (!current) renderHome(); });
+    }
+    if (uid && db && (homeMine.key !== k || Date.now() - homeMine.at > 60000) && !homeMine.loading) {
+      homeMine.loading = true;
+      db.collection(`events/${k}/teams`).get()
+        .then((q) => { homeMine = { key: k, at: Date.now(), teams: q.docs.map(d => cleanTeam(d.data() || {})).filter(t => Number.isInteger(t.number) && (t.assigned || {})[uid]), loading: false }; })
+        .catch(() => { homeMine = { ...homeMine, key: k, at: Date.now(), loading: false }; })
         .finally(() => { if (!current) renderHome(); });
     }
     const list = homeDay.key === k ? homeDay.list : null;
@@ -3879,7 +3922,12 @@ input, textarea { caret-color: var(--accent); }
     box.innerHTML = `<section class="today" aria-label="Today's competition">
       <div class="tdhead"><h2>Today · ${esc(e.name)}</h2><span class="tdlive"><span class="livedot" aria-hidden="true"></span>Competing</span></div>
       ${body}
-      <div class="tdbtns"><button type="button" class="btn primary" data-today="${esc(k)}">Open our matches</button><button type="button" class="btn" data-open="${esc(k)}">Scout this competition</button></div>
+      ${(() => { const r = homeNextQual(k, list); if (!r) return ""; const red = r.m.red.some(x => x.n === r.t.number), side = `<span class="wuside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span>`;
+        return r.open ? `<button type="button" class="btn primary tdwu" data-homewu="${esc(k)}" data-hwnum="${r.t.number}" data-hwq="${esc(r.k)}">
+            <span class="wuline">Write up Q${esc(r.m.id)}<small>${r.m.played ? "played, waiting on you" : "your next qual"}</small></span>
+            <span class="wuwho">watch <b class="num">${esc(r.t.number)}</b> ${esc(r.t.name || "")}${side}</span></button>`
+          : `<p class="tdmine">Your next qual: <b>Q${esc(r.m.id)}</b>, watch <b class="num">${esc(r.t.number)}</b> ${side}<span class="tdopens">Write-ups open at Q${esc(r.m.id - QUAL_AHEAD)}</span></p>`; })()}
+      <div class="tdbtns"><button type="button" class="btn ${homeNextQual(k, list)?.open ? "" : "primary"}" data-today="${esc(k)}">Open our matches</button><button type="button" class="btn" data-open="${esc(k)}">Scout this competition</button></div>
     </section>`;
   }
   setInterval(() => { if (!current && !document.hidden && $("evToday") && $("evToday").innerHTML) renderHome(); }, 60000);
@@ -4511,7 +4559,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (!all.length) return "all quals";
     const n = all.filter(x => done.has(x)).length, late = all.filter(x => !done.has(x) && played.has(x)).length, todo = all.length - n - late;
     if (n === all.length) return `<span class="qdone">all scouted ✓</span>`;
-    return `all quals: ${[n ? `<span class="qdone">${n} ✓</span>` : "", late ? `<span class="qlate">${late} to write up !</span>` : "", todo ? `<span class="qtodo">${todo} to go ○</span>` : ""].filter(Boolean).join(" · ")}`;
+    return `all quals: ${[n ? `<span class="qdone">${n} ✓</span>` : "", late ? `<span class="qlate">${late} to write up!</span>` : "", todo ? `<span class="qtodo">${todo} to go ○</span>` : ""].filter(Boolean).join(" · ")}`;
   }
   function nextQualOf(num, only) {
     const m = teamQuals(num).find(q => !q.played && (!only || only.includes(matchKey(q)))); if (!m) return null;
@@ -4562,6 +4610,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       renderTeamDlg();
     }
   }
+  const guideSeen = () => { try { return localStorage.getItem("ss51-guide-done") === "1"; } catch (e) { return true; } };
+  // on a phone, once the qual is set the write-up leads with the robot to watch and the count tiles, so counting starts with no scrolling
+  const fastCount = () => draft.ctx === "qual" && !!draft.match && !!qualByKey(draft.match) && touchCounting();
   function myTeamsHtml(c) {
     if (!uid || !current) return "";
     const rows = myQualRows();
@@ -4573,17 +4624,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <b class="mq">Q${esc(r.m.id)}${r.done ? " ✓" : r.m.played ? " !" : ""}</b><span class="mqt" title="${esc(tm(r.m))}">${qualSoon(r.m) ? `<b class="mqsoon">${esc(qualSoon(r.m))}</b>` : esc(tm(r.m))}</span>
         <span class="mqteam">watch <b class="num">${esc(r.t.number)}</b> <small>${esc(r.t.name || "")}</small></span><span class="mqside ${red ? "r" : "b"}">${red ? "Red" : "Blue"}</span></button>`; };
     const due = myDueQual(), dueRed = due && due.m.red.some(x => x.n === due.t.number);
-    let guideDone = false; try { guideDone = localStorage.getItem("ss51-guide-done") === "1"; } catch (e) { guideDone = true; }
-    const guide = guideDone ? "" : `<section class="wuhelp" aria-label="How scouting works"><b>How scouting works</b>
+    const guide = guideSeen() ? "" : `<section class="wuhelp" aria-label="How scouting works"><b>How scouting works</b>
         <ol><li>Each qual below says which robot to watch and its alliance color.</li>
-        <li>Watch that robot during the match.</li>
-        <li>Tap <b>Write up</b>, count what it scored, rate it, and tap <b>Save</b>. The next one is offered right away.</li></ol>
+        <li>Tap <b>Write up</b> when the match starts.</li>
+        <li>Tap <b>Hive</b> or <b>Flower</b> each time that robot scores. After the match, rate it and tap <b>Save</b>. The next one is offered right away.</li></ol>
         <button type="button" class="btn" data-guidedone>Got it</button></section>`;
     const hero = due ? `<button type="button" class="btn primary wuhero" data-team="${due.t.number}" data-wq="${esc(due.k)}">
         <span class="wuline">Write up Q${esc(due.m.id)}<small>${due.m.played ? "played, waiting on you" : esc(qualSoon(due.m))}</small></span>
         <span class="wuwho">watch <b class="num">${esc(due.t.number)}</b> ${esc(due.t.name || "")}<span class="wuside ${dueRed ? "r" : "b"}">${dueRed ? "Red" : "Blue"}</span></span></button>` : "";
     const rest = [...late, ...next].filter(r => !(due && r.t.number === due.t.number && r.k === due.k));
-    return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up !</span>` : ""}</span>
+    return `<div class="myteams"><b>Your quals</b><span class="hint">${doneN} of ${rows.length} written up${late.length ? ` · <span class="qlate">${late.length} to write up!</span>` : ""}</span>
       ${guide}${hero}<div class="myqlist">${rest.map(row).join("") || (hero ? "" : `<span class="hint qdone">All your quals are written up ✓</span>`)}</div></div>`;
   }
   // the Notes | Scouting switch at the top of a team's window: Notes gathers everyone's scouting, Scouting is where you write
@@ -4705,12 +4755,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   const cntTotalTxt = () => { const p = countPts(draft.counts); return `This qual: <b class="num">${p.total}</b> pts <small>(${p.auto} auto · ${p.tele} teleop · ${p.end} end park)</small>`; };
   function ctxHtml(t, canRate) {
-    return `<div class="ctxbox" id="ctxBox"><span class="mlabel">Where is this note from? <span class="req">Required</span></span>
+    const fast = fastCount();
+    return `<div class="ctxbox${fast ? " fast" : ""}" id="ctxBox">${fast ? "" : `<span class="mlabel">Where is this note from? <span class="req">Required</span></span>
       <div class="seg3 ctxseg" role="group" aria-label="Where is this note from?">${[["qual", "A qual match"], ["pit", "Pits"]].map(([v, l]) =>
-        `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
+        `<button type="button" data-ctx="${v}" aria-pressed="${draft.ctx === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>`}
       ${draft.ctx === "qual" ? `<div id="dQualPick">${qualPickInner(t)}${watchHtml(t)}</div>${countsHtml()}
         <label class="check visitchk"><input type="checkbox" id="dVisit" ${draft.visit ? "checked" : ""} ${canRate ? "" : "disabled"}><span><span>Someone should <b>go talk to them</b> in the pits</span><small>Say why in the note (it broke, auto failed…). It shows on everyone's Quals tab until someone writes a pit note.</small></span></label>
         <p class="hint">These notes also show up in that qual's match notes.</p>` : ""}
+      ${fast && canRate ? `<p class="ctxmini">Not from a qual? <button type="button" class="linkbtn" data-ctx="pit">Write a pit note instead</button></p>` : ""}
       ${draft.ctx === "pit" ? `<span class="mlabel">Robot's condition <span class="req">Required</span></span>
         <div class="statepick" role="group" aria-label="Robot's condition">${PIT_STATES.map(([v, l]) => `<button type="button" class="stbtn ${v}" data-state="${v}" aria-pressed="${draft.state === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         <span class="mlabel">What they say it can do <small class="hint">optional · we check it against the qual counts</small></span>
@@ -4727,9 +4779,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <div class="dlghead"><div><h2>${esc(t.number)} ${esc(t.name || "")}</h2><small>${esc(t.city || "")} · <a href="${SOURCE.teamUrl(encodeURIComponent(t.number))}" target="_blank" rel="noopener">Open on ${SOURCE.name}</a></small></div>
         <button type="button" class="x" data-close aria-label="Close">×</button></div>
       ${teamPages()}${visitAsk(t)}${canManage() ? assignBox(t) : ""}
-      ${canRate && draft.ctx === "qual" ? `<p class="wuguide">Count what this robot scores, add a note if anything stood out, rate it 1 to 10, then tap <b>Save</b>. Only the qual is required.</p>` : ""}
+      ${canRate && draft.ctx === "qual" && !guideSeen() ? `<p class="wuguide">${touchCounting() ? "Tap <b>Hive</b> or <b>Flower</b> each time this robot scores" : "Count each time this robot scores"}. After the match, add a note if anything stood out, rate it 1 to 10 and tap <b>Save</b>. Only the qual is required.</p>` : ""}
       ${canRate ? "" : `<p class="hint">${!db ? "The team database isn't connected, so notes can't be saved." : !uid ? "Enter your scout code to add notes and numbers." : "This device can't save notes right now."}</p>`}
-      ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || (!mine.length && !draft.hasNums)) return "";
+      ${draftOffer()}${(() => { const mine = allNotes(t).filter(x => x.by === uid); if (!uid || fastCount() || (!mine.length && !draft.hasNums)) return "";
           return `<div class="againbox"><b>Reviewing ${esc(t.number)} again?</b> You've ${mine.length ? `left ${mine.length} note${mine.length === 1 ? "" : "s"} (last ${esc(when(mine[0].at))})` : "rated them before"}. Add a new review for this match below. Your earlier notes stay.</div>`; })()}
       ${ctxHtml(t, canRate)}
       <label class="fld">${draft.ctx === "qual" ? "Notes from this qual (optional)" : draft.ctx === "pit" ? "The robot's general state" : draft.hasNums || allNotes(t).some(x => x.by === uid) ? "New note" : "Add a note"}<textarea id="dNote" maxlength="2000" placeholder="${draft.ctx === "pit" ? "Drivetrain, intake, scoring mechanism, what's broken or being fixed, what the team told you…" : "What you saw this time: auto path, cycle speed, what broke, how the drive team talks…"}" ${canRate ? "" : "disabled"}></textarea></label>
@@ -4848,7 +4900,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     if (b.id === "dClear") { patchTeam(dlgTeam, { ratings: { [uid]: { ...Object.fromEntries(CATS.map(([k]) => [k, 0])), scale: 10, at: Date.now() } } }); $("teamDlg").close(); toast("Your numbers were cleared. Your notes stay."); }
   });
   $("teamForm").addEventListener("change", (e) => {
-    if (e.target.id === "dMatch") { draft.match = e.target.value; draft.autoMatch = false; draft.editOf = null; dlgDirty = true; $("ctxBox")?.classList.remove("need"); refreshQualPick(); return; }
+    if (e.target.id === "dMatch") { const wasFast = $("ctxBox")?.classList.contains("fast"); draft.match = e.target.value; draft.autoMatch = false; draft.editOf = null; dlgDirty = true; $("ctxBox")?.classList.remove("need");
+      if (wasFast !== fastCount()) renderTeamDlg(); else refreshQualPick(); return; }
     if (e.target.id === "dVisit") { draft.visit = e.target.checked; dlgDirty = true; return; }
     if (e.target.id !== "dUpd") return;
     draft.upd = e.target.checked;
@@ -4974,8 +5027,10 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
 
   /* ---------- wiring ---------- */
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-today],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
+    const b = e.target.closest("[data-taken],[data-pick],[data-team],[data-act],[data-load],[data-open],[data-today],[data-homewu],[data-loadreq],[data-cancelreq],[data-more]"); if (!b || b.disabled) return;
     if (b.dataset.more) { expanded[b.dataset.more] = !expanded[b.dataset.more]; render(); }
+    else if (b.dataset.homewu) { pendingWU = { key: b.dataset.homewu, num: Number(b.dataset.hwnum), q: b.dataset.hwq, until: Date.now() + 20000 };
+      pendingTab = "quals"; qualOurs = false; pendingCover = false; goTo(b.dataset.homewu); tryPendingWU(); }
     else if (b.dataset.open) goTo(b.dataset.open);
     else if (b.dataset.today) { pendingTab = "quals"; qualOurs = true; pendingCover = false; goTo(b.dataset.today); }
     else if (b.dataset.taken) setStatus(Number(b.dataset.taken), "taken");
