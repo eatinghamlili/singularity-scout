@@ -101,6 +101,10 @@ a { color: var(--accent-ink); }
 .hfield > span { font-size: 11px; text-transform: uppercase; letter-spacing: .09em; color: var(--band-muted); font-weight: 600; }
 .hfield input, .hfield select { background: rgb(255 255 255 / .07); border: 1px solid rgb(255 255 255 / .16); color: var(--band-ink); border-radius: 6px; padding: 6px 9px; min-width: 0; color-scheme: dark; }
 .hfield select option { background: #1b0f33; color: #efe8ff; }
+.evlink { color: inherit; text-decoration: none; cursor: pointer; border-radius: 8px; -webkit-tap-highlight-color: transparent; }
+.evlink:focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; }
+@media (hover: hover) { .evlink:hover .evname { text-decoration: underline; text-underline-offset: 3px; } }
+.evlink:active .evname { opacity: .75; }
 .evname { font-family: var(--f-display); font-weight: 700; font-size: 19px; line-height: 1.15; max-width: 300px; overflow-wrap: anywhere; }
 .btn-band.ghost { background: transparent; border-color: rgb(255 255 255 / .28); }
 @media (hover: hover) { .btn-band.ghost:hover { background: rgb(255 255 255 / .08); } }
@@ -793,6 +797,7 @@ tr.listnote td { color: var(--muted); font-size: 13px; padding: 8px 10px; backgr
   .top .wrap:has(#evNav:not([hidden])) .brand { flex: 0 0 auto; }
   .top .wrap:has(#evNav:not([hidden])) .brand > div { display: none; }
   .top .wrap:has(#evNav:not([hidden])) #evNav { order: 1; flex: 1 1 auto; min-width: 0; align-items: center; }
+  .top .wrap:has(#evNav:not([hidden])) .evlink { min-height: 44px; flex: 1 1 auto; min-width: 0; justify-content: center; }   /* the whole name is the tap target */
   .top .wrap:has(#evNav:not([hidden])) #evName { font-size: 16px; line-height: 1.1; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   .top .wrap:has(#evNav:not([hidden])) #themeBtn { order: 2; flex: 0 0 auto; }
   .top .wrap:has(#evNav:not([hidden])) #meBtn { order: 3; flex: 0 0 auto; font-size: 0; min-width: 44px; min-height: 44px; padding: 0; justify-content: center; max-width: none; }
@@ -1562,7 +1567,7 @@ input, textarea { caret-color: var(--accent); }
     <a class="brand" id="brandHome" href="#" title="All competitions" aria-label="Singularity Scout: all competitions"><img class="brandlogo" id="brandDino" alt="" width="66" height="46">
       <div><h1>Singularity Scout</h1><small><b>Team 51</b> · NerdHerd Singularity · alliance selection</small></div></a>
     <div class="evrow" id="evNav" hidden>
-      <div class="hfield"><span>Scouting</span><b class="evname" id="evName"></b></div>
+      <a class="hfield evlink" href="#" id="evHome" title="Back to all competitions"><span>Scouting</span><b class="evname" id="evName"></b></a>
       <button class="btn-band ghost" id="homeBtn" aria-label="All competitions"><span class="hlong">All competitions</span><span class="hshort" aria-hidden="true">‹ All</span></button>
     </div>
     <div class="hfield"><span>Our team</span><b class="ourteam" id="ourTeam" title="This board is for Team 51 only for now">51</b></div>
@@ -5209,6 +5214,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("notesWho").addEventListener("change", () => render());
   $("homeBtn").onclick = () => goTo(null);
   // the logo and name go home too (to the competitions page), the way most sites work
+  // the competition's name goes back to all competitions too, like the logo (phones show the name where the title was)
+  $("evHome").addEventListener("click", (e) => { e.preventDefault(); if ($("teamDlg").open) $("teamDlg").close(); if ($("matchDlg").open) $("matchDlg").close(); goTo(null); window.scrollTo(0, 0); });
   $("brandHome").addEventListener("click", (e) => { e.preventDefault(); if ($("teamDlg").open) $("teamDlg").close(); if ($("matchDlg").open) $("matchDlg").close(); goTo(null); window.scrollTo(0, 0); });
   window.addEventListener("hashchange", route);
 
