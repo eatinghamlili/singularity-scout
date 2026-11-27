@@ -1717,7 +1717,7 @@ input, textarea { caret-color: var(--accent); }
         <div class="predhead" id="predHead">
           <div class="predtop"><b>Match predictor</b><span class="predacc" id="predAcc"></span>
             <button type="button" class="qhelp" id="predHelpBtn" aria-expanded="false" aria-controls="predHelp" aria-label="How the predictor works">?</button></div>
-          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from how they've scored this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Each team also gets a K factor for consistency: how much its scoring swings from match to match (from results and our scouts' qual counts) and how often it has an off game. Streaky teams make a call less sure; steady teams make it surer. Played matches say "Called it" or "Missed" so you can see how often it's right.</p>
+          <p class="predhelp" id="predHelp" hidden>Every team gets a strength score that starts from their best showing at their other events this season and updates after each match they play here, with a nudge from our scouts and a few other signals. Early in the season it also leans a little on how teams ranked last season, less and less as this season's matches come in. An alliance's predicted score is its teams' strengths added up, and the bigger the gap between the two alliances, the surer the call. Each team also gets a K factor for consistency: how much its scoring swings from match to match (from results and our scouts' qual counts) and how often it has an off game. Streaky teams make a call less sure; steady teams make it surer. Played matches say "Called it" or "Missed" so you can see how often it's right.</p>
           <details class="trymatch"><summary>Try a matchup</summary>
             <div class="trygrid"><label class="fld">Red alliance<input id="tryRed" inputmode="numeric" autocomplete="off" placeholder="e.g. 51 49"></label>
               <label class="fld">Blue alliance<input id="tryBlue" inputmode="numeric" autocomplete="off" placeholder="e.g. 38782 5285"></label></div>
@@ -3069,15 +3069,29 @@ input, textarea { caret-color: var(--accent); }
     ridge: 1 };        // how strongly the OPR fit leans on each team's starting strength (in matches' worth)     // win chances use the real spread of results (1.2 was too timid)
   // last season's world ranking per team (FTCScout), fetched once per competition; a percentile carries across seasons, points don't
   const prevSeason = new Map();
+  // each team's best OPR (fouls left out) from its OTHER events this season: where its strength starts.
+  // FTCScout's season totals also count the matches being played here, so the predictor counted them twice and
+  // got overconfident (replaying 811 California quals this season: "75%" calls won only 60%; without this event they won 69%)
+  let otherBest = { key: null, map: new Map() };
   let prevLoadingFor = null;
   async function loadPrevSeason(list) {
     const ev = events.get(current); if (!ev || !ev.season || prevLoadingFor === current) return;
     prevLoadingFor = current;
-    const nums = [...new Set(list.flatMap(m => [...m.red, ...m.blue].map(x => x.n)))].filter(n => !prevSeason.has(n));
+    const key = current, code = ev.code || current.slice(5);
+    if (otherBest.key !== key) otherBest = { key, map: new Map() };
+    const nums = [...new Set(list.flatMap(m => [...m.red, ...m.blue].map(x => x.n)))];
     for (let i = 0; i < nums.length; i += 6) {
       await Promise.all(nums.slice(i, i + 6).map(async (n) => {
-        try { const q = await SOURCE.get(`/teams/${n}/quick-stats?season=${Number(ev.season) - 1}`); prevSeason.set(n, q && q.tot && q.count ? { rank: q.tot.rank, count: q.count } : null); }
-        catch { prevSeason.set(n, null); }
+        if (!prevSeason.has(n)) {
+          try { const q = await SOURCE.get(`/teams/${n}/quick-stats?season=${Number(ev.season) - 1}`); prevSeason.set(n, q && q.tot && q.count ? { rank: q.tot.rank, count: q.count } : null); }
+          catch { prevSeason.set(n, null); }
+        }
+        try {
+          const l = await SOURCE.get(`/teams/${n}/events/${ev.season}`);
+          const best = (Array.isArray(l) ? l : []).filter(x => x && x.eventCode !== code && x.stats && (x.stats.qualMatchesPlayed || 0) > 0)
+            .map(x => evPart(x.stats)).filter(Boolean).map(x => x.total || (x.auto || 0) + (x.teleop || 0) + (x.endgame || 0));
+          if (otherBest.key === key) otherBest.map.set(n, best.length ? Math.max(...best) : null);
+        } catch {}   // not reachable: falls back to the season totals
       }));
     }
     if (view.tab === "quals") render();
@@ -3103,7 +3117,8 @@ input, textarea { caret-color: var(--accent); }
     const isPlayed = (m) => m.played && m.redScore != null && m.blueScore != null;
     const played = list.filter(isPlayed);
     const size = Math.max(1, ...list.map(m => Math.max(m.red.length, m.blue.length)));
-    const seasonNp = (n) => { const t = teams.get(n); return t && t.season ? (t.season.auto || 0) + (t.season.teleop || 0) + (t.season.endgame || 0) : null; };
+    const seasonNp = (n) => { if (otherBest.key === current && otherBest.map.has(n)) return otherBest.map.get(n);
+      const t = teams.get(n); return t && t.season ? (t.season.auto || 0) + (t.season.teleop || 0) + (t.season.endgame || 0) : null; };
     const allNums = [...new Set(list.flatMap(m => [...m.red, ...m.blue].map(x => x.n)))];
     const known = allNums.map(seasonNp).filter(v => v != null);
     const meanAlli = played.length ? played.reduce((a, m) => a + m.redScore + m.blueScore, 0) / (played.length * 2) : null;
