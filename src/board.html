@@ -476,6 +476,15 @@ a { color: var(--accent-ink); }
 .livestate.on { font-weight: 500; }
 .livewho { font-size: 13.5px; color: var(--muted); } .livewho b { color: var(--ink); font-weight: 600; }
 .livectl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.livebar:not(.open) .livectl { display: none; }   /* the update controls stay behind Options on every screen */
+.topbars { display: flex; flex-direction: column; gap: 10px; }
+@media (min-width: 900px) {
+  .topbars { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px 28px; }
+  .topbars .livebar { flex: 1 1 360px; min-width: 0; }
+  .topbars .livebar.open { flex-basis: 100%; }
+  .topbars .pickbar { flex: 0 1 auto; margin-left: auto; }
+  .topbars .pickbar .hint { max-width: 34ch; }
+}
 .livesel { font-size: 13px; color: var(--muted); display: flex; align-items: center; gap: 4px; }
 .livesel select { background: var(--sunk); border: 1px solid var(--line); border-radius: 6px; padding: 4px 6px; color: var(--ink); }
 .liveerr { flex-basis: 100%; }
@@ -779,7 +788,7 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .scout .none { color: var(--muted); font-size: 13px; }
 .pen { color: var(--bad); }
 .status { display: flex; gap: 6px; justify-content: flex-end; }
-.status button { border: 1px solid var(--line); background: transparent; border-radius: 6px; padding: 3px 9px; font-size: 12.5px; cursor: pointer; white-space: nowrap; }
+.status button { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 0 14px; min-height: 36px; font-size: 14px; cursor: pointer; white-space: nowrap; }
 @media (hover: hover) { .status button:hover { border-color: var(--accent); } }
 .status button[data-pick]:not(.on-pick):not(:disabled) { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .status button.on-taken { background: var(--muted); border-color: var(--muted); color: var(--surface); }
@@ -1055,7 +1064,8 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
 .hfield > span, .mstate, .msur, .mrole, th, td.subhead { font-size: 12px; }
 .fld, .movebox .mlabel, .redit .rlabel2, .weak > b, .fills > b, .bigscore span { font-size: 13px; }
 .ord { font-family: var(--f-body); font-weight: 700; font-size: 12px; }
-.liveopt, .tabs .phonetab { display: none; }
+.tabs .phonetab { display: none; }
+.liveopt { flex: 0 0 auto; min-height: 36px; padding-block: 4px; font-size: 14px; }
 /* the Sort menu shows everywhere (on a computer it's the only way to sort by Scouted OPR) */
 .sortphone { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--muted); }
 .sortphone[hidden] { display: none; }
@@ -1079,6 +1089,23 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   label.hfield:has(#allianceSize) { order: 6; margin-left: auto; }
   #storePill { order: 7; align-self: center; }
   #storePill.live { display: none; }   /* all good: say nothing; offline and errors still show */
+}
+/* wide screens inside a competition: one header row, so the pick list starts higher */
+@media (min-width: 1100px) {
+  .top .wrap:has(#evNav:not([hidden])) { flex-wrap: nowrap; padding-block: 10px; }
+  .top .wrap:has(#evNav:not([hidden]))::after { display: none; }
+  .top .wrap:has(#evNav:not([hidden])) .brand { flex: 0 0 auto; margin-right: 6px; }
+  .top .wrap:has(#evNav:not([hidden])) .brand small { display: none; }
+  .top .wrap:has(#evNav:not([hidden])) .brand h1 { font-size: 22px; }
+  .top .wrap:has(#evNav:not([hidden])) .brandlogo { width: 52px; }
+  .top .wrap:has(#evNav:not([hidden])) #evNav { order: 1; flex: 1 1 auto; min-width: 0; align-items: center; }
+  .top .wrap:has(#evNav:not([hidden])) .evlink { min-width: 0; }
+  .top .wrap:has(#evNav:not([hidden])) #evName { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .top .wrap:has(#evNav:not([hidden])) label.hfield:has(#allianceSize) { order: 2; margin-left: 0; }
+  .top .wrap:has(#evNav:not([hidden])) #themeBtn { order: 3; }
+  .top .wrap:has(#evNav:not([hidden])) #rosterBtn { order: 4; }
+  .top .wrap:has(#evNav:not([hidden])) #meBtn { order: 5; }
+  .top .wrap:has(#evNav:not([hidden])) #storePill { order: 6; }
 }
 @media (min-width: 561px) and (max-width: 900px) {   /* tablets: keep the account buttons on the brand's row */
   .brand { flex: 1 1 0; min-width: 0; }
@@ -1115,7 +1142,6 @@ body { background: radial-gradient(1100px 420px at 50% -120px, color-mix(in srgb
   .livestate > span:nth-child(2) { flex: 1; min-width: 0; }
   .livemore { display: none; }
   .liveopt { display: inline-flex; margin-left: auto; }
-  .livebar:not(.open) .livectl { display: none; }
   .pickbar { flex-wrap: nowrap; }
   .pickbarText > b { display: none; }
   .pickbarText .hint { font-size: 13.5px; color: var(--ink); }
@@ -1627,10 +1653,12 @@ input, textarea { caret-color: var(--accent); }
   </section>
 
   <div class="boardview" id="boardView" hidden>
+  <div class="topbars">
   <div class="livebar" id="liveBar"></div>
   <div class="pickbar" id="pickBar">
     <div class="pickbarText"><b>Alliance selection</b><span class="hint" id="pickBarHint"></span></div>
     <button type="button" class="btn" id="pickToggle" aria-expanded="false" aria-controls="next">Show best pick</button>
+  </div>
   </div>
   <section class="next" id="next" aria-live="polite" hidden></section>
 
@@ -5036,15 +5064,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function setStatus(num, status) {
     if (readOnly) return;
     const t = teams.get(num); if (!t) return;
-    const next = t.status === status ? "available" : status;
+    const next = t.status === status ? "available" : status, prev = t.status || "available", swapped = [];
     if (next === "partner") {
       const partners = [...teams.values()].filter(x => x.status === "partner" && x.number !== num);
-      if (settings.size === 2 && partners.length) partners.forEach(p => patchTeam(p.number, { status: "available" }));
+      if (settings.size === 2 && partners.length) partners.forEach(p => { swapped.push(p.number); patchTeam(p.number, { status: "available" }); });
       else if (partners.length >= settings.size - 1) { toast("Your alliance is full. Unpick a team first."); return; }
     }
     patchTeam(num, { status: next });
-    if (next === "taken") toast(`${num} marked taken`);
-    if (next === "partner") toast(`${num} is your pick`);
+    // one click changes the list for everyone, so every change can be taken back
+    const undo = { label: "Undo", run: () => { patchTeam(num, { status: prev }); swapped.forEach(n => patchTeam(n, { status: "partner" })); toast(`${num} put back`); } };
+    toast(next === "taken" ? `${num} marked taken` : next === "partner" ? `${num} is your pick${swapped.length ? ` (instead of ${swapped.join(", ")})` : ""}` : `${num} is available again`, undo);
   }
 
   /* ---------- wiring ---------- */
