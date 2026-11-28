@@ -451,7 +451,7 @@ async function upload(req: Request, body: any) {
 }
 
 // a match plan on the field: three steps (auto, tele, end), each with robot spots and drawn lines, all in 0-1000 field units
-const PLAN_STEPS = ["auto", "tele", "end"], PLAN_INKS = ["#f59e0b", "#dc2626", "#2563eb", "#16a34a", "#111827"];
+const PLAN_STEPS = ["auto", "tele", "end"], PLAN_INKS = ["#f59e0b", "#dc2626", "#2563eb", "#16a34a", "#111827", "#9333ea"];
 const isUnit = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 1000;
 function checkPlan(data: any, uid: string) {
   if ("title" in data && !isStr(data.title, 40)) return "Plan names are 40 characters at most.";

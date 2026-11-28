@@ -381,8 +381,8 @@ a { color: var(--accent-ink); }
 .mcard .nmeta small { color: var(--muted); font-size: 12.5px; }
 .mcard .overall { text-align: right; } .mcard .overall b { font-family: var(--f-display); font-size: 22px; color: var(--accent-ink); display: block; line-height: 1; }
 .mcard .overall small { color: var(--muted); font-size: 11.5px; }
-.mrole { align-self: flex-start; font-size: 11px; font-weight: 700; padding: 0 8px; border-radius: 999px; margin: 2px 0; text-transform: uppercase; letter-spacing: .05em; }
-.mrole.us { background: var(--band); color: var(--band-ink); } .mrole.partner { background: color-mix(in srgb, #16a34a 18%, transparent); color: #15803d; }
+.mrole { align-self: flex-start; font-size: 12px; font-weight: 700; padding: 0 8px; border-radius: 999px; margin: 2px 0; text-transform: uppercase; letter-spacing: .05em; }
+.mrole.us { background: var(--band); color: var(--band-ink); } .mrole.partner { background: color-mix(in srgb, #16a34a 18%, transparent); color: #14532d; }
 .mrole.opponent { background: color-mix(in srgb, #dc2626 14%, transparent); color: #b91c1c; }
 .mnotelist { flex: 1; display: flex; flex-direction: column; gap: 10px; min-height: 160px; overflow-y: auto; padding: 4px 2px; }
 .mempty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 18px 0; color: var(--muted); }
@@ -495,6 +495,19 @@ a { color: var(--accent-ink); }
 .subrow { height: 46px; display: flex; align-items: center; overflow: hidden; padding: 0 4px; }   /* the same height for every tool, so the field never jumps */
 .subrow > * { display: none; }
 .planboard[data-tool="draw"] .inkrow, .planboard[data-tool="move"] .stepbtns, .planboard[data-tool="erase"] .erasehint { display: flex; }
+.inkrow #planClear { min-height: 40px; margin-left: auto; padding-inline: 12px; }
+.movehint { margin: 0; font-size: 13px; align-self: center; }
+.viewnote { margin: 0; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line); background: var(--sunk); font-size: 14px; }
+.planboard.viewer .toolrow, .planboard.viewer .subrow { display: none; }
+.planempty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 10px; height: 100%; min-height: 260px; padding: 20px; }
+.planempty h3 { margin: 0; }
+.planempty p { margin: 0; max-width: 34ch; }
+.planempty .btn { min-height: 48px; padding-inline: 20px; }
+.pearly { font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; border: 1px dashed currentColor; color: var(--muted); white-space: nowrap; }
+.sheethead { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheethead .btn { min-height: 44px; min-width: 88px; }
+:root[data-theme="dark"] .fieldsvg image { filter: brightness(.82); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .fieldsvg image { filter: brightness(.82); } }
 .erasehint { margin: 0; font-size: 14px; color: var(--muted); align-items: center; }
 .stepbtns { gap: 8px; flex-wrap: wrap; }
 .stepbtns .btn { min-height: 40px; padding-inline: 10px; }
@@ -510,13 +523,15 @@ a { color: var(--accent-ink); }
 .notesheet { display: none; }
 .planboard.notesopen .notesheet { display: flex; position: absolute; inset: 0; z-index: 3; flex-direction: column; gap: 10px; padding: 2px; background: var(--surface); }
 .notefld { flex: 1 1 auto; min-height: 0; }
-.notefld textarea { flex: 1 1 auto; min-height: 120px; font-size: 16px; resize: none; }
+.notefld textarea { flex: 1 1 auto; min-height: 120px; max-height: 40vh; font-size: 16px; resize: none; }
 .sheetbtns { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
 .sheetbtns .btn { min-height: 44px; min-width: 96px; }
 @media (min-width: 900px) {
   .planboard { grid-template-columns: minmax(0, 1fr) 336px; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "field bar" "field sheet" "field foot"; column-gap: 20px; }
   .planboard .notesheet, .planboard.notesopen .notesheet { grid-area: sheet; display: flex; position: static; flex-direction: column; gap: 10px; padding: 0; min-height: 0; }
-  .notebtn, #planNoteDone { display: none; }
+  .notebtn, .sheethead { display: none; }
+  .subrow { height: auto; min-height: 46px; }
+  .inkrow { flex-wrap: wrap; }
   .planfoot { align-self: end; }
 }
 @media (max-width: 560px) {
@@ -524,6 +539,8 @@ a { color: var(--accent-ink); }
   #matchDlg:has(#stratBody) .dlg, #planDlg .dlg { padding: 8px 12px max(10px, env(safe-area-inset-bottom)); gap: 8px; }
   .planboard { gap: 8px; }
   .stepseg button, .toolseg button, .undobtn, .playbtn { min-height: 42px; }
+  #planReset, .inkrow #planClear { min-height: 44px; }
+  .swatch { width: 44px; height: 44px; }
   .stepbtns .btn { font-size: 14px; padding-inline: 9px; }
 }
 .practicecard .btn { align-self: flex-start; }
@@ -879,7 +896,8 @@ td.rk { font-family: var(--f-display); font-weight: 800; font-size: 19px; color:
 .status button { border: 1px solid var(--line); background: transparent; border-radius: 8px; padding: 0 14px; min-height: 36px; font-size: 14px; cursor: pointer; white-space: nowrap; }
 @media (hover: hover) { .status button:hover { border-color: var(--accent); } }
 .status button[data-pick]:not(.on-pick):not(:disabled) { border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
-.status button.on-taken { background: var(--muted); border-color: var(--muted); color: var(--surface); }
+.status button.on-taken { background: var(--sunk); border-color: var(--line); color: var(--muted); }
+tr.taken .status button[data-pick]:not(.on-pick) { border-color: var(--line); color: var(--muted); font-weight: 500; }
 .status button.on-pick { background: var(--accent); border-color: var(--accent); color: var(--on-accent); font-weight: 600; }
 tr.flagged .status button[data-pick]:not(.on-pick):not(:disabled) { border-color: var(--line); color: var(--muted); font-weight: 500; }   /* still the lead's call */
 .offlist { color: var(--muted); font-size: 12.5px; }
@@ -1461,7 +1479,7 @@ input, textarea { caret-color: var(--accent); }
 .bname { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; flex: 1; }
 .bname b { font-size: 14px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .bscore { text-align: right; flex: none; } .bscore b { display: block; font-family: var(--f-display); font-size: 20px; line-height: 1; color: var(--accent-ink); }
-.bscore small { color: var(--muted); font-size: 11px; }
+.bscore small { color: var(--muted); font-size: 12.5px; }
 .bnums { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; font-size: 13px; color: var(--muted); }
 .bnums b { color: var(--ink); font-size: 13px; font-family: var(--f-body); font-variant-numeric: tabular-nums; }
 .bnote { margin: 0; font-size: 13.5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
@@ -1552,7 +1570,7 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .nhit mark { --hl: color-mix(in srgb, #facc15 35%, transparent); } }
 @media (min-width: 900px) { .nhits { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); } .nhits h3, .nhits > p { grid-column: 1 / -1; } }
 
-.btips .brole { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.btips .brole { font-size: 12.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .btips .bby { color: var(--muted); font-size: 12px; white-space: nowrap; }
 
 /* briefing on every qual: our matches carry a clear mark */
@@ -3347,13 +3365,17 @@ input, textarea { caret-color: var(--accent); }
     if (usRed || usBlue) { const won = usRed === redWon; return { cls: won ? "won" : "lost", text: `${won ? "We won" : "We lost"} ${won ? hi : lo}–${won ? lo : hi}` }; }
     return { cls: redWon ? "r" : "b", text: `${redWon ? "Red" : "Blue"} won ${hi}–${lo}` };
   }
+  // the first few quals of an event are an early guess: it leans on teams' other events (tested on this season's California quals)
+  const EARLY_QUALS = 3;
+  const playedHere = () => ((lastPred && lastPred.list) || []).filter(m => m.level === "Quals" && m.played && m.redScore != null).length;
+  const earlyTag = () => { const n = playedHere(); return n < EARLY_QUALS ? `<span class="pearly" title="Only ${n} qual${n === 1 ? "" : "s"} played here so far, so this leans on how teams did at other events">early guess</span>` : ""; };
   function predStrip(pr, played, done) {
     const pct = Math.round(pr.pRed * 100), redFav = pr.pRed >= 0.5;
     // once the match is played the real score is the news: the prediction shrinks to one quiet line
     if (done) return `<div class="mpred past"><span class="ptitle">Predicted</span><span class="pscore num">${Math.round(pr.red)}–${Math.round(pr.blue)}</span><span>${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The predictor picked the winner of this match">Called it</span>` : `<span class="pbad" title="The predictor picked the wrong winner for this match">Missed</span>`}</div>`;
     return `<div class="mpred"><span class="ptitle">Predicted</span><span class="pscore num"><b class="r">${Math.round(pr.red)}</b> – <b class="b">${Math.round(pr.blue)}</b></span>
       <span class="pbar" aria-hidden="true"><i style="width:${pct}%"></i></span>
-      <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null ? "" : played ? `<span class="pok" title="The predictor picked the winner of this match">Called it</span>` : `<span class="pbad" title="The predictor picked the wrong winner for this match">Missed</span>`}</div>`;
+      <span class="pwin ${redFav ? "r" : "b"}">${redFav ? "Red" : "Blue"} ${redFav ? pct : 100 - pct}%</span>${played == null && !done ? earlyTag() : ""}${played == null ? "" : played ? `<span class="pok" title="The predictor picked the winner of this match">Called it</span>` : `<span class="pbad" title="The predictor picked the wrong winner for this match">Missed</span>`}</div>`;
   }
 
   /* Coverage board: every qual with each robot and who's scouting it, so gaps get filled before the match.
@@ -3554,7 +3576,7 @@ input, textarea { caret-color: var(--accent); }
       </div>`;
     };
     return `<div class="brief">
-      ${ours ? `<p class="bline"><span class="ourmatch">★ Our match</span> We're <b class="${usRed ? "r" : "b"}">${usRed ? "Red" : "Blue"}</b>${mine.length > 1 ? ` with ${mine.filter(n => n !== us).map(n => `<b>${esc(n)}</b>`).join(" and ")}` : ""}${m.played && resultOf(m) ? ` · <b>${esc(resultOf(m).text.replace(/^We/, "we"))}</b>${win != null ? ` (we were given ${win}%)` : ""}` : win != null ? ` · <b>${win}%</b> to win, about ${Math.round(usRed ? pr.red : pr.blue)} to ${Math.round(usRed ? pr.blue : pr.red)}` : ""}.</p>`
+      ${ours ? `<p class="bline"><span class="ourmatch">★ Our match</span> We're <b class="${usRed ? "r" : "b"}">${usRed ? "Red" : "Blue"}</b>${mine.length > 1 ? ` with ${mine.filter(n => n !== us).map(n => `<b>${esc(n)}</b>`).join(" and ")}` : ""}${m.played && resultOf(m) ? ` · <b>${esc(resultOf(m).text.replace(/^We/, "we"))}</b>${win != null ? ` (we were given ${win}%)` : ""}` : win != null ? ` · <b>${win}%</b> to win, about ${Math.round(usRed ? pr.red : pr.blue)} to ${Math.round(usRed ? pr.blue : pr.red)}${playedHere() < EARLY_QUALS ? ` <small class="hint">(early guess: ${playedHere()} qual${playedHere() === 1 ? "" : "s"} played here)</small>` : ""}` : ""}.</p>`
         : `<p class="bline"><b class="r">Red</b> ${mine.map(n => `<b>${esc(n)}</b>`).join(" and ")} vs <b class="b">Blue</b> ${theirs.map(n => `<b>${esc(n)}</b>`).join(" and ")}${m.played && resultOf(m) ? ` · <b>${esc(resultOf(m).text)}</b>` : pr ? ` · <b>${pr.pRed >= 0.5 ? "Red" : "Blue"} ${Math.round((pr.pRed >= 0.5 ? pr.pRed : 1 - pr.pRed) * 100)}%</b> to win, about ${Math.round(pr.red)} to ${Math.round(pr.blue)}` : ""}.<br><small class="hint">Team ${esc(us)} isn't in this match.</small></p>`}
       ${ours ? `<p class="bplan"><button type="button" class="btn" data-planmatch="${esc(matchKey(m))}">Plan this match on the field</button></p>` : ""}
       <h3 class="mside">What scouts saw in ${esc(label)}</h3>
@@ -3583,7 +3605,7 @@ input, textarea { caret-color: var(--accent); }
     const ours = isOurMatch(m);
     if (matchPage === "brief" && !m) matchPage = "notes";
     if (matchPage === "plan" && !(m && ours)) matchPage = m ? "brief" : "notes";
-    const order = (quals.shownKeys && quals.shownKeys.includes(key)) ? quals.shownKeys : (quals.list || []).map(matchKey);
+    const order = matchPage === "plan" && ours ? ourMatches().map(matchKey) : (quals.shownKeys && quals.shownKeys.includes(key)) ? quals.shownKeys : (quals.list || []).map(matchKey);
     const at = order.indexOf(key), prevK = at > 0 ? order[at - 1] : null, nextK = at >= 0 && at < order.length - 1 ? order[at + 1] : null;
     const shortOf = (k) => { const x = (quals.list || []).find(y => matchKey(y) === k); return x ? (x.level === "Quals" ? "Q" : "") + x.id : matchLabelOf(k); };
     const nav = order.length > 1 && at >= 0 ? `<div class="mnav" role="group" aria-label="Other matches">
@@ -3609,7 +3631,7 @@ input, textarea { caret-color: var(--accent); }
         : `<p class="hint">${!db ? "Notes save only when the board is connected." : !uid ? "Enter your scout code to add notes." : "This device can't save notes right now."}</p><div class="dlgfoot"><button type="button" class="btn" data-mclose>Close</button></div>`}
       </div>`}`;
     if (scroller) scroller.scrollTop = keepScroll; $("matchDlg").scrollTop = keepDlg;
-    if (matchPage === "plan") { strat.id = key; renderStrat(); }
+    if (matchPage === "plan") { if (strat.id !== key) { strat.id = key; strat.step = "auto"; } renderStrat(); }
   }
   function saveMatch(key, patch) {
     const ref = db.doc(`events/${current}/matches/${key}`);
@@ -5300,7 +5322,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // this season's field (top-down, 12 ft square, blue alliance at the top and red at the bottom); empty draws a plain tiled field
   const FIELD_IMG = "data:image/png;base64,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";
   const STEPS = [["auto", "Auto"], ["tele", "TeleOp"], ["end", "Endgame"]];
-  const INKS = [["#f59e0b", "Yellow"], ["#dc2626", "Red"], ["#2563eb", "Blue"], ["#16a34a", "Green"], ["#111827", "Black"]];
+  const INKS = [["#f59e0b", "Yellow"], ["#16a34a", "Green"], ["#9333ea", "Purple"], ["#111827", "Black"]];
+  const OLD_INKS = ["#dc2626", "#2563eb"];   // red and blue from before; they still show, but look like alliances so they're not offered
+  const INK_W = 14;   // about 5px on a phone, readable from the cart
   const strat = { id: null, step: "auto", tool: "move", ink: INKS[0][0], arrow: true, undo: [], busy: false, built: null };
   const isPt = (v) => Number.isInteger(v) && v >= 0 && v <= 1000;
   function cleanPlan(x) {
@@ -5309,7 +5333,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     for (const [k] of STEPS) {
       const st = isRec(x.steps) && isRec(x.steps[k]) ? x.steps[k] : {}, bots = {}, ink = {};
       if (isRec(st.bots)) for (const [b, v] of Object.entries(st.bots)) if (isRec(v) && isPt(v.x) && isPt(v.y)) bots[b] = { x: v.x, y: v.y };
-      if (isRec(st.ink)) for (const [id, v] of Object.entries(st.ink)) if (isRec(v) && typeof v.p === "string" && INKS.some(([c]) => c === v.c)) ink[id] = { c: v.c, w: Number(v.w) || 8, a: !!v.a, p: v.p, by: txt(v.by, 60), at: numOr(v.at, 0) };
+      if (isRec(st.ink)) for (const [id, v] of Object.entries(st.ink)) if (isRec(v) && typeof v.p === "string" && (INKS.some(([c]) => c === v.c) || OLD_INKS.includes(v.c))) ink[id] = { c: v.c, w: Number(v.w) || 8, a: !!v.a, p: v.p, by: txt(v.by, 60), at: numOr(v.at, 0) };
       steps[k] = { bots, ink };
     }
     return { title: txt(x.title, 40), match: typeof x.match === "string" ? x.match : null, note: txt(x.note, 2000), by: txt(x.by, 60), at: numOr(x.at, 0), steps };
@@ -5333,6 +5357,8 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     return free ? free[0] : null;
   }
   // strategists and leads change plans; everyone else sees the same plan, live, but can't change it
+  const notePlaceholder = (id) => { const b = planBots(id || ""), us = b.find(x => x.us), mate = b.find(x => x.side === (us && us.side) && !x.us);
+    return `Auto: ${us ? us.label : "we"} take${us ? "s" : ""} the left side${mate ? `, ${mate.label} parks` : ""}. TeleOp: …`; };
   const canPlan = () => !!(db && uid && !readOnly && (canManage() || meScout()?.strategist));
   const planNo = () => !uid ? "Sign in with your scout code to see who planned what." : "Only strategists and leads change match plans. A lead can make you a strategist in Team roster.";
   function savePlan(id, patch) {
@@ -5349,7 +5375,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function fieldSvg() {
     const tiles = []; for (let i = 1; i < 6; i++) tiles.push(`<line x1="${i * 1000 / 6}" y1="0" x2="${i * 1000 / 6}" y2="1000"/><line x1="0" y1="${i * 1000 / 6}" x2="1000" y2="${i * 1000 / 6}"/>`);
     return `<svg class="fieldsvg" id="fieldSvg" viewBox="0 0 1000 1000" role="img" aria-label="The field">
-      <defs>${INKS.map(([c], i) => `<marker id="arr${i}" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="4" markerHeight="4" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${c}"/></marker>`).join("")}</defs>
+      <defs>${[...INKS.map(([c]) => c), ...OLD_INKS].map((c, i) => `<marker id="arr${i}" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="3.2" markerHeight="3.2" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="${c}"/></marker>`).join("")}</defs>
       <rect class="fbg" x="0" y="0" width="1000" height="1000"/>
       ${FIELD_IMG ? `<image href="${esc(FIELD_IMG)}" x="0" y="0" width="1000" height="1000" preserveAspectRatio="xMidYMid slice"/>` : `<g class="ftiles">${tiles.join("")}</g>
       <rect class="fside red" x="0" y="0" width="16" height="1000"/><rect class="fside blue" x="984" y="0" width="16" height="1000"/>
@@ -5360,7 +5386,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   function drawLayers() {
     const id = strat.id, plan = plans.get(id), step = strat.step;
     const ink = plan ? Object.entries(plan.steps[step].ink) : [];
-    $("inkLayer").innerHTML = ink.sort((a, b) => a[1].at - b[1].at).map(([k, v]) => { const ci = INKS.findIndex(([c]) => c === v.c);
+    $("inkLayer").innerHTML = ink.sort((a, b) => a[1].at - b[1].at).map(([k, v]) => { const ci = [...INKS.map(([c]) => c), ...OLD_INKS].indexOf(v.c);
       return `<g class="ink" data-ink="${esc(k)}"><polyline class="inkhit" points="${esc(v.p)}" stroke="transparent" stroke-width="44" fill="none"/><polyline class="inkline" points="${esc(v.p)}" stroke="${v.c}" stroke-width="${v.w}" fill="none"${v.a ? ` marker-end="url(#arr${ci})"` : ""}/></g>`; }).join("");
     $("botLayer").innerHTML = planBots(id).map((b, i) => { const p = botAt(plan, step, b, i);
       return `<g class="bot ${b.side}${b.us ? " us" : ""}" data-bot="${esc(b.k)}" transform="translate(${p.x} ${p.y})"><rect x="-58" y="-58" width="116" height="116" rx="18"/><text y="${b.label.length > 5 ? 10 : 14}" class="${b.label.length > 5 ? "small" : ""}">${esc(b.label)}</text></g>`; }).join("");
@@ -5374,9 +5400,16 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const opt = (id, label) => `<option value="${esc(id)}" ${id === strat.id ? "selected" : ""}>${esc(label)}</option>`;
     const mLabel = (m) => { const us = settings.us, red = m.red.some(x => x.n === us), mine = (red ? m.red : m.blue).filter(x => x.n !== us).map(x => x.n), opp = (red ? m.blue : m.red).map(x => x.n);
       return `${matchLabelOf(matchKey(m))} · ${red ? "Red" : "Blue"} with ${mine.join(" & ") || "no partner"} vs ${opp.join(" & ")}${m.played ? " · played" : ""}${plans.has(matchKey(m)) ? " ✎" : ""}`; };
-    const pick = practice ? `<select id="planPick" aria-label="Which practice plan">${free.map(([id, p]) => opt(id, p.title || "Practice plan")).join("")}<option value="__new">+ New practice plan</option></select>` : "";
+    const pick = practice && free.length ? `<select id="planPick" aria-label="Which practice plan">${free.map(([id, p]) => opt(id, p.title || "Practice plan")).join("")}<option value="__new">+ New practice plan</option></select>` : "";
     const plan = plans.get(strat.id), isFree = strat.id && !ms.some(m => matchKey(m) === strat.id);
     const key = current + "|" + strat.id + (practice ? "|p" : "|m");
+    if (practice && !strat.id) {   // nothing to draw on yet: one clear way to start
+      strat.built = null;
+      box.innerHTML = `<div class="planempty"><img src="${BARNEY.sit}" alt="" width="120" height="90"><h3>No practice plans yet</h3>
+        <p class="hint">Plan plays before you know your matches: us, a partner and two opponents on the field.</p>
+        ${canPlan() ? `<button type="button" class="btn primary" id="planStart">Start a practice plan</button>` : `<p class="hint">${esc(planNo())}</p>`}</div>`;
+      return;
+    }
     if (strat.built !== key || !box.firstElementChild) {
       strat.built = key;
       box.innerHTML = `<div class="planboard" id="planBoard">
@@ -5384,22 +5417,24 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
           ${practice ? `<div class="planhead">${pick}</div>` : ""}
           <div class="steprow"><div class="seg3 stepseg" role="group" aria-label="Part of the match">${STEPS.map(([k, l]) => `<button type="button" data-step="${k}" aria-pressed="${strat.step === k}">${l}<i class="stepdot" hidden aria-hidden="true"></i></button>`).join("")}</div>
             <button type="button" class="btn playbtn" id="planPlay" title="Show the robots moving from Auto to TeleOp to Endgame (P)" aria-pressed="false">Play</button></div>
+          <p class="viewnote" id="viewNote" hidden></p>
           <div class="toolrow"><div class="seg3 toolseg" role="group" aria-label="Tool">${[["move", "Move"], ["draw", "Draw"], ["erase", "Erase"]].map(([k, l]) => `<button type="button" data-tool="${k}" aria-pressed="${strat.tool === k}">${l}</button>`).join("")}</div>
             <button type="button" class="btn undobtn" id="planUndo" title="Undo your last change (Ctrl+Z)">Undo</button></div>
           <div class="subrow">
             <div class="inkrow">${INKS.map(([c, l]) => `<button type="button" class="swatch" data-ink="${c}" style="--sw:${c}" aria-label="${l}" aria-pressed="${strat.ink === c}"></button>`).join("")}
-              <label class="check arrowchk"><input type="checkbox" id="arrowChk" ${strat.arrow ? "checked" : ""}> Arrow</label></div>
-            <div class="stepbtns"><button type="button" class="btn" id="planCopy" title="Put the robots where they ended the step before">Copy last step</button><button type="button" class="btn" id="planReset" title="Put this step's robots back where they start">Reset robots</button><button type="button" class="btn" id="planClear">Clear drawing</button></div>
+              <label class="check arrowchk"><input type="checkbox" id="arrowChk" ${strat.arrow ? "checked" : ""}> Arrow</label><button type="button" class="btn" id="planClear">Clear</button></div>
+            <div class="stepbtns"><button type="button" class="btn" id="planReset" title="Put this step's robots back where they start">Reset robots</button><span class="hint movehint">Robots start each step where the last one ended.</span></div>
             <p class="erasehint">Tap a line, or swipe across several, to erase them.</p>
           </div>
         </div>
         <div class="fieldwrap">${!strat.id ? `<p class="hint">No practice plans yet. Pick "+ New practice plan" above to start one.</p>` : fieldSvg()}</div>
         <div class="planfoot"><button type="button" class="notebtn" id="planNoteBtn" aria-expanded="false" aria-controls="noteSheet"><b>Who does what</b><span id="notePrev"></span></button><span class="plansaved" id="planSaved"></span></div>
         <div class="notesheet" id="noteSheet">
+          <div class="sheethead"><b>Who does what</b><button type="button" class="btn primary" id="planNoteDone">Done</button></div>
           ${isFree && strat.id ? `<label class="fld">Plan name<input id="planTitle" maxlength="40" value="${esc(plan?.title || "")}" placeholder="Practice plan" autocomplete="off"></label>` : ""}
-          <label class="fld notefld">Who does what<textarea id="planNote" maxlength="2000" placeholder="Auto: we take the left side, 37079 parks. TeleOp: …"></textarea></label>
+          <label class="fld notefld">Who does what<textarea id="planNote" maxlength="2000" placeholder="${esc(notePlaceholder(strat.id))}"></textarea></label>
           <p class="hint">${canPlan() ? "Saved for the whole team as you go. Everyone sees changes within a few seconds." : esc(planNo())}</p>
-          <div class="sheetbtns"><button type="button" class="btn primary" id="planNoteDone">Done</button>${isFree && strat.id ? `<button type="button" class="linkbtn" id="planDel">Remove this practice plan</button>` : ""}</div>
+          <div class="sheetbtns">${isFree && strat.id ? `<button type="button" class="linkbtn" id="planDel">Remove this practice plan</button>` : ""}</div>
         </div>
       </div>`;
     } else {
@@ -5413,8 +5448,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     // a dot on each part of the match that has something planned
     box.querySelectorAll("[data-step]").forEach(b => { const st = plan && plan.steps[b.dataset.step]; b.querySelector(".stepdot").hidden = !(st && (Object.keys(st.ink).length || Object.keys(st.bots).length)); });
     const prevTxt = (plan?.note || "").replace(/\s+/g, " ").trim(); $("notePrev").textContent = prevTxt || (canPlan() ? "Tap to add" : "Nothing yet");
-    box.querySelectorAll("[data-tool], .swatch, #arrowChk, #planCopy, #planReset, #planClear, #planDel, #planNote, #planTitle").forEach(el => { el.disabled = !canPlan(); });
+    box.querySelectorAll("[data-tool], .swatch, #arrowChk, #planReset, #planClear, #planDel, #planNote, #planTitle").forEach(el => { el.disabled = !canPlan(); });
     $("planUndo").disabled = !strat.undo.length;
+    $("planBoard").classList.toggle("viewer", !canPlan()); $("viewNote").hidden = canPlan(); $("viewNote").textContent = canPlan() ? "" : "View only · " + planNo();
     if (!strat.playing) { $("planPlay").textContent = "Play"; $("planPlay").setAttribute("aria-pressed", "false"); }
     const note = $("planNote"); if (note && document.activeElement !== note) note.value = plan?.note || "";
     const title = $("planTitle"); if (title && document.activeElement !== title) title.value = plan?.title || "";
@@ -5439,6 +5475,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const id = strat.id, plan = plans.get(id); if (!id) return;
     const bots = planBots(id), still = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise(r => setTimeout(r, ms));
     const show = (k) => { strat.busy = false; strat.step = k; renderStrat(); strat.busy = true; };
+    const st = plan && plan.steps, planned = st && STEPS.some(([k]) => Object.keys(st[k].bots).length || Object.keys(st[k].ink).length);
+    if (!planned) { toast("Nothing planned yet: move the robots or draw first."); return; }
+    const back = strat.step;
     strat.playing = true; const btn = () => $("planPlay");
     show("auto"); if (btn()) { btn().textContent = "Stop"; btn().setAttribute("aria-pressed", "true"); }
     await wait(900);
@@ -5453,7 +5492,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         requestAnimationFrame(frame); });
       await wait(1100);
     }
-    strat.playing = false; strat.busy = false; renderStrat();
+    strat.playing = false; strat.busy = false; strat.step = back; renderStrat();
   }
   // follow one finger (or the mouse) until it lifts; a second finger meanwhile is ignored
   function track(svg, e, onMove, onEnd) {
@@ -5478,12 +5517,12 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
           if (pos.x !== start.x || pos.y !== start.y) { strat.undo.push({ id, step, bot: k, prev }); savePlan(id, { steps: { [step]: { bots: { [k]: pos } } } }); } else renderStrat(); });
     } else if (strat.tool === "draw") {
       e.preventDefault();
-      const pts = [svgPt(e)], live = $("liveInk"); live.setAttribute("stroke", strat.ink); live.setAttribute("stroke-width", "8");
+      const pts = [svgPt(e)], live = $("liveInk"); live.setAttribute("stroke", strat.ink); live.setAttribute("stroke-width", String(INK_W));
       track(svg, e, (ev) => { const q = svgPt(ev), l = pts[pts.length - 1]; if (Math.hypot(q.x - l.x, q.y - l.y) >= 6 && pts.length < 600) { pts.push(q); live.setAttribute("points", pts.map(p => p.x + "," + p.y).join(" ")); } },
         () => { live.setAttribute("points", "");
           if (pts.length < 2) { renderStrat(); return; }
           const k = rid(); strat.undo.push({ id, step, ink: k });
-          savePlan(id, { steps: { [step]: { ink: { [k]: { c: strat.ink, w: 8, a: strat.arrow, p: pts.map(p => p.x + "," + p.y).join(" "), by: uid, at: Date.now() } } } } }); });
+          savePlan(id, { steps: { [step]: { ink: { [k]: { c: strat.ink, w: INK_W, a: strat.arrow, p: pts.map(p => p.x + "," + p.y).join(" "), by: uid, at: Date.now() } } } } }); });
     } else if (strat.tool === "erase") {
       e.preventDefault();
       const gone = new Map(), inks = plans.get(id)?.steps[step].ink || {};
@@ -5534,16 +5573,12 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       renderStrat(); return;
     }
     if (b.id === "planPlay") { playPlan(); return; }
+    if (b.id === "planStart") { const nid = "f" + rid(); strat.id = nid; strat.step = "auto"; strat.built = null; savePlan(nid, { title: "Practice plan 1" }); renderStrat(); return; }
     if (b.id === "planReset") {
       const own = plan ? plan.steps[step].bots : {}, keys = Object.keys(own); if (!keys.length) { toast("The robots are already where they start in this step."); return; }
       strat.undo.push({ id, step, bots: { ...own } });
       savePlan(id, { steps: { [step]: { bots: Object.fromEntries(keys.map(k => [k, null])) } } });
       toast(step === "auto" ? "Robots back on their starting spots" : `Robots back where they ended ${STEPS[STEPS.findIndex(([k]) => k === step) - 1][1]}`); return;
-    }
-    if (b.id === "planCopy") {
-      const order = STEPS.map(([k]) => k), i = order.indexOf(step); if (i === 0) { toast("Auto is the first step: drag the robots to where they start."); return; }
-      const bots = planBots(id), patch = {}; bots.forEach((bt, j) => { patch[bt.k] = botAt(plan, order[i - 1], bt, j); });
-      savePlan(id, { steps: { [step]: { bots: patch } } }); toast(`Robots placed where they ended ${STEPS[i - 1][1]}`); return;
     }
     if (b.id === "planClear") {
       const ink = plan ? Object.keys(plan.steps[step].ink) : []; if (!ink.length) { toast("Nothing drawn in this step."); return; }
