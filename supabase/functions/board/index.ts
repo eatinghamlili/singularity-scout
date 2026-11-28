@@ -30,13 +30,14 @@ const fail = (status: number, code: string, message: string) => json({ error: co
 
 const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
 
-const PATH = /^(settings\/main|scouts\/[A-Za-z0-9_-]{1,40}|requests\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/teams\/[0-9]{1,6}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/matches\/[A-Za-z0-9_-]{1,24})$/;
+const PATH = /^(settings\/main|scouts\/[A-Za-z0-9_-]{1,40}|requests\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/teams\/[0-9]{1,6}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/matches\/[A-Za-z0-9_-]{1,24}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/plans\/[A-Za-z0-9_-]{1,24})$/;
 const KEYS: [RegExp, string[] | null][] = [
   [/^settings\/main$/, ["us", "event", "size", "weights"]],
   [/^scouts\//, ["name", "lead", "color", "createdAt", "hash", "pending"]],
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
   [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo", "assigned", "tiers"]],
   [/\/matches\//, ["label", "notes"]],
+  [/\/plans\//, ["title", "match", "note", "steps", "by", "at", "gone"]],
   [/^events\/[^/]+$/, ["season", "code", "name", "start", "end", "city", "regionCode", "type", "teamCount", "hasUs", "source", "loadedAt", "loadedBy", "live", "starred", "starredBy", "starredAt"]],
 ];
 const TOKEN_DAYS = 45;
@@ -448,6 +449,42 @@ async function upload(req: Request, body: any) {
   return json({ url: PHOTO_BASE + name });
 }
 
+// a match plan on the field: three steps (auto, tele, end), each with robot spots and drawn lines, all in 0-1000 field units
+const PLAN_STEPS = ["auto", "tele", "end"], PLAN_INKS = ["#f59e0b", "#dc2626", "#2563eb", "#16a34a", "#111827"];
+const isUnit = (v: unknown) => Number.isInteger(v) && (v as number) >= 0 && (v as number) <= 1000;
+function checkPlan(data: any, uid: string) {
+  if ("title" in data && !isStr(data.title, 40)) return "Plan names are 40 characters at most.";
+  if ("match" in data && data.match !== null && !(typeof data.match === "string" && /^[A-Za-z]{1,8}-[0-9]{1,3}-[0-9]{1,4}$/.test(data.match))) return "That plan's match isn't valid.";
+  if ("note" in data && !isStr(data.note, NOTE_MAX)) return `Plan notes are ${NOTE_MAX.toLocaleString("en-US")} characters at most.`;
+  if ("by" in data && data.by !== uid) return "That plan couldn't be saved.";
+  if ("at" in data && !isTime(data.at)) return "That plan's time isn't valid.";
+  if ("gone" in data && typeof data.gone !== "boolean") return "That plan couldn't be saved.";
+  if (data.steps === undefined) return null;
+  if (!isObj(data.steps)) return "That plan couldn't be saved.";
+  for (const [k, st] of Object.entries(data.steps)) {
+    if (!PLAN_STEPS.includes(k) || !isObj(st)) return "That plan couldn't be saved.";
+    if (Object.keys(st).some((f) => f !== "bots" && f !== "ink")) return "That plan couldn't be saved.";
+    if (st.bots !== undefined) {
+      if (!isObj(st.bots) || Object.keys(st.bots).length > 8) return "That plan couldn't be saved.";
+      for (const [b, v] of Object.entries(st.bots)) {
+        if (!/^([0-9]{1,6}|[a-z]{1,4}[0-9])$/.test(b)) return "That plan couldn't be saved.";
+        if (v !== null && !(isObj(v) && Object.keys(v).length === 2 && isUnit(v.x) && isUnit(v.y))) return "Robot spots must be on the field.";
+      }
+    }
+    if (st.ink !== undefined) {
+      if (!isObj(st.ink) || Object.keys(st.ink).length > 300) return "That plan couldn't be saved.";
+      for (const [id, v] of Object.entries(st.ink)) {
+        if (!/^[a-z0-9]{6,20}$/.test(id)) return "That plan couldn't be saved.";
+        if (v === null) continue;
+        if (!isObj(v) || Object.keys(v).some((f) => !["c", "w", "a", "p", "by", "at"].includes(f))) return "That drawing couldn't be saved.";
+        if (!PLAN_INKS.includes(v.c) || !Number.isInteger(v.w) || v.w < 2 || v.w > 16 || typeof v.a !== "boolean" || v.by !== uid || !isTime(v.at)) return "That drawing couldn't be saved.";
+        if (typeof v.p !== "string" || v.p.length > 6000 || !/^[0-9]{1,4},[0-9]{1,4}( [0-9]{1,4},[0-9]{1,4}){1,599}$/.test(v.p)) return "That drawing couldn't be saved.";
+      }
+    }
+  }
+  return null;
+}
+
 async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | null, rosterEmpty: boolean) {
   const kind = op?.kind, path = String(op?.path || "");
   let data = op?.data;
@@ -513,6 +550,12 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
     if (data.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(data.color))) return "That color isn't allowed.";
   }
 
+  if (/\/plans\//.test(path)) {
+    if (kind !== "merge") return "Plans are only ever merged into.";
+    const p = checkPlan(data, uid); if (p) return p;
+    const cur = await getDoc(path);
+    if (cur && JSON.stringify(cur).length + JSON.stringify(data).length > 400_000) return "This plan is full. Clear a step's drawing or start a new plan.";
+  }
   if (/\/(teams|matches)\//.test(path)) {
     const cur = await getDoc(path);
     const n = checkNotes(data.notes, cur?.notes, uid); if (n) return n;
