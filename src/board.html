@@ -524,6 +524,8 @@ a { color: var(--accent-ink); }
 .planhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
 .planhead select { flex: 1 1 260px; min-height: 44px; font-size: 15px; }
 .plansaved { font-size: 13px; color: var(--muted); }
+.viewonly { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--sunk); color: var(--ink); font-weight: 600; }
+#planBoard .btn:disabled, #planBoard .seg3 button:disabled { opacity: .55; }
 .fieldsvg { display: block; width: 100%; height: auto; aspect-ratio: 1; border-radius: 12px; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent; box-shadow: 0 1px 3px color-mix(in srgb, var(--ink) 18%, transparent); }
 .fieldsvg .fbg { fill: #e7e5ee; }
 .fieldsvg .ftiles line { stroke: #c9c4d6; stroke-width: 3; }
@@ -722,6 +724,7 @@ td.subhead { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; 
 .rrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 6px 10px; padding: 9px 12px; border-bottom: 1px solid var(--line); }
 .rrow:last-child { border-bottom: 0; }
 .rrow b { font-weight: 600; }
+.rrow .lead.strat { background: #0f766e; color: #fff; }
 .rrow .lead { font-size: 11px; padding: 0 6px; border-radius: 4px; background: var(--accent); color: var(--on-accent); font-weight: 600; margin-left: 6px; }
 .rrow .btns { display: flex; gap: 6px; flex-wrap: wrap; }
 .rname { all: unset; box-sizing: border-box; cursor: pointer; display: flex; align-items: center; gap: 6px; flex: 1 1 100%; min-height: 36px; border-radius: 6px; touch-action: manipulation; }
@@ -2215,7 +2218,7 @@ input, textarea { caret-color: var(--accent); }
       let gotE = false, gotS = false, gotR = false;
       const ready = () => { if (gotE && gotS && gotR && !loaded) { loaded = true; clearTimeout(timer); } render(); };
       db.collection("scouts").onSnapshot(snap => {
-        scouts = new Map(snap.docs.map(d => { const s = isRec(d.data()) ? d.data() : {}; return [d.id, { ...s, name: txt(s.name, 40) || "Scout", lead: s.lead === true, color: /^#[0-9a-fA-F]{6}$/.test(s.color || "") ? s.color : "", display: s.display === "username" ? "username" : "name", handle: /^[a-z0-9][a-z0-9._-]{2,23}$/.test(s.handle || "") ? s.handle : "" }]; }));
+        scouts = new Map(snap.docs.map(d => { const s = isRec(d.data()) ? d.data() : {}; return [d.id, { ...s, name: txt(s.name, 40) || "Scout", lead: s.lead === true, strategist: s.strategist === true, color: /^#[0-9a-fA-F]{6}$/.test(s.color || "") ? s.color : "", display: s.display === "username" ? "username" : "name", handle: /^[a-z0-9][a-z0-9._-]{2,23}$/.test(s.handle || "") ? s.handle : "" }]; }));
         if (!snap.metadata.fromCache) { gotR = true; if (me && !scouts.has(me)) { me = null; uid = null; try { localStorage.removeItem(ME_KEY); } catch {} } }
         ready(); if ($("rosterDlg").open) renderRoster();   // approvals and new accounts show up right away
       }, () => {});
@@ -2775,9 +2778,9 @@ input, textarea { caret-color: var(--accent); }
   function renderRoster() {
     const list = [...scouts.entries()].sort((a, b) => (b[1].pending ? 1 : 0) - (a[1].pending ? 1 : 0) || a[1].name.localeCompare(b[1].name));
     $("rosterList").innerHTML = list.length ? list.map(([id, s]) => { const open = rosterOpen === id; return `<div class="rrow ${open ? "open" : ""}">
-      <button type="button" class="rname" data-ropen="${id}" aria-expanded="${open}" title="${open ? "Close" : "Change"} ${esc(s.name)}">${who("s_" + id, s.name)}${s.lead ? `<span class="lead">Lead</span>` : ""}${s.pending ? `<span class="waiting">Waiting for approval</span>` : ""}${logins.get(id) ? `<span class="uname">@${esc(logins.get(id).username)}</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}<span class="chev" aria-hidden="true">›</span></button>
+      <button type="button" class="rname" data-ropen="${id}" aria-expanded="${open}" title="${open ? "Close" : "Change"} ${esc(s.name)}">${who("s_" + id, s.name)}${s.lead ? `<span class="lead">Lead</span>` : ""}${s.strategist ? `<span class="lead strat">Strategist</span>` : ""}${s.pending ? `<span class="waiting">Waiting for approval</span>` : ""}${logins.get(id) ? `<span class="uname">@${esc(logins.get(id).username)}</span>` : ""}${id === me ? ` <span class="hint">(you)</span>` : ""}<span class="chev" aria-hidden="true">›</span></button>
       ${open ? `<div class="redit"><span class="rlabel2">Color</span><div class="swatches" role="group" aria-label="Color for ${esc(s.name)}">${PALETTE.map(c => `<button type="button" class="sw" data-rcolor="${id}" data-c="${c}" style="background:${c}" aria-label="Use this color" aria-pressed="${colorOf("s_" + id) === c}"></button>`).join("")}</div>
-      <div class="btns">${s.pending ? `<button type="button" class="btn primary" data-rapprove="${id}">Approve</button>` : `<button type="button" class="btn" data-rlead="${id}">${s.lead ? "Remove lead" : "Make lead"}</button>
+      <div class="btns">${s.pending ? `<button type="button" class="btn primary" data-rapprove="${id}">Approve</button>` : `<button type="button" class="btn" data-rlead="${id}">${s.lead ? "Remove lead" : "Make lead"}</button><button type="button" class="btn" data-rstrat="${id}">${s.strategist ? "Remove strategist" : "Make strategist"}</button>
       <button type="button" class="btn" data-rreset="${id}">New code</button>${s.login && ACCOUNTS() ? `<button type="button" class="btn" data-rpw="${id}">Reset password</button>` : ""}`}
       ${id === me ? "" : `<button type="button" class="btn danger" data-rdel="${id}">Remove</button>`}</div></div>` : ""}</div>`; }).join("") : `<div class="rrow"><span class="hint">No scouts yet.</span></div>`;
     $("reveal").hidden = !reveal;
@@ -2798,7 +2801,7 @@ input, textarea { caret-color: var(--accent); }
     if (b.hasAttribute("data-rclose")) { reveal = null; $("rosterDlg").close(); return; }
     if (b.dataset.ropen) { rosterOpen = rosterOpen === b.dataset.ropen ? null : b.dataset.ropen; renderRoster(); return; }
     if (!canManage()) return;
-    const id = b.dataset.rlead || b.dataset.rreset || b.dataset.rdel || b.dataset.rcolor || b.dataset.rapprove || b.dataset.rpw; const s = id && scouts.get(id); if (!s) return;
+    const id = b.dataset.rlead || b.dataset.rstrat || b.dataset.rreset || b.dataset.rdel || b.dataset.rcolor || b.dataset.rapprove || b.dataset.rpw; const s = id && scouts.get(id); if (!s) return;
     try {
       if (b.dataset.rapprove) {
         if (!(await confirmBox(`Approve ${s.name}?`, `Only approve people you know are on Team 51${logins.get(id) ? ` (username ${logins.get(id).username})` : ""}. They'll be able to rate teams and write notes.`, "Approve"))) return;
@@ -2815,6 +2818,12 @@ input, textarea { caret-color: var(--accent); }
         if (s.lead && ![...scouts.entries()].some(([k, x]) => k !== id && x.lead)) { toast("Make someone else a lead first, so the team always has one."); return; }
         if (!(await confirmBox(s.lead ? `Remove ${s.name} as a lead?` : `Make ${s.name} a lead?`, s.lead ? "They keep scouting but can't change the roster or codes anymore." : "Leads can add and remove scouts, hand out new codes and load competitions.", s.lead ? "Remove lead" : "Make lead"))) return;
         await db.doc(`scouts/${id}`).update({ lead: !s.lead });
+      }
+      else if (b.dataset.rstrat) {
+        // strategists draw the match plans with the leads; everyone else sees the plans but can't change them
+        s.strategist = !s.strategist; renderRoster();
+        await db.doc(`scouts/${id}`).update({ strategist: s.strategist });
+        toast(s.strategist ? `${s.name} can now change match plans` : `${s.name} is no longer a strategist`);
       }
       else if (b.dataset.rreset) {
         if (!(await confirmBox(`Give ${s.name} a new code?`, "Their old code stops working and every phone they're signed in on is signed out. Changes waiting on those phones upload after they sign in again.", "New code"))) return;
@@ -5316,9 +5325,11 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     const free = [...plans.entries()].filter(([, p]) => !p.match).sort((a, b) => b[1].at - a[1].at)[0];
     return free ? free[0] : null;
   }
-  const canPlan = () => !!(db && uid && !readOnly);
+  // strategists and leads change plans; everyone else sees the same plan, live, but can't change it
+  const canPlan = () => !!(db && uid && !readOnly && (canManage() || meScout()?.strategist));
+  const planNo = () => !uid ? "Sign in with your scout code to see who planned what." : "Only strategists and leads change match plans. A lead can make you a strategist in Team roster.";
   function savePlan(id, patch) {
-    if (!canPlan()) { toast("Sign in with your scout code to plan."); return; }
+    if (!canPlan()) { toast(planNo()); return; }
     const key = current, prev = plans.get(id), m = ourMatches().find(x => matchKey(x) === id);
     const meta = { title: m ? matchLabelOf(id) : (patch.title ?? prev?.title ?? "Practice plan"), match: m ? id : null, by: uid, at: Date.now() };
     // show it right away (a plain deep merge, like the store's)
@@ -5379,7 +5390,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <div class="notesheet" id="noteSheet">
           ${isFree && strat.id ? `<label class="fld">Plan name<input id="planTitle" maxlength="40" value="${esc(plan?.title || "")}" placeholder="Practice plan" autocomplete="off"></label>` : ""}
           <label class="fld notefld">Who does what<textarea id="planNote" maxlength="2000" placeholder="Auto: we take the left side, 37079 parks. TeleOp: …"></textarea></label>
-          <p class="hint">${canPlan() ? "Saved for the whole team as you go. Everyone sees changes within a few seconds." : "Sign in with your scout code to change plans."}</p>
+          <p class="hint">${canPlan() ? "Saved for the whole team as you go. Everyone sees changes within a few seconds." : esc(planNo())}</p>
           <div class="sheetbtns"><button type="button" class="btn primary" id="planNoteDone">Done</button>${isFree && strat.id ? `<button type="button" class="linkbtn" id="planDel">Remove this practice plan</button>` : ""}</div>
         </div>
       </div>`;
@@ -5398,7 +5409,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     $("planUndo").disabled = !strat.undo.length;
     const note = $("planNote"); if (note && document.activeElement !== note) note.value = plan?.note || "";
     const title = $("planTitle"); if (title && document.activeElement !== title) title.value = plan?.title || "";
-    $("planSaved").innerHTML = plan && plan.at ? `Last change ${esc(ago(plan.at))} by ${who(plan.by, plan.by === uid ? "you" : null)}` : "";
+    $("planSaved").innerHTML = (canPlan() ? "" : `<span class="viewonly" title="${esc(planNo())}">View only</span> `) + (plan && plan.at ? `Last change ${esc(ago(plan.at))} by ${who(plan.by, plan.by === uid ? "you" : null)}` : "");
     drawLayers();
   }
   function openPractice() {
@@ -5424,7 +5435,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   }
   document.addEventListener("pointerdown", (e) => {
     const svg = e.target.closest && e.target.closest("#fieldSvg"); if (!svg || !strat.id || e.button > 0 || strat.busy) return;
-    if (!canPlan()) { toast("Sign in with your scout code to plan."); return; }
+    if (!canPlan()) { toast(planNo()); return; }
     const id = strat.id, step = strat.step;
     if (strat.tool === "move") {
       const g = e.target.closest(".bot"); if (!g) return;

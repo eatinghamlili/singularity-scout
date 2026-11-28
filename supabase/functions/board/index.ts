@@ -4,6 +4,7 @@
 //   - notes are written as yourself, and only your own notes can be deleted
 //   - only your own ratings can be changed
 //   - the roster and the board settings (alliance size, weights) are for leads
+//   - match plans are changed by strategists and leads
 //   - our team stays Team 51
 // A sign-in only lasts while the scout's code stays the same: a new code signs every device out.
 // Wrong codes are limited per connection, every 10 minutes and every day, so codes can't be guessed.
@@ -33,7 +34,7 @@ const db = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SE
 const PATH = /^(settings\/main|scouts\/[A-Za-z0-9_-]{1,40}|requests\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/teams\/[0-9]{1,6}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/matches\/[A-Za-z0-9_-]{1,24}|events\/[0-9]{4}-[A-Z0-9]{1,30}\/plans\/[A-Za-z0-9_-]{1,24})$/;
 const KEYS: [RegExp, string[] | null][] = [
   [/^settings\/main$/, ["us", "event", "size", "weights"]],
-  [/^scouts\//, ["name", "lead", "color", "createdAt", "hash", "pending"]],
+  [/^scouts\//, ["name", "lead", "strategist", "color", "createdAt", "hash", "pending"]],
   [/^requests\//, ["season", "code", "by", "at", "status", "error"]],
   [/\/teams\//, ["number", "name", "city", "ev", "season", "loadedAt", "status", "dnp", "tags", "ratings", "notes", "aiRecap", "mobility", "photo", "assigned", "tiers"]],
   [/\/matches\//, ["label", "notes"]],
@@ -545,6 +546,7 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
     }
     if ("name" in data && !(typeof data.name === "string" && data.name.trim() && data.name.length <= 40)) return "Names are 1 to 40 letters.";
     if ("lead" in data && typeof data.lead !== "boolean") return "Lead is yes or no.";
+    if ("strategist" in data && typeof data.strategist !== "boolean") return "Strategist is yes or no.";
     if ("pending" in data && data.pending !== false) return "Leads approve accounts; they can't be un-approved.";
     if ("createdAt" in data && !isTime(data.createdAt)) return "That time isn't valid.";
     if (data.color !== undefined && !/^#[0-9a-fA-F]{6}$/.test(String(data.color))) return "That color isn't allowed.";
@@ -552,6 +554,8 @@ async function applyOp(op: any, me: string | null, meDoc: Record<string, any> | 
 
   if (/\/plans\//.test(path)) {
     if (kind !== "merge") return "Plans are only ever merged into.";
+    // match plans are drawn by strategists and leads; everyone else can only look
+    if (!lead && meDoc?.strategist !== true) return "Only strategists and leads change match plans. A lead can make you a strategist in Team roster.";
     const p = checkPlan(data, uid); if (p) return p;
     const cur = await getDoc(path);
     if (cur && JSON.stringify(cur).length + JSON.stringify(data).length > 400_000) return "This plan is full. Clear a step's drawing or start a new plan.";
