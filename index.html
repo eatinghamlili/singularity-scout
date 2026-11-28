@@ -510,7 +510,11 @@ a { color: var(--accent-ink); }
 #stratBody { flex: 1 1 0; min-height: 0; }
 .planboard { position: relative; height: 100%; min-height: 0; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; grid-template-areas: "bar" "field" "foot"; gap: 10px; }
 .planbar { grid-area: bar; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.toolrow { display: flex; gap: 8px; }
+.toolrow, .steprow { display: flex; gap: 8px; }
+.steprow .stepseg, .toolrow .toolseg { flex: 1 1 auto; min-width: 0; }
+.stepseg button, .toolseg button { min-width: 0; padding-inline: 6px; }
+.playbtn { flex: 0 0 auto; min-height: 44px; min-width: 68px; font-weight: 700; }
+.playbtn[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .toolrow .toolseg { flex: 1 1 auto; }
 .undobtn { flex: 0 0 auto; min-height: 44px; font-weight: 700; }
 .subrow { height: 46px; display: flex; align-items: center; overflow: hidden; padding: 0 4px; }   /* the same height for every tool, so the field never jumps */
@@ -518,7 +522,8 @@ a { color: var(--accent-ink); }
 .planboard[data-tool="draw"] .inkrow, .planboard[data-tool="move"] .stepbtns, .planboard[data-tool="erase"] .erasehint { display: flex; }
 .erasehint { margin: 0; font-size: 14px; color: var(--muted); align-items: center; }
 .stepbtns { gap: 8px; flex-wrap: wrap; }
-.stepbtns .btn { min-height: 40px; }
+.stepbtns .btn { min-height: 40px; padding-inline: 10px; }
+.stepbtns { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }
 .stepseg button { position: relative; }
 .stepdot { position: absolute; top: 6px; right: 8px; width: 7px; height: 7px; border-radius: 999px; background: currentColor; opacity: .7; }
 .fieldwrap { grid-area: field; min-height: 0; container-type: size; display: grid; place-items: center; }
@@ -543,7 +548,8 @@ a { color: var(--accent-ink); }
   #matchDlg:has(#stratBody), #planDlg { width: 100%; height: 100%; height: 100dvh; }
   #matchDlg:has(#stratBody) .dlg, #planDlg .dlg { padding: 8px 12px max(10px, env(safe-area-inset-bottom)); gap: 8px; }
   .planboard { gap: 8px; }
-  .stepseg button, .toolseg button, .undobtn { min-height: 42px; }
+  .stepseg button, .toolseg button, .undobtn, .playbtn { min-height: 42px; }
+  .stepbtns .btn { font-size: 14px; padding-inline: 9px; }
 }
 .practicecard .btn { align-self: flex-start; }
 .planhead { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
@@ -1047,6 +1053,7 @@ dialog::backdrop { background: rgb(10 4 24 / .62); }
 .numsbox.off .rate { opacity: .55; }
 .numshead { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 6px 12px; }
 .numshead h3 { margin: 0; }
+.rateguide { margin: 0; flex-basis: 100%; font-size: 13px; }
 .numsbox p.hint { margin: 0; }
 .note { font-size: 14px; background: color-mix(in srgb, var(--c, var(--accent)) 5%, var(--surface)); border: 1px solid color-mix(in srgb, var(--c, var(--accent)) 22%, var(--line)); border-radius: 8px; padding: 8px 10px; }
 .note b { font-weight: 600; }
@@ -1593,8 +1600,8 @@ html:root .cvchip.gap.past { border: 1px solid var(--line); } html:root .cvchip.
 .cvassign { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line)); border-radius: 12px; background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
 .cvassign > b { font-family: var(--f-display); font-weight: 800; text-transform: uppercase; letter-spacing: .04em; }
 .cvpool { display: flex; flex-wrap: wrap; gap: 6px; }
-.cvpick { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface); cursor: pointer; opacity: .65; }
-.cvpick.on { opacity: 1; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+.cvpick { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px 4px 6px; border: 1px dashed var(--line); border-radius: 999px; background: transparent; cursor: pointer; }
+.cvpick.on { border-style: solid; border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .cvpick input { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
 @media (pointer: coarse) { .cvpick { min-height: 44px; } }
 /* ---- Your quals ---- */
@@ -3151,7 +3158,7 @@ input, textarea { caret-color: var(--accent); }
     $("noteCards").innerHTML = list.map(t => {
       const sc = scoutAgg(t);
       const bars = CATS.map(([k, l]) => sc.avg[k] == null ? "" : `<div class="cat"><span>${l}</span><span class="dots5" aria-label="${sc.avg[k].toFixed(1)} of 10"><i style="width:${(sc.avg[k] / MAX * 100).toFixed(0)}%"></i></span><b class="num">${sc.avg[k].toFixed(1)}</b></div>`).join("");
-      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), t.dnp ? `<span class="tag dnp">do not pick</span>` : "", moveTag(t), t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
+      const tags = [...(t.tags || []).map(x => `<span class="tag">${esc(x)}</span>`), moveTag(t), t.status === "taken" ? `<span class="tag">taken</span>` : "", t.status === "partner" ? `<span class="tag src">our pick</span>` : ""].join("");
       return `<article class="notecard ${t === c.us ? "isus" : ""}">
         <header><button type="button" class="nnum" data-team="${t.number}">${esc(t.number)}</button>
           <div class="nmeta"><b>${esc(t.name || "")}</b><small>${t === c.us ? "Us" : pickPos.get(t.number) ? `#${pickPos.get(t.number)} on pick list` : offList(t) ? `Off the pick list · ${offWhy(t)}` : "Not on pick list"}${t.ev && t.ev.rank ? ` · qual rank #${t.ev.rank}` : ""}</small></div>
@@ -4975,7 +4982,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
         <label class="btn photobtn">Choose<input type="file" accept="image/*" multiple id="dPhotoLib" data-addphoto hidden></label>
         <div class="photothumbs" id="dThumbs">${pendingThumbs()}</div></div>` : ""}
       <div class="numsbox ${numsOn ? "" : "off"}" id="numsBox">
-        <div class="numshead"><h3>Your numbers (1–10) <small class="opt">optional</small></h3>
+        <div class="numshead"><h3>Your numbers (1–10) <small class="opt">optional</small></h3><p class="hint rateguide">1 barely works · 5 typical for this event · 10 best here</p>
 </div>
         ${draft.hasNums ? `<p class="hint">Filled in from your last review. Change any that were different this match and leave the rest.</p>` : ""}
         <div class="rate">${CATS.map(([k, l]) => `<div class="raterow"><span class="rlabel">${l}</span><div class="dots" role="group" aria-label="${l}">${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(v =>
@@ -4986,7 +4993,7 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       <div class="row2"><label class="fld">Tags (shared, optional)<input id="dTags" value="${esc(draft.tags)}" placeholder="fast cycles, solo endgame" ${canRate ? "" : "disabled"} autocomplete="off"></label>
         ${canManage() ? `<label class="check dnpcheck"><input type="checkbox" id="dDnp" ${draft.dnp ? "checked" : ""} ${canRate ? "" : "disabled"}><span><span>Whole team: <b>do not pick</b></span><small>Takes them out of Best pick for everyone</small></span></label>`
           : t.dnp ? `<p class="dnpnote"><span class="tag dnp">do not pick</span> A lead took them off the team's list.</p>` : ""}</div>
-      <div class="movebox"><span class="mlabel">Your pick list <small class="opt">optional</small></span><small class="hint tierhint">Just your opinion. Everyone's are combined on the pick list.</small>
+      <div class="movebox"><span class="mlabel">Your pick list <small class="opt">optional</small></span><small class="hint tierhint">Just your opinion. Everyone's are combined on the pick list. Skip only leaves them off your own list; a lead's do not pick takes them off everyone's.</small>
         <div class="seg3 tierseg" role="group" aria-label="Your tier for ${esc(t.number)}">${TIERS.map(([v, l]) =>
           `<button type="button" data-dtier="${v}" class="${v === 4 ? "mno" : ""}" aria-pressed="${draft.tier === v}" ${canRate ? "" : "disabled"}>${l}</button>`).join("")}</div>
         ${tierAgg(t) ? `<small class="hint">Scouts so far: ${tierTag(t)}</small>` : ""}</div>
@@ -5409,13 +5416,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       box.innerHTML = `<div class="planboard" id="planBoard">
         <div class="planbar">
           ${practice ? `<div class="planhead">${pick}</div>` : ""}
-          <div class="seg3 stepseg" role="group" aria-label="Part of the match">${STEPS.map(([k, l]) => `<button type="button" data-step="${k}" aria-pressed="${strat.step === k}">${l}<i class="stepdot" hidden aria-hidden="true"></i></button>`).join("")}</div>
+          <div class="steprow"><div class="seg3 stepseg" role="group" aria-label="Part of the match">${STEPS.map(([k, l]) => `<button type="button" data-step="${k}" aria-pressed="${strat.step === k}">${l}<i class="stepdot" hidden aria-hidden="true"></i></button>`).join("")}</div>
+            <button type="button" class="btn playbtn" id="planPlay" title="Show the robots moving from Auto to TeleOp to Endgame (P)" aria-pressed="false">Play</button></div>
           <div class="toolrow"><div class="seg3 toolseg" role="group" aria-label="Tool">${[["move", "Move"], ["draw", "Draw"], ["erase", "Erase"]].map(([k, l]) => `<button type="button" data-tool="${k}" aria-pressed="${strat.tool === k}">${l}</button>`).join("")}</div>
             <button type="button" class="btn undobtn" id="planUndo" title="Undo your last change (Ctrl+Z)">Undo</button></div>
           <div class="subrow">
             <div class="inkrow">${INKS.map(([c, l]) => `<button type="button" class="swatch" data-ink="${c}" style="--sw:${c}" aria-label="${l}" aria-pressed="${strat.ink === c}"></button>`).join("")}
               <label class="check arrowchk"><input type="checkbox" id="arrowChk" ${strat.arrow ? "checked" : ""}> Arrow</label></div>
-            <div class="stepbtns"><button type="button" class="btn" id="planCopy" title="Put the robots where they ended the step before">Robots from last step</button><button type="button" class="btn" id="planClear">Clear drawing</button></div>
+            <div class="stepbtns"><button type="button" class="btn" id="planCopy" title="Put the robots where they ended the step before">Copy last step</button><button type="button" class="btn" id="planReset" title="Put this step's robots back where they start">Reset robots</button><button type="button" class="btn" id="planClear">Clear drawing</button></div>
             <p class="erasehint">Tap a line, or swipe across several, to erase them.</p>
           </div>
         </div>
@@ -5439,8 +5447,9 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
     // a dot on each part of the match that has something planned
     box.querySelectorAll("[data-step]").forEach(b => { const st = plan && plan.steps[b.dataset.step]; b.querySelector(".stepdot").hidden = !(st && (Object.keys(st.ink).length || Object.keys(st.bots).length)); });
     const prevTxt = (plan?.note || "").replace(/\s+/g, " ").trim(); $("notePrev").textContent = prevTxt || (canPlan() ? "Tap to add" : "Nothing yet");
-    box.querySelectorAll("[data-tool], .swatch, #arrowChk, #planCopy, #planClear, #planDel, #planNote, #planTitle").forEach(el => { el.disabled = !canPlan(); });
+    box.querySelectorAll("[data-tool], .swatch, #arrowChk, #planCopy, #planReset, #planClear, #planDel, #planNote, #planTitle").forEach(el => { el.disabled = !canPlan(); });
     $("planUndo").disabled = !strat.undo.length;
+    if (!strat.playing) { $("planPlay").textContent = "Play"; $("planPlay").setAttribute("aria-pressed", "false"); }
     const note = $("planNote"); if (note && document.activeElement !== note) note.value = plan?.note || "";
     const title = $("planTitle"); if (title && document.activeElement !== title) title.value = plan?.title || "";
     $("planSaved").innerHTML = (canPlan() ? "" : `<span class="viewonly" title="${esc(planNo())}">View only</span> `) + (plan && plan.at ? `Last change ${esc(ago(plan.at))} by ${who(plan.by, plan.by === uid ? "you" : null)}` : "");
@@ -5459,6 +5468,27 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   $("planDlg").addEventListener("click", (e) => { if (e.target === $("planDlg")) $("planDlg").close(); });
   const svgPt = (e) => { const svg = $("fieldSvg"), pt = svg.createSVGPoint(); pt.x = e.clientX; pt.y = e.clientY; const q = pt.matrixTransform(svg.getScreenCTM().inverse());
     return { x: Math.max(0, Math.min(1000, Math.round(q.x))), y: Math.max(0, Math.min(1000, Math.round(q.y))) }; };
+  async function playPlan() {
+    if (strat.playing) { strat.playing = false; return; }
+    const id = strat.id, plan = plans.get(id); if (!id) return;
+    const bots = planBots(id), still = matchMedia("(prefers-reduced-motion: reduce)").matches, wait = (ms) => new Promise(r => setTimeout(r, ms));
+    const show = (k) => { strat.busy = false; strat.step = k; renderStrat(); strat.busy = true; };
+    strat.playing = true; const btn = () => $("planPlay");
+    show("auto"); if (btn()) { btn().textContent = "Stop"; btn().setAttribute("aria-pressed", "true"); }
+    await wait(900);
+    for (let s = 1; s < STEPS.length && strat.playing && strat.id === id; s++) {
+      const from = bots.map((b, i) => botAt(plan, STEPS[s - 1][0], b, i)), to = bots.map((b, i) => botAt(plan, STEPS[s][0], b, i));
+      show(STEPS[s][0]); if (btn()) { btn().textContent = "Stop"; btn().setAttribute("aria-pressed", "true"); }
+      const gs = bots.map(b => document.querySelector(`#botLayer [data-bot="${CSS.escape(b.k)}"]`));
+      if (!still) await new Promise(res => { const t0 = performance.now(), dur = 900;
+        const frame = (now) => { const t = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - t, 3);
+          gs.forEach((g, i) => g && g.setAttribute("transform", `translate(${Math.round(from[i].x + (to[i].x - from[i].x) * e)} ${Math.round(from[i].y + (to[i].y - from[i].y) * e)})`));
+          if (t < 1 && strat.playing) requestAnimationFrame(frame); else res(); };
+        requestAnimationFrame(frame); });
+      await wait(1100);
+    }
+    strat.playing = false; strat.busy = false; renderStrat();
+  }
   // follow one finger (or the mouse) until it lifts; a second finger meanwhile is ignored
   function track(svg, e, onMove, onEnd) {
     const pid = e.pointerId;
@@ -5502,6 +5532,14 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
   // iPhone: a finger on the field never scrolls or zooms the page
   document.addEventListener("touchmove", (e) => { if (e.target.closest && e.target.closest("#fieldSvg")) e.preventDefault(); }, { passive: false });
   document.addEventListener("gesturestart", (e) => { if (e.target.closest && e.target.closest("#fieldSvg")) e.preventDefault(); });
+  // on a computer: 1 2 3 pick Auto, TeleOp, Endgame; M, D, E pick Move, Draw, Erase; P plays the plan
+  document.addEventListener("keydown", (e) => {
+    if (e.ctrlKey || e.metaKey || e.altKey || !$("planBoard") || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.nodeName || "")) return;
+    const k = e.key.toLowerCase(), step = { "1": "auto", "2": "tele", "3": "end" }[k], tool = { m: "move", d: "draw", e: "erase" }[k];
+    if (step) { strat.step = step; renderStrat(); e.preventDefault(); }
+    else if (tool && canPlan()) { strat.tool = tool; renderStrat(); e.preventDefault(); }
+    else if (k === "p") { playPlan(); e.preventDefault(); }
+  });
   // Ctrl+Z / Cmd+Z undoes the last change on the board (not while typing)
   document.addEventListener("keydown", (e) => {
     if (!(e.ctrlKey || e.metaKey) || e.key.toLowerCase() !== "z" || e.shiftKey || !$("planUndo") || /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement?.nodeName || "")) return;
@@ -5524,9 +5562,17 @@ ${notes.length ? notes.map(x => `- [${ordinal(x.n)}] ${nameOf(x.by)}, ${when(x.a
       if (u.id !== id) { strat.id = u.id; strat.built = null; }
       strat.step = u.step;
       if (u.multi) savePlan(u.id, { steps: { [u.step]: { ink: Object.fromEntries(u.multi.map(x => [x.ink, x.prev])) } } });
+      else if (u.bots) savePlan(u.id, { steps: { [u.step]: { bots: u.bots } } });
       else if (u.bot) savePlan(u.id, { steps: { [u.step]: { bots: { [u.bot]: u.prev } } } });
       else if (u.ink) savePlan(u.id, { steps: { [u.step]: { ink: { [u.ink]: u.prev || null } } } });
       renderStrat(); return;
+    }
+    if (b.id === "planPlay") { playPlan(); return; }
+    if (b.id === "planReset") {
+      const own = plan ? plan.steps[step].bots : {}, keys = Object.keys(own); if (!keys.length) { toast("The robots are already where they start in this step."); return; }
+      strat.undo.push({ id, step, bots: { ...own } });
+      savePlan(id, { steps: { [step]: { bots: Object.fromEntries(keys.map(k => [k, null])) } } });
+      toast(step === "auto" ? "Robots back on their starting spots" : `Robots back where they ended ${STEPS[STEPS.findIndex(([k]) => k === step) - 1][1]}`); return;
     }
     if (b.id === "planCopy") {
       const order = STEPS.map(([k]) => k), i = order.indexOf(step); if (i === 0) { toast("Auto is the first step: drag the robots to where they start."); return; }
